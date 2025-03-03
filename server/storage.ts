@@ -3,8 +3,8 @@ import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team } from "@shared/schema";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident } from "@shared/schema";
 import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
@@ -55,6 +55,12 @@ export interface IStorage {
     startDate?: Date;
     endDate?: Date;
   }): Promise<AuditLog[]>;
+
+  // Add new incident methods
+  getIncidents(organizationId: string): Promise<Incident[]>;
+  getIncidentById(id: string): Promise<Incident | undefined>;
+  createIncident(incident: Omit<Incident, "id">): Promise<Incident>;
+  updateIncident(incident: Incident): Promise<Incident>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -252,6 +258,49 @@ export class DatabaseStorage implements IStorage {
       .from(auditLogs)
       .where(and(...conditions))
       .orderBy(desc(auditLogs.createdAt));
+  }
+
+  // Implement incident methods
+  async getIncidents(organizationId: string): Promise<Incident[]> {
+    // First get business units for the organization
+    const units = await this.getBusinessUnits(organizationId);
+    const unitIds = units.map(unit => unit.id);
+
+    // Then get incidents for those business units
+    return db
+      .select()
+      .from(incidents)
+      .where(
+        and(
+          ...unitIds.map(id => eq(incidents.businessUnitId, id))
+        )
+      )
+      .orderBy(desc(incidents.createdAt));
+  }
+
+  async getIncidentById(id: string): Promise<Incident | undefined> {
+    const [incident] = await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, id));
+    return incident;
+  }
+
+  async createIncident(incident: Omit<Incident, "id">): Promise<Incident> {
+    const [newIncident] = await db
+      .insert(incidents)
+      .values(incident)
+      .returning();
+    return newIncident;
+  }
+
+  async updateIncident(incident: Incident): Promise<Incident> {
+    const [updatedIncident] = await db
+      .update(incidents)
+      .set(incident)
+      .where(eq(incidents.id, incident.id))
+      .returning();
+    return updatedIncident;
   }
 }
 
