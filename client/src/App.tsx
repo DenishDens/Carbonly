@@ -17,6 +17,7 @@ import CategoryProcessing from "@/pages/data-processing/[category]";
 import Teams from "@/pages/teams";
 import FuelData from "@/pages/fuel-data";
 import ElectricityData from "@/pages/electricity-data";
+import Incidents from "@/pages/incidents"; // Add import for Incidents page
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/business-units" component={BusinessUnits} />
+      <ProtectedRoute path="/incidents" component={Incidents} /> {/* Add incidents route */}
       <ProtectedRoute path="/data-processing" component={FileProcessing} />
       <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
       <ProtectedRoute path="/emissions" component={EmissionsData} />
