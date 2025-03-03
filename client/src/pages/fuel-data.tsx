@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Table,
   TableBody,
@@ -28,7 +28,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FuelForm } from "@/components/manual-entry-forms/fuel-form";
 import type { BusinessUnit, Emission } from "@shared/schema";
-import { Download, Filter, LineChart } from "lucide-react";
+import { Download, Filter, LineChart, Upload, FileType2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 interface FuelStats {
   totalLiters: number;
@@ -38,9 +41,13 @@ interface FuelStats {
 }
 
 export default function FuelDataPage() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [selectedUnit, setSelectedUnit] = useState<string>("all");
   const [selectedFuelType, setSelectedFuelType] = useState<string>("all");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [file, setFile] = useState<File>();
+  const [dragActive, setDragActive] = useState(false);
 
   const { data: businessUnits, isLoading: loadingUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
@@ -56,6 +63,54 @@ export default function FuelDataPage() {
       return response.json();
     }
   });
+
+  const uploadFile = useMutation({
+    mutationFn: async () => {
+      if (!file) return;
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", "fuel");
+      const res = await fetch("/api/emissions/upload", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      setFile(undefined);
+      toast({ title: "File processed successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/emissions"] });
+    },
+    onError: (error) => {
+      toast({
+        title: "Processing failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setFile(e.dataTransfer.files[0]);
+    }
+  };
 
   const calculateStats = (emissions: Emission[] | undefined): FuelStats => {
     const stats: FuelStats = {
@@ -153,6 +208,69 @@ export default function FuelDataPage() {
             Export CSV
           </Button>
         </div>
+
+        {/* File Upload Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Fuel Data</CardTitle>
+            <CardDescription>
+              Upload your fuel consumption records - we'll automatically process and categorize them
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div
+              className={cn(
+                "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
+                dragActive ? "border-primary bg-primary/10" : "border-muted",
+                "hover:border-primary hover:bg-primary/5"
+              )}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => document.getElementById("file-input")?.click()}
+            >
+              {file ? (
+                <div className="flex items-center justify-center gap-2">
+                  <FileType2 className="h-6 w-6" />
+                  <span>{file.name}</span>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Drag and drop files here, or click to select files
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Supports CSV and Excel files
+                  </p>
+                </div>
+              )}
+              <input
+                id="file-input"
+                type="file"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0])}
+                accept=".csv,.xlsx"
+              />
+            </div>
+
+            <Button
+              className="w-full"
+              onClick={() => uploadFile.mutate()}
+              disabled={!file || uploadFile.isPending}
+            >
+              {uploadFile.isPending ? (
+                <>Processing...</>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Process File
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

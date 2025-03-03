@@ -33,6 +33,8 @@ import { Building2, Edit, Trash2, Settings } from "lucide-react";
 import type { BusinessUnit, User, Team } from "@shared/schema";
 import { useState } from "react";
 import { InviteUsersDialog } from "@/components/invite-users-dialog";
+import { Users } from "lucide-react"; // Placeholder import - adjust as needed
+
 
 const UNIT_LABELS = [
   "Business Unit",
@@ -465,6 +467,16 @@ export default function BusinessUnits() {
                     onClick={() => deleteBusinessUnit.mutate(unit.id)}
                   >
                     <Trash2 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedUnitForInvite(unit);
+                      setShowInviteDialog(true);
+                    }}
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Share
                   </Button>
                   <Button
                     onClick={() => {
