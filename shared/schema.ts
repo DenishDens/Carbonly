@@ -15,7 +15,8 @@ export const organizations = pgTable("organizations", {
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
-  name: text("name").notNull(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
   email: text("email").notNull(),
   password: text("password"), // Optional for SSO users
   role: text("role").notNull(), // 'super_admin', 'admin', 'user'
@@ -28,6 +29,13 @@ export const businessUnits = pgTable("business_units", {
   name: text("name").notNull(),
   label: text("label"), // Made optional: 'Business Unit', 'Project', 'Division', 'Department', 'Custom'
   description: text("description"),
+  location: text("location"), // For tracking by state/region
+  category: text("category"), // For additional categorization
+  managerId: uuid("manager_id").references(() => users.id),
+  status: text("status"), // active, inactive, archived
+  budget: decimal("budget"), // For tracking financial aspects
+  targetEmission: decimal("target_emission"), // Emission reduction target
+  metadata: jsonb("metadata"), // For flexible additional data
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -79,9 +87,18 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
   .pick({
     name: true,
     description: true,
+    label: true,
+    location: true,
+    category: true,
+    managerId: true,
+    status: true,
+    budget: true,
+    targetEmission: true,
+    metadata: true,
   })
   .extend({
     label: z.string().optional(),
+    metadata: z.record(z.unknown()).optional(),
   });
 
 // Schema for emission data
