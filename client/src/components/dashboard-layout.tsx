@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MainNav } from "@/components/main-nav";
+import { ChatInterface } from "@/components/chat-interface";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Menu, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,9 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>
+
+      {/* Chat Interface */}
+      <ChatInterface />
     </div>
   );
 }

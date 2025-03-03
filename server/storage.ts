@@ -1,6 +1,6 @@
 import { Pool } from "@neondatabase/serverless";
 import { db } from "./db";
-import { eq, desc, gte, lte } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs } from "@shared/schema";
@@ -22,7 +22,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id">): Promise<User>;
-  getUsersByOrganization(organizationId: string): Promise<User[]>; // Added method
+  getUsersByOrganization(organizationId: string): Promise<User[]>;
 
   // Business unit operations
   getBusinessUnits(organizationId: string): Promise<BusinessUnit[]>;
@@ -100,7 +100,7 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async getUsersByOrganization(organizationId: string): Promise<User[]> { // Added method
+  async getUsersByOrganization(organizationId: string): Promise<User[]> {
     return db.select().from(users).where(eq(users.organizationId, organizationId));
   }
 
@@ -151,25 +151,26 @@ export class DatabaseStorage implements IStorage {
     startDate?: Date;
     endDate?: Date;
   }): Promise<AuditLog[]> {
-    let query = db.select()
-      .from(auditLogs)
-      .where(eq(auditLogs.organizationId, organizationId))
-      .orderBy(desc(auditLogs.createdAt));
+    let conditions = [eq(auditLogs.organizationId, organizationId)];
 
     if (filters?.entityType) {
-      query = query.where(eq(auditLogs.entityType, filters.entityType));
+      conditions.push(eq(auditLogs.entityType, filters.entityType));
     }
     if (filters?.entityId) {
-      query = query.where(eq(auditLogs.entityId, filters.entityId));
+      conditions.push(eq(auditLogs.entityId, filters.entityId));
     }
     if (filters?.startDate) {
-      query = query.where(gte(auditLogs.createdAt, filters.startDate));
+      conditions.push(eq(auditLogs.createdAt, filters.startDate));
     }
     if (filters?.endDate) {
-      query = query.where(lte(auditLogs.createdAt, filters.endDate));
+      conditions.push(eq(auditLogs.createdAt, filters.endDate));
     }
 
-    return query;
+    return db
+      .select()
+      .from(auditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.createdAt));
   }
 }
 

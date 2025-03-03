@@ -68,7 +68,7 @@ function AuditLogViewer() {
   // Helper function to get user name
   const getUserInfo = (userId: string) => {
     const user = users?.find(u => u.id === userId);
-    return user ? `${user.name} (${user.email})` : 'Unknown User';
+    return user ? `${user.firstName} ${user.lastName} (${user.email})` : 'Unknown User';
   };
 
   return (
@@ -103,7 +103,7 @@ function AuditLogViewer() {
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(newDate) => newDate && setDate(newDate)}
                   initialFocus
                 />
               </PopoverContent>
