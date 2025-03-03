@@ -1,0 +1,84 @@
+Users Table
+CREATE TABLE users (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255),
+    email VARCHAR(255) UNIQUE,
+    password_hash TEXT,
+    role ENUM('admin', 'manager', 'user'),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Business Units / Projects Table
+CREATE TABLE business_units (
+    id UUID PRIMARY KEY,
+    name VARCHAR(255),
+    label VARCHAR(50) CHECK (label IN ('Business Unit', 'Project', 'Division', 'Department', 'Custom')),
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Carbon Emissions Data Table
+CREATE TABLE emissions (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    scope ENUM('Scope 1', 'Scope 2', 'Scope 3'),
+    emission_source VARCHAR(255),
+    amount DECIMAL(10,2),
+    unit VARCHAR(10) CHECK (unit IN ('kg', 'tCO2e')),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Scope 1 Data Tables
+CREATE TABLE fuel_combustion (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    fuel_type VARCHAR(255),
+    quantity DECIMAL(10,2),
+    unit VARCHAR(50),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE industrial_processes (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    process_type VARCHAR(255),
+    emissions DECIMAL(10,2),
+    unit VARCHAR(50),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Scope 2 Data Tables
+CREATE TABLE electricity_consumption (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    energy_consumed DECIMAL(10,2),
+    unit VARCHAR(50),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE heating_cooling (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    energy_used DECIMAL(10,2),
+    unit VARCHAR(50),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Scope 3 Data Tables
+CREATE TABLE employee_commuting (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    transport_type VARCHAR(255),
+    emissions DECIMAL(10,2),
+    unit VARCHAR(50),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE business_travel (
+    id UUID PRIMARY KEY,
+    business_unit_id UUID REFERENCES business_units(id),
+    travel_mode VARCHAR(255),
+    emissions DECIMAL(10,2),
+    unit VARCHAR(50),
+    date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);

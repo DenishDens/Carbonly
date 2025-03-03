@@ -1,0 +1,56 @@
+Task:
+Develop an AI-powered modular Processing API for Carbonly.ai that:
+
+Identifies the emission data type from uploaded reports (e.g., fuel, electricity, transport).
+Routes the data to the correct processing module based on detected category.
+Logs errors or missing data as a structured transaction.
+Ensures scalability by separating processing logic for each emission category.
+Processing API Flow:
+✅ Step 1: Data Classification API
+
+Uses AI (OCR/NLP) to classify the uploaded report.
+Identifies if it contains Fuel, Electricity, Travel, Water, Heat, or Other Scope 3 emissions.
+Returns a category label (e.g., "fuel_data", "electricity_usage", "business_travel").
+✅ Step 2: Routing Mechanism
+
+Based on the detected category label, the API redirects the data to the appropriate processing endpoint.
+✅ Step 3: Category-Specific Processing APIs
+
+Fuel API: Extracts fuel consumption details.
+Electricity API: Processes electricity usage.
+Travel API: Identifies business travel data (mode, distance, emissions).
+Scope 3 API: Handles supply chain, waste, and logistics emissions.
+✅ Step 4: Transaction Logging
+
+If data is corrupt, incomplete, or unreadable, it is logged in the Transaction Table for review.
+Error types: "missing_value", "invalid_format", "ambiguous_data"
+Tech Stack:
+Frontend: Next.js (Dashboard for API visualization)
+Backend: FastAPI (Python) / NestJS (Node.js)
+Database: PostgreSQL (Structured logging of errors and valid data)
+AI Services: OpenAI API (OCR/NLP), Azure AI, Google Vision API
+Queue System: Kafka/RabbitMQ (Ensuring smooth API transactions)
+Database Tables for Transaction Logging
+sql
+Copy
+Edit
+CREATE TABLE transactions (
+    id UUID PRIMARY KEY,
+    file_name VARCHAR(255),
+    detected_category VARCHAR(50),
+    status ENUM('processed', 'failed', 'pending'),
+    error_type VARCHAR(50) CHECK (error_type IN ('missing_value', 'invalid_format', 'ambiguous_data', 'none')),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+Gap Analysis Task:
+As you develop this API, analyze:
+
+Are there any missing categories that need processing?
+Does the routing mechanism handle edge cases (e.g., mixed data in reports)?
+Should AI confidence scores be used for classification accuracy?
+How do we handle large file processing without slowing down the API?
+Output Expectations:
+✅ Modular API Design with separate processing endpoints
+✅ Smart Routing System for category-based processing
+✅ AI-driven classification with error handling
+✅ Optimized database schema for logging and reporting

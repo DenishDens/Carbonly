@@ -1,6 +1,7 @@
 import createMemoryStore from "memorystore";
 import session from "express-session";
-import { User, Organization, BusinessUnit, Emission, Invitation } from "@shared/schema";
+import { User, Organization, BusinessUnit, Emission, ProcessingTransaction } from "@shared/schema";
+import * as crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
 
@@ -9,56 +10,50 @@ export interface IStorage {
 
   // Organization operations
   getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
+  getOrganizationById(id: string): Promise<Organization | undefined>;
   createOrganization(org: Omit<Organization, "id">): Promise<Organization>;
-  updateOrganizationLogo(id: number, logoUrl: string): Promise<Organization>;
+  updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization>;
+  updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization>;
 
   // User operations
-  getUser(id: number): Promise<User | undefined>;
-  getUserByUsername(username: string, orgId: number): Promise<User | undefined>;
+  getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id">): Promise<User>;
 
-  // Invitation operations
-  createInvitation(invitation: Omit<Invitation, "id">): Promise<Invitation>;
-  getInvitationByToken(token: string): Promise<Invitation | undefined>;
-  deleteInvitation(id: number): Promise<void>;
-
   // Business unit operations
-  getBusinessUnits(organizationId: number): Promise<BusinessUnit[]>;
+  getBusinessUnits(organizationId: string): Promise<BusinessUnit[]>;
   createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit>;
 
   // Emission operations
-  getEmissions(businessUnitId: number): Promise<Emission[]>;
+  getEmissions(businessUnitId: string): Promise<Emission[]>;
   createEmission(emission: Omit<Emission, "id">): Promise<Emission>;
+
+  // Transaction logging
+  createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction>;
+  updateTransactionStatus(id: string, status: string, errorType?: string | null): Promise<ProcessingTransaction>;
 }
 
 export class MemStorage implements IStorage {
-  private organizations: Map<number, Organization>;
-  private users: Map<number, User>;
-  private invitations: Map<number, Invitation>;
-  private businessUnits: Map<number, BusinessUnit>;
-  private emissions: Map<number, Emission>;
+  private organizations: Map<string, Organization>;
+  private users: Map<string, User>;
+  private businessUnits: Map<string, BusinessUnit>;
+  private emissions: Map<string, Emission>;
+  private transactions: Map<string, ProcessingTransaction>;
   sessionStore: session.Store;
-  private currentOrgId: number;
-  private currentUserId: number;
-  private currentInvitationId: number;
-  private currentBusinessUnitId: number;
-  private currentEmissionId: number;
 
   constructor() {
     this.organizations = new Map();
     this.users = new Map();
-    this.invitations = new Map();
     this.businessUnits = new Map();
     this.emissions = new Map();
+    this.transactions = new Map();
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
-    this.currentOrgId = 1;
-    this.currentUserId = 1;
-    this.currentInvitationId = 1;
-    this.currentBusinessUnitId = 1;
-    this.currentEmissionId = 1;
+  }
+
+  private generateUUID(): string {
+    return crypto.randomUUID();
   }
 
   async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
@@ -67,29 +62,31 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getOrganizationById(id: string): Promise<Organization | undefined> {
+    return this.organizations.get(id);
+  }
+
   async createOrganization(org: Omit<Organization, "id">): Promise<Organization> {
-    const id = this.currentOrgId++;
+    const id = this.generateUUID();
     const newOrg = { ...org, id };
     this.organizations.set(id, newOrg);
     return newOrg;
   }
 
-  async updateOrganizationLogo(id: number, logoUrl: string): Promise<Organization> {
-    const org = this.organizations.get(id);
+  async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization> {
+    const org = await this.getOrganizationById(id);
     if (!org) throw new Error("Organization not found");
-    const updatedOrg = { ...org, logo: logoUrl };
+    const updatedOrg = { ...org, ...updates };
     this.organizations.set(id, updatedOrg);
     return updatedOrg;
   }
 
-  async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+  async updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization> {
+    return this.updateOrganization(id, { logo: logoUrl });
   }
 
-  async getUserByUsername(username: string, orgId: number): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username && user.organizationId === orgId
-    );
+  async getUser(id: string): Promise<User | undefined> {
+    return this.users.get(id);
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
@@ -99,53 +96,51 @@ export class MemStorage implements IStorage {
   }
 
   async createUser(user: Omit<User, "id">): Promise<User> {
-    const id = this.currentUserId++;
+    const id = this.generateUUID();
     const newUser = { ...user, id };
     this.users.set(id, newUser);
     return newUser;
   }
 
-  async createInvitation(invitation: Omit<Invitation, "id">): Promise<Invitation> {
-    const id = this.currentInvitationId++;
-    const newInvitation = { ...invitation, id };
-    this.invitations.set(id, newInvitation);
-    return newInvitation;
-  }
-
-  async getInvitationByToken(token: string): Promise<Invitation | undefined> {
-    return Array.from(this.invitations.values()).find(
-      (invitation) => invitation.token === token
-    );
-  }
-
-  async deleteInvitation(id: number): Promise<void> {
-    this.invitations.delete(id);
-  }
-
-  async getBusinessUnits(organizationId: number): Promise<BusinessUnit[]> {
+  async getBusinessUnits(organizationId: string): Promise<BusinessUnit[]> {
     return Array.from(this.businessUnits.values()).filter(
       (unit) => unit.organizationId === organizationId
     );
   }
 
   async createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit> {
-    const id = this.currentBusinessUnitId++;
+    const id = this.generateUUID();
     const newUnit = { ...unit, id };
     this.businessUnits.set(id, newUnit);
     return newUnit;
   }
 
-  async getEmissions(businessUnitId: number): Promise<Emission[]> {
+  async getEmissions(businessUnitId: string): Promise<Emission[]> {
     return Array.from(this.emissions.values()).filter(
       (emission) => emission.businessUnitId === businessUnitId
     );
   }
 
   async createEmission(emission: Omit<Emission, "id">): Promise<Emission> {
-    const id = this.currentEmissionId++;
+    const id = this.generateUUID();
     const newEmission = { ...emission, id };
     this.emissions.set(id, newEmission);
     return newEmission;
+  }
+
+  async createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction> {
+    const id = this.generateUUID();
+    const newTransaction = { ...transaction, id };
+    this.transactions.set(id, newTransaction);
+    return newTransaction;
+  }
+
+  async updateTransactionStatus(id: string, status: string, errorType: string | null = null): Promise<ProcessingTransaction> {
+    const transaction = this.transactions.get(id);
+    if (!transaction) throw new Error("Transaction not found");
+    const updatedTransaction = { ...transaction, status, errorType };
+    this.transactions.set(id, updatedTransaction);
+    return updatedTransaction;
   }
 }
 

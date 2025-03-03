@@ -4,12 +4,10 @@ import multer from "multer";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { extractEmissionData } from "./openai";
-import { 
-  insertBusinessUnitSchema, 
-  insertEmissionSchema,
-  insertInvitationSchema 
-} from "@shared/schema";
-import crypto from "crypto";
+import { insertBusinessUnitSchema } from "@shared/schema";
+import crypto from 'crypto';
+import {insertInvitationSchema} from "@shared/schema";
+
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -49,24 +47,89 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     try {
-      const fileContent = req.file.buffer.toString();
-      const extractedData = await extractEmissionData(fileContent);
-      const emission = await storage.createEmission({
-        ...extractedData,
-        businessUnitId: parseInt(req.body.businessUnitId),
-        source: req.file.originalname,
+      // Create initial transaction record
+      const transaction = await storage.createTransaction({
+        fileName: req.file.originalname,
+        detectedCategory: "pending",
+        status: "pending",
+        createdAt: new Date(),
       });
-      res.json(emission);
+
+      try {
+        const fileContent = req.file.buffer.toString();
+        const extractedData = await extractEmissionData(fileContent);
+
+        const emission = await storage.createEmission({
+          businessUnitId: req.body.businessUnitId,
+          scope: extractedData.scope,
+          emissionSource: extractedData.emissionSource,
+          amount: extractedData.amount,
+          unit: extractedData.unit,
+          date: new Date(extractedData.date),
+          details: extractedData.details,
+        });
+
+        // Update transaction status
+        await storage.updateTransactionStatus(transaction.id, "processed");
+        res.json(emission);
+      } catch (error) {
+        // Update transaction with error
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        await storage.updateTransactionStatus(
+          transaction.id,
+          "failed",
+          error instanceof Error ? error.message : "Unknown error"
+        );
+        throw error;
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error occurred";
       res.status(400).json({ message });
     }
   });
 
-  // Organization Logo
-  app.post("/api/organization/logo", upload.single("logo"), async (req: Express.Request & { file?: Express.Multer.File }, res) => {
+  // Organization Settings
+  app.get("/api/organization", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!req.file) return res.status(400).json({ message: "No logo uploaded" });
+    const org = await storage.getOrganizationById(req.user.organizationId);
+    res.json(org);
+  });
+
+  app.patch("/api/organization/slug", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "super_admin") {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const { slug } = req.body;
+      if (!slug) {
+        return res.status(400).json({ message: "Slug is required" });
+      }
+
+      // Check if slug is available
+      const existingOrg = await storage.getOrganizationBySlug(slug);
+      if (existingOrg && existingOrg.id !== req.user.organizationId) {
+        return res.status(400).json({ message: "This URL is already taken" });
+      }
+
+      const org = await storage.updateOrganization(req.user.organizationId, {
+        slug,
+      });
+      res.json(org);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error occurred";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post("/api/organization/logo", upload.single("logo"), async (req: Express.Request & { file?: Express.Multer.File }, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "super_admin") {
+      return res.sendStatus(403);
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No logo uploaded" });
+    }
 
     try {
       // In a production environment, this would upload to S3/CloudStorage
@@ -84,6 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message });
     }
   });
+
 
   // User Invitations
   app.post("/api/invitations", async (req, res) => {

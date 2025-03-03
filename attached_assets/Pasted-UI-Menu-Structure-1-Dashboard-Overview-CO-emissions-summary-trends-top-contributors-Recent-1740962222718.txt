@@ -1,0 +1,117 @@
+UI Menu Structure
+
+1️⃣ Dashboard
+
+Overview (CO₂ emissions summary, trends, top contributors)
+
+Recent Activity (Latest uploaded reports & processing status)
+
+Quick Actions (Upload File, Add Business Unit/Project, View Reports)
+
+2️⃣ Business Units / Projects (User-selectable naming convention)
+
+List of Business Units / Projects (Search, Filter, Sort)
+
+Create / Edit Business Unit or Project
+
+Name
+
+Label: Business Unit, Project, Division, Department, or Custom
+
+Assign Users & Roles
+
+Auto-generated Email (e.g., [unit-name]@carbonly.ai)
+
+Email Ingestion Setup (Users forward files for processing)
+
+3️⃣ File Processing
+
+Upload Reports (Drag & Drop, Cloud Storage, Email Ingestion)
+
+Processing Status (Pending, Processed, Failed)
+
+Download Processed Reports
+
+4️⃣ Emissions Data
+
+CO₂ Breakdown by Source (Fuel, Electricity, Transport, etc.)
+
+Scope 1 & Scope 2 Emissions Report
+
+Historical Data & Trends
+
+AI-Powered Predictions for Future Carbon Footprint
+
+5️⃣ Integrations (Phase 2)
+
+Connect to Xero, MYOB, SAP, Google Drive, OneDrive
+
+Manage API Keys & Webhooks
+
+6️⃣ Environmental Incidents (Future Feature)
+
+Incident Log (Categorized by type)
+
+Root Cause Analysis
+
+Compliance & Reporting
+
+7️⃣ Governance & ESG (Future Feature)
+
+AI-Driven Governance Insights (Social media/news scanning)
+
+ESG Risk Indicators
+
+Compliance Reporting
+
+8️⃣ Audit & Compliance
+
+Audit-Ready Reports (Timestamped logs, source verification)
+
+Export Data (CSV, PDF, API Access)
+
+9️⃣ User Management
+
+Manage Team Members & Permissions
+
+Role-Based Access Control
+
+🔧 Admin Panel (For Platform-Wide Management)
+
+Global Dashboard (View all business units/projects)
+
+User Management (Manage all users, assign global roles)
+
+Billing & Subscription (Manage plans, usage, and invoicing)
+
+Security & Compliance (Audit logs, access control, SSO)
+
+API Management (Control integrations, monitor API usage)
+
+Platform Settings (Global preferences, notification templates)
+
+Custom Branding for Enterprises
+
+4. AI-Powered Features
+
+AI for Data Extraction & Processing
+
+Extracts relevant carbon emission details from reports
+
+Identifies patterns, missing data, and potential reporting errors
+
+AI for Data Prediction & Modeling
+
+Uses historical data to forecast future carbon emissions
+
+Identifies anomalies and high-risk activities
+
+Suggests optimization strategies for emission reduction
+
+AI for ESG & Governance
+
+Scans news, reports, and social media for governance risks
+
+Assists in compliance monitoring and automated reporting
+
+5. Database Schema (Updated for Structured Transaction Data)
