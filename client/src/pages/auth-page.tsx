@@ -20,8 +20,6 @@ import {
 
 function LoginForm() {
   const { loginMutation } = useAuth();
-  const [showSSODialog, setShowSSODialog] = useState(false);
-  const [orgSlug, setOrgSlug] = useState("");
   const form = useForm({
     defaultValues: {
       username: "",
@@ -34,11 +32,16 @@ function LoginForm() {
   });
 
   const handleSSOLogin = async () => {
-    if (!orgSlug) return;
     try {
-      const response = await fetch(`/api/auth/sso/${orgSlug}`, {
+      // Get current domain from window.location
+      const domain = window.location.hostname;
+      const response = await fetch(`/api/auth/sso`, {
         method: "POST",
         credentials: "include",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ domain })
       });
       if (!response.ok) {
         throw new Error("SSO authentication failed");
@@ -50,87 +53,57 @@ function LoginForm() {
   };
 
   return (
-    <>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="username">Email</Label>
-          <Input
-            id="username"
-            type="email"
-            placeholder="name@company.com"
-            {...form.register("username")}
-          />
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="username">Email</Label>
+        <Input
+          id="username"
+          type="email"
+          placeholder="name@company.com"
+          {...form.register("username")}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          {...form.register("password")}
+        />
+        <div className="flex justify-end">
+          <Button variant="link" className="text-sm">
+            Forgot password?
+          </Button>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
-            id="password"
-            type="password"
-            {...form.register("password")}
-          />
-          <div className="flex justify-end">
-            <Button variant="link" className="text-sm">
-              Forgot password?
-            </Button>
-          </div>
+      </div>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loginMutation.isPending}
+      >
+        Sign In
+      </Button>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t"></div>
         </div>
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={loginMutation.isPending}
-        >
-          Sign In
-        </Button>
-
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-background px-2 text-muted-foreground">
-              Or continue with
-            </span>
-          </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with
+          </span>
         </div>
+      </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          className="w-full"
-          onClick={() => setShowSSODialog(true)}
-        >
-          Sign in with SSO
-        </Button>
-      </form>
-
-      <Dialog open={showSSODialog} onOpenChange={setShowSSODialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Sign in with SSO</DialogTitle>
-            <DialogDescription>
-              Enter your organization URL to continue with SSO
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 pt-4">
-            <div className="flex gap-2 items-center">
-              <span className="text-muted-foreground">carbonly.ai/</span>
-              <Input
-                value={orgSlug}
-                onChange={(e) => setOrgSlug(e.target.value)}
-                placeholder="your-org"
-              />
-            </div>
-            <Button
-              className="w-full"
-              onClick={handleSSOLogin}
-              disabled={!orgSlug}
-            >
-              Continue with SSO
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handleSSOLogin}
+      >
+        Sign in with SSO
+      </Button>
+    </form>
   );
 }
 

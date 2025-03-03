@@ -374,16 +374,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // SSO login endpoint
-  app.post("/api/auth/sso/:orgSlug", async (req, res) => {
-    const { orgSlug } = req.params;
-
+  app.post("/api/auth/sso", async (req, res) => {
     try {
-      const org = await storage.getOrganizationBySlug(orgSlug);
+      const { domain } = req.body;
+
+      // Find organization by domain
+      const org = await storage.getOrganizationByDomain(domain);
       if (!org || !org.ssoEnabled) {
         return res.status(400).json({ message: "SSO not configured for this organization" });
       }
 
       const ssoConfig = org.ssoSettings;
+      if (!ssoConfig) {
+        return res.status(400).json({ message: "SSO configuration not found" });
+      }
 
       // Configure SSO strategy dynamically based on organization settings
       const strategy = new SamlStrategy(
@@ -393,24 +397,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           issuer: ssoConfig.issuer,
           cert: ssoConfig.cert,
         },
-        (profile: any, done: any) => {
-          // Find or create user based on SSO profile
-          storage.getUserByEmail(profile.email)
-            .then(user => {
-              if (user) {
-                return done(null, user);
-              }
-              // Create new user if doesn't exist
-              return storage.createUser({
+        async (profile: any, done: any) => {
+          try {
+            let user = await storage.getUserByEmail(profile.email);
+
+            // If user exists and belongs to a different org, deny access
+            if (user && user.organizationId !== org.id) {
+              return done(null, false, { message: "Email belongs to a different organization" });
+            }
+
+            // Create new user if doesn't exist
+            if (!user) {
+              user = await storage.createUser({
                 email: profile.email,
                 firstName: profile.firstName,
                 lastName: profile.lastName,
                 organizationId: org.id,
                 role: 'user',
                 password: null, // SSO users don't need password
-              }).then(newUser => done(null, newUser));
-            })
-            .catch(error => done(error));
+                createdAt: new Date(),
+              });
+            }
+
+            return done(null, user);
+          } catch (error) {
+            return done(error);
+          }
         }
       );
 
