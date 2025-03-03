@@ -64,9 +64,26 @@ export const businessUnits = pgTable("business_units", {
     },
   }),
   integrations: jsonb("integrations").$type<{
-    onedrive?: { status: string; path: string };
-    googledrive?: { status: string; path: string };
-    sharepoint?: { status: string; path: string };
+    storage?: {
+      onedrive?: { status: "connected" | "disconnected"; path: string };
+      googledrive?: { status: "connected" | "disconnected"; path: string };
+      sharepoint?: { status: "connected" | "disconnected"; path: string };
+    };
+    accounting?: {
+      xero?: { status: "connected" | "disconnected"; clientId: string };
+      myob?: { status: "connected" | "disconnected"; clientId: string };
+    };
+    electricity?: {
+      provider: string;
+      status: "connected" | "disconnected";
+      apiKey: string;
+    };
+    custom?: Array<{
+      name: string;
+      status: "connected" | "disconnected";
+      baseUrl: string;
+      apiToken: string;
+    }>;
   }>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -162,18 +179,41 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
       }),
     }).optional(),
     integrations: z.object({
-      onedrive: z.object({
-        status: z.string(),
-        path: z.string(),
+      storage: z.object({
+        onedrive: z.object({
+          status: z.enum(["connected", "disconnected"]),
+          path: z.string(),
+        }).optional(),
+        googledrive: z.object({
+          status: z.enum(["connected", "disconnected"]),
+          path: z.string(),
+        }).optional(),
+        sharepoint: z.object({
+          status: z.enum(["connected", "disconnected"]),
+          path: z.string(),
+        }).optional(),
       }).optional(),
-      googledrive: z.object({
-        status: z.string(),
-        path: z.string(),
+      accounting: z.object({
+        xero: z.object({
+          status: z.enum(["connected", "disconnected"]),
+          clientId: z.string(),
+        }).optional(),
+        myob: z.object({
+          status: z.enum(["connected", "disconnected"]),
+          clientId: z.string(),
+        }).optional(),
       }).optional(),
-      sharepoint: z.object({
-        status: z.string(),
-        path: z.string(),
+      electricity: z.object({
+        provider: z.string(),
+        status: z.enum(["connected", "disconnected"]),
+        apiKey: z.string(),
       }).optional(),
+      custom: z.array(z.object({
+        name: z.string(),
+        status: z.enum(["connected", "disconnected"]),
+        baseUrl: z.string(),
+        apiToken: z.string(),
+      })).optional(),
     }).optional(),
   });
 

@@ -29,13 +29,14 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Edit, Trash2, Settings } from "lucide-react";
+import { Building2, Edit, Trash2, Settings, Plus } from "lucide-react";
 import type { BusinessUnit, User, Team } from "@shared/schema";
 import { useState } from "react";
 import { InviteUsersDialog } from "@/components/invite-users-dialog";
 import { Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntegrationCard } from "@/components/integration-wizard/integration-card";
+import { IntegrationWizard } from "@/components/integration-wizard/integration-wizard";
 
 
 const UNIT_LABELS = [
@@ -71,7 +72,7 @@ export default function BusinessUnits() {
     category: "",
     status: "active",
     managerId: "",
-    teamId: "", 
+    teamId: "",
     protocolSettings: {
       version: "org",
       emissionFactors: {
@@ -403,30 +404,95 @@ export default function BusinessUnits() {
     );
   };
 
-  const IntegrationsForm = ({ unit }: { unit: BusinessUnit }) => (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <IntegrationCard
-          businessUnitId={unit.id}
-          type="onedrive"
-          status={unit.integrations?.onedrive?.status}
-          folderPath={unit.integrations?.onedrive?.path}
-        />
-        <IntegrationCard
-          businessUnitId={unit.id}
-          type="googledrive"
-          status={unit.integrations?.googledrive?.status}
-          folderPath={unit.integrations?.googledrive?.path}
-        />
-        <IntegrationCard
-          businessUnitId={unit.id}
-          type="sharepoint"
-          status={unit.integrations?.sharepoint?.status}
-          folderPath={unit.integrations?.sharepoint?.path}
-        />
+  const IntegrationsForm = ({ unit }: { unit: BusinessUnit }) => {
+    const [showWizard, setShowWizard] = useState(false);
+
+    return (
+      <div className="space-y-4">
+        {showWizard ? (
+          <IntegrationWizard
+            businessUnitId={unit.id}
+            onComplete={() => setShowWizard(false)}
+          />
+        ) : (
+          <div className="space-y-4">
+            <Button onClick={() => setShowWizard(true)} className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Add New Integration
+            </Button>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              {/* Storage Integrations */}
+              {unit.integrations?.storage?.onedrive && (
+                <IntegrationCard
+                  businessUnitId={unit.id}
+                  type="onedrive"
+                  status={unit.integrations.storage.onedrive.status}
+                  folderPath={unit.integrations.storage.onedrive.path}
+                />
+              )}
+              {unit.integrations?.storage?.googledrive && (
+                <IntegrationCard
+                  businessUnitId={unit.id}
+                  type="googledrive"
+                  status={unit.integrations.storage.googledrive.status}
+                  folderPath={unit.integrations.storage.googledrive.path}
+                />
+              )}
+              {unit.integrations?.storage?.sharepoint && (
+                <IntegrationCard
+                  businessUnitId={unit.id}
+                  type="sharepoint"
+                  status={unit.integrations.storage.sharepoint.status}
+                  folderPath={unit.integrations.storage.sharepoint.path}
+                />
+              )}
+
+              {/* Accounting Integrations */}
+              {unit.integrations?.accounting?.xero && (
+                <IntegrationCard
+                  businessUnitId={unit.id}
+                  type="xero"
+                  status={unit.integrations.accounting.xero.status}
+                  clientId={unit.integrations.accounting.xero.clientId}
+                />
+              )}
+              {unit.integrations?.accounting?.myob && (
+                <IntegrationCard
+                  businessUnitId={unit.id}
+                  type="myob"
+                  status={unit.integrations.accounting.myob.status}
+                  clientId={unit.integrations.accounting.myob.clientId}
+                />
+              )}
+
+              {/* Electricity Integration */}
+              {unit.integrations?.electricity && (
+                <IntegrationCard
+                  businessUnitId={unit.id}
+                  type="electricity"
+                  status={unit.integrations.electricity.status}
+                  provider={unit.integrations.electricity.provider}
+                />
+              )}
+
+              {/* Custom Integrations */}
+              {unit.integrations?.custom?.map((integration, index) => (
+                <IntegrationCard
+                  key={index}
+                  businessUnitId={unit.id}
+                  type="custom"
+                  status={integration.status}
+                  name={integration.name}
+                  baseUrl={integration.baseUrl}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <DashboardLayout>
