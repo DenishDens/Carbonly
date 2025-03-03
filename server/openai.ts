@@ -9,14 +9,14 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 interface ExtractionResult {
   scope: string;
   emissionSource: string;
-  amount: number;
+  amount: string; // Changed to string to avoid toString conversion issues
   unit: string;
   date: string;
   category: string;
   details: Record<string, any>;
 }
 
-export async function extractEmissionData(text: string, scope: string): Promise<z.infer<typeof insertEmissionSchema>> {
+export async function extractEmissionData(text: string): Promise<z.infer<typeof insertEmissionSchema>> {
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
@@ -25,18 +25,18 @@ export async function extractEmissionData(text: string, scope: string): Promise<
         content: `Extract carbon emission data from the following text. Return a JSON object with:
 - scope: one of ['Scope 1', 'Scope 2', 'Scope 3']
 - emissionSource: string describing the source
-- amount: number value (will be converted to string)
+- amount: string (numeric value as string)
 - unit: one of ['kg', 'tCO2e']
 - date: YYYY-MM-DD
-- category: one of ['fuel', 'electricity', 'travel', 'waste', 'other']
-- details: object with additional info like fuel type, process type, etc.
+- category: one of ['fuel', 'water', 'energy', 'waste', 'travel', 'other']
+- details: object with additional info like type, process, etc.
 
-Categorize the data appropriately based on the source. For example:
-- Fuel receipts should be categorized as 'fuel'
-- Electricity bills as 'electricity'
+Categorize the data appropriately based on the source:
+- Energy bills as 'energy'
+- Fuel receipts as 'fuel'
+- Water usage as 'water'
 - Flight records as 'travel'
-
-The scope provided by the user is: ${scope}`,
+- Waste disposal as 'waste'`,
       },
       {
         role: "user",
@@ -55,7 +55,6 @@ The scope provided by the user is: ${scope}`,
 
   return {
     ...extractedData,
-    amount: extractedData.amount.toString(),
     businessUnitId: "", // This will be set by the upload handler
   };
 }
