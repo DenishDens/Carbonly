@@ -207,11 +207,16 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   const { data: businessUnit, isLoading: businessUnitLoading, isError: businessUnitError, error: businessUnitErrorDetails } = useQuery({
     queryKey: ["/api/business-units", businessUnitId],
     queryFn: async () => {
-      const res = await apiRequest("GET", `/api/business-units/${businessUnitId}`);
-      if (!res.ok) {
-        throw new Error('Failed to fetch business unit');
+      try {
+        const res = await apiRequest("GET", `/api/business-units/${businessUnitId}`);
+        if (!res.ok) {
+          const errorText = await res.text();
+          throw new Error(errorText);
+        }
+        return res.json();
+      } catch (err) {
+        throw new Error(err instanceof Error ? err.message : 'Failed to fetch business unit');
       }
-      return res.json();
     },
   });
 
@@ -580,23 +585,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   };
 
   const renderEmailTab = () => {
-    const {
-      data: businessUnit,
-      isLoading,
-      isError,
-      error
-    } = useQuery({
-      queryKey: ["/api/business-units", businessUnitId],
-      queryFn: async () => {
-        const res = await apiRequest("GET", `/api/business-units/${businessUnitId}`);
-        if (!res.ok) {
-          throw new Error('Failed to fetch business unit');
-        }
-        return res.json();
-      },
-    });
-
-    if (isLoading) {
+    if (businessUnitLoading) {
       return (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -604,11 +593,13 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
       );
     }
 
-    if (isError) {
+    if (businessUnitError) {
       return (
         <div className="flex items-center justify-center py-8 text-destructive gap-2">
           <AlertCircle className="h-5 w-5" />
-          <span>Error loading project email: {error.message}</span>
+          <span>
+            Error loading business unit data. Please try again later.
+          </span>
         </div>
       );
     }
