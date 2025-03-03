@@ -377,18 +377,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { domain } = req.body;
 
+      // Extract organization slug from domain
+      const slug = domain.split('.')[0];
+      console.log("Attempting SSO login for organization:", slug);
+
       // Find organization by domain
-      const org = await storage.getOrganizationBySlug(domain.split('.')[0]);
+      const org = await storage.getOrganizationBySlug(slug);
       if (!org || !org.ssoEnabled) {
+        console.log("SSO not configured for organization:", slug);
         return res.status(400).json({ message: "SSO not configured for this organization" });
       }
 
       const ssoConfig = org.ssoSettings;
       if (!ssoConfig) {
+        console.log("SSO configuration not found for organization:", slug);
         return res.status(400).json({ message: "SSO configuration not found" });
       }
 
-      // Configure SSO strategy dynamically based on organization settings
+      console.log("Configuring SSO strategy for organization:", slug);
       const strategy = new SamlStrategy(
         {
           path: '/api/auth/sso/callback',
@@ -398,6 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         },
         async (profile: any, done: any) => {
           try {
+            console.log("Processing SSO profile:", profile.email);
             let user = await storage.getUserByEmail(profile.email);
 
             // If user exists and belongs to a different org, deny access
@@ -416,10 +423,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 password: null, // SSO users don't need password
                 createdAt: new Date(),
               });
+              console.log("Created new user for SSO:", user.email);
             }
 
             return done(null, user);
           } catch (error) {
+            console.error("SSO user processing error:", error);
             return done(error);
           }
         }
@@ -428,12 +437,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       passport.use('saml', strategy);
       passport.authenticate('saml')(req, res);
     } catch (error) {
+      console.error("SSO authentication error:", error);
       const message = error instanceof Error ? error.message : "SSO authentication failed";
       res.status(400).json({ message });
     }
   });
 
   app.post('/api/auth/sso/callback', passport.authenticate('saml'), (req, res) => {
+    console.log("SSO callback successful, redirecting to dashboard");
     res.redirect('/');
   });
 

@@ -12,6 +12,24 @@ import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+const ENVIRONMENTAL_FACTS = [
+  {
+    title: "Did You Know?",
+    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
+    image: "🌳",
+  },
+  {
+    title: "Green Energy Impact",
+    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
+    image: "💨",
+  },
+  {
+    title: "Ocean Facts",
+    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
+    image: "🌊",
+  },
+];
+
 function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -228,9 +246,19 @@ function RegisterForm() {
   );
 }
 
+function Footer() {
+  return (
+    <footer className="bg-gray-800 text-white p-4 text-center">
+      <p>&copy; 2023 Carbonly.ai</p>
+    </footer>
+  );
+}
+
+
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const [currentFact, setCurrentFact] = useState(0);
 
   useEffect(() => {
     if (user) {
@@ -238,57 +266,76 @@ export default function AuthPage() {
     }
   }, [user, setLocation]);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFact((prev) => (prev + 1) % ENVIRONMENTAL_FACTS.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="min-h-screen grid md:grid-cols-2">
-      <div className="flex items-center justify-center p-8">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-2 mb-6">
-              <Leaf className="h-6 w-6 text-primary" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-                Carbonly.ai
-              </h1>
+    <div className="min-h-screen flex flex-col">
+      <div className="flex-1 grid md:grid-cols-2">
+        <div className="flex items-center justify-center p-8">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-6">
+                <Leaf className="h-6 w-6 text-primary" />
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                  Carbonly.ai
+                </h1>
+              </div>
+              <Tabs defaultValue="login">
+                <TabsList className="grid grid-cols-2 w-full mb-6">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+                <TabsContent value="login">
+                  <LoginForm />
+                </TabsContent>
+                <TabsContent value="register">
+                  <RegisterForm />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="hidden md:flex flex-col justify-between p-8 bg-muted">
+          <div className="max-w-md mx-auto">
+            <h2 className="text-4xl font-bold mb-4">
+              Track Your Carbon Footprint
+            </h2>
+            <p className="text-muted-foreground text-lg mb-8">
+              Use AI-powered insights to understand and reduce your organization's
+              environmental impact.
+            </p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-background rounded-lg">
+                <h3 className="font-semibold mb-2">Smart Analysis</h3>
+                <p className="text-sm text-muted-foreground">
+                  Automated data extraction from your reports
+                </p>
+              </div>
+              <div className="p-4 bg-background rounded-lg">
+                <h3 className="font-semibold mb-2">Real-time Insights</h3>
+                <p className="text-sm text-muted-foreground">
+                  Track and visualize your progress
+                </p>
+              </div>
             </div>
-            <Tabs defaultValue="login">
-              <TabsList className="grid grid-cols-2 w-full mb-6">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-              <TabsContent value="login">
-                <LoginForm />
-              </TabsContent>
-              <TabsContent value="register">
-                <RegisterForm />
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
-      <div className="hidden md:flex flex-col justify-center p-8 bg-muted">
-        <div className="max-w-md mx-auto">
-          <h2 className="text-4xl font-bold mb-4">
-            Track Your Carbon Footprint
-          </h2>
-          <p className="text-muted-foreground text-lg mb-8">
-            Use AI-powered insights to understand and reduce your organization's
-            environmental impact.
-          </p>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-background rounded-lg">
-              <h3 className="font-semibold mb-2">Smart Analysis</h3>
-              <p className="text-sm text-muted-foreground">
-                Automated data extraction from your reports
-              </p>
-            </div>
-            <div className="p-4 bg-background rounded-lg">
-              <h3 className="font-semibold mb-2">Real-time Insights</h3>
-              <p className="text-sm text-muted-foreground">
-                Track and visualize your progress
-              </p>
+          </div>
+
+          {/* Environmental Facts */}
+          <div className="max-w-md mx-auto mt-8">
+            <div className="bg-background rounded-lg p-6 transition-all duration-500 transform hover:scale-105">
+              <div className="text-4xl mb-4">{ENVIRONMENTAL_FACTS[currentFact].image}</div>
+              <h3 className="font-bold text-lg mb-2">{ENVIRONMENTAL_FACTS[currentFact].title}</h3>
+              <p className="text-sm text-muted-foreground">{ENVIRONMENTAL_FACTS[currentFact].fact}</p>
             </div>
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

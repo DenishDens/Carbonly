@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Link } from "wouter";
+import { Footer } from "@/components/footer";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
@@ -29,8 +30,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header with Navigation */}
+    <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center">
           <div className="mr-4 hidden md:flex">
@@ -115,7 +115,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </div>
         </div>
 
-        {/* Mobile Navigation */}
         {showMobileMenu && (
           <div className="border-b md:hidden">
             <div className="container py-4">
@@ -125,13 +124,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
       </header>
 
-      {/* Page Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-4 py-8">
         {children}
       </main>
 
-      {/* Chat Interface */}
       <ChatInterface />
+      <Footer />
     </div>
   );
 }
