@@ -46,6 +46,28 @@ export const businessUnits = pgTable("business_units", {
   budget: decimal("budget"), // For tracking financial aspects
   targetEmission: decimal("target_emission"), // Emission reduction target
   metadata: jsonb("metadata"), // For flexible additional data
+  protocolSettings: jsonb("protocol_settings").$type<{
+    version: string;
+    emissionFactors: {
+      electricity: string;
+      naturalGas: string;
+      diesel: string;
+      gasoline: string;
+    };
+  }>().default({
+    version: "org",
+    emissionFactors: {
+      electricity: "",
+      naturalGas: "",
+      diesel: "",
+      gasoline: "",
+    },
+  }),
+  integrations: jsonb("integrations").$type<{
+    onedrive?: { status: string; path: string };
+    googledrive?: { status: string; path: string };
+    sharepoint?: { status: string; path: string };
+  }>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -124,10 +146,35 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
     budget: true,
     targetEmission: true,
     metadata: true,
+    protocolSettings: true,
+    integrations: true,
   })
   .extend({
     label: z.string().optional(),
     metadata: z.record(z.unknown()).optional(),
+    protocolSettings: z.object({
+      version: z.string(),
+      emissionFactors: z.object({
+        electricity: z.string(),
+        naturalGas: z.string(),
+        diesel: z.string(),
+        gasoline: z.string(),
+      }),
+    }).optional(),
+    integrations: z.object({
+      onedrive: z.object({
+        status: z.string(),
+        path: z.string(),
+      }).optional(),
+      googledrive: z.object({
+        status: z.string(),
+        path: z.string(),
+      }).optional(),
+      sharepoint: z.object({
+        status: z.string(),
+        path: z.string(),
+      }).optional(),
+    }).optional(),
   });
 
 // Schema for emission data

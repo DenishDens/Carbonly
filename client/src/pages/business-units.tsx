@@ -33,7 +33,9 @@ import { Building2, Edit, Trash2, Settings } from "lucide-react";
 import type { BusinessUnit, User, Team } from "@shared/schema";
 import { useState } from "react";
 import { InviteUsersDialog } from "@/components/invite-users-dialog";
-import { Users } from "lucide-react"; // Placeholder import - adjust as needed
+import { Users } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { IntegrationCard } from "@/components/integration-wizard/integration-card";
 
 
 const UNIT_LABELS = [
@@ -69,7 +71,7 @@ export default function BusinessUnits() {
     category: "",
     status: "active",
     managerId: "",
-    teamId: "", // Added teamId
+    teamId: "", 
     protocolSettings: {
       version: "org",
       emissionFactors: {
@@ -401,6 +403,31 @@ export default function BusinessUnits() {
     );
   };
 
+  const IntegrationsForm = ({ unit }: { unit: BusinessUnit }) => (
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2">
+        <IntegrationCard
+          businessUnitId={unit.id}
+          type="onedrive"
+          status={unit.integrations?.onedrive?.status}
+          folderPath={unit.integrations?.onedrive?.path}
+        />
+        <IntegrationCard
+          businessUnitId={unit.id}
+          type="googledrive"
+          status={unit.integrations?.googledrive?.status}
+          folderPath={unit.integrations?.googledrive?.path}
+        />
+        <IntegrationCard
+          businessUnitId={unit.id}
+          type="sharepoint"
+          status={unit.integrations?.sharepoint?.status}
+          folderPath={unit.integrations?.sharepoint?.path}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -501,7 +528,6 @@ export default function BusinessUnits() {
           )}
         </div>
 
-        {/* Edit Dialog */}
         {editingUnit && (
           <Dialog open={!!editingUnit} onOpenChange={() => setEditingUnit(undefined)}>
             <DialogContent className="sm:max-w-[500px]">
@@ -527,22 +553,31 @@ export default function BusinessUnits() {
           </Dialog>
         )}
 
-        {/* Protocol Settings Dialog */}
         {selectedUnit && (
           <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
             <DialogContent className="sm:max-w-[600px]">
               <DialogHeader>
-                <DialogTitle>Protocol Settings - {selectedUnit.name}</DialogTitle>
+                <DialogTitle>Settings - {selectedUnit.name}</DialogTitle>
                 <DialogDescription>
-                  Configure emission calculation protocol and factors for this business unit
+                  Configure settings and integrations for this business unit
                 </DialogDescription>
               </DialogHeader>
-              <ProtocolSettingsForm unit={selectedUnit} />
+              <Tabs defaultValue="protocol">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="protocol">Protocol Settings</TabsTrigger>
+                  <TabsTrigger value="integrations">Integrations</TabsTrigger>
+                </TabsList>
+                <TabsContent value="protocol">
+                  <ProtocolSettingsForm unit={selectedUnit} />
+                </TabsContent>
+                <TabsContent value="integrations">
+                  <IntegrationsForm unit={selectedUnit} />
+                </TabsContent>
+              </Tabs>
             </DialogContent>
           </Dialog>
         )}
 
-        {/* Invite Users Dialog */}
         {selectedUnitForInvite && (
           <InviteUsersDialog
             open={showInviteDialog}
