@@ -64,7 +64,7 @@ Categorize the data appropriately based on the source:
     }
 
     // Ensure numeric amount is converted to string
-    const amount = typeof extractedData.amount === 'number' 
+    const amount = typeof extractedData.amount === 'number'
       ? extractedData.amount.toString()
       : extractedData.amount;
 
@@ -101,20 +101,41 @@ export async function getChatResponse(message: string, context: {
     );
     const flatEmissions = emissions.flat();
 
-    // Calculate some basic statistics
-    const totalEmissions = flatEmissions.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+    // Calculate fuel usage by type (considering rawAmount if available)
+    const fuelUsageByType = flatEmissions.reduce((acc, e) => {
+      if (e.details?.category === 'fuel' && e.details?.fuelType) {
+        const amount = parseFloat(e.details.rawAmount || e.amount);
+        const unit = e.details.rawUnit || e.unit;
+        const fuelType = e.details.fuelType.toLowerCase();
+
+        if (!acc[fuelType]) {
+          acc[fuelType] = { amount: 0, unit };
+        }
+        acc[fuelType].amount += amount;
+      }
+      return acc;
+    }, {} as Record<string, { amount: number; unit: string }>);
+
+    // Calculate emissions by scope
     const emissionsByScope = flatEmissions.reduce((acc, e) => {
-      acc[e.scope] = (acc[e.scope] || 0) + parseFloat(e.amount);
+      const amount = parseFloat(e.details?.rawAmount || e.amount);
+      acc[e.scope] = (acc[e.scope] || 0) + amount;
       return acc;
     }, {} as Record<string, number>);
 
+    // Calculate emissions by category
     const emissionsByCategory = flatEmissions.reduce((acc, e) => {
-      if (e.details && typeof e.details === 'object' && 'category' in e.details) {
-        const category = e.details.category as string;
-        acc[category] = (acc[category] || 0) + parseFloat(e.amount);
+      if (e.details?.category) {
+        const amount = parseFloat(e.details.rawAmount || e.amount);
+        const category = e.details.category;
+        acc[category] = (acc[category] || 0) + amount;
       }
       return acc;
     }, {} as Record<string, number>);
+
+    console.log("Calculated fuel usage by type:", fuelUsageByType);
+    console.log("Calculated emissions by scope:", emissionsByScope);
+    console.log("Calculated emissions by category:", emissionsByCategory);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -131,7 +152,7 @@ Important terms and equivalences:
 
 You have access to the following data:
 
-Total Emissions: ${totalEmissions} tCO2e
+Fuel Usage by Type: ${JSON.stringify(fuelUsageByType)}
 Emissions by Scope: ${JSON.stringify(emissionsByScope)}
 Emissions by Category: ${JSON.stringify(emissionsByCategory)}
 

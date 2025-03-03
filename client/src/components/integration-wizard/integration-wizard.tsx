@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
-import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2, Mail, Loader2 } from "lucide-react";
+import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2, Mail, Loader2, AlertCircle } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectEmailDisplay } from "@/components/project-email-display";
 import {
@@ -204,7 +204,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     },
   });
 
-  const { data: businessUnit } = useQuery({
+  const { data: businessUnit, isLoading: businessUnitLoading, isError: businessUnitError, error: businessUnitErrorDetails } = useQuery({
     queryKey: ["/api/business-units", businessUnitId],
     queryFn: async () => {
       const res = await apiRequest("GET", `/api/business-units/${businessUnitId}`);
@@ -579,20 +579,57 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     );
   };
 
-  const renderEmailTab = () => (
-    <div className="space-y-6">
-      {businessUnit ? (
+  const renderEmailTab = () => {
+    const {
+      data: businessUnit,
+      isLoading,
+      isError,
+      error
+    } = useQuery({
+      queryKey: ["/api/business-units", businessUnitId],
+      queryFn: async () => {
+        const res = await apiRequest("GET", `/api/business-units/${businessUnitId}`);
+        if (!res.ok) {
+          throw new Error('Failed to fetch business unit');
+        }
+        return res.json();
+      },
+    });
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+
+    if (isError) {
+      return (
+        <div className="flex items-center justify-center py-8 text-destructive gap-2">
+          <AlertCircle className="h-5 w-5" />
+          <span>Error loading project email: {error.message}</span>
+        </div>
+      );
+    }
+
+    if (!businessUnit?.projectEmail) {
+      return (
+        <div className="text-center py-8 text-muted-foreground">
+          No project email configured for this business unit.
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
         <ProjectEmailDisplay 
           email={businessUnit.projectEmail}
           description="Forward your bills and data files to this email address. Our AI will automatically process and categorize them."
         />
-      ) : (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-    </div>
-  );
+      </div>
+    );
+  };
 
   return (
     <Card>

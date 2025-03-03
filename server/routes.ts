@@ -276,6 +276,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
+      // Calculate total amounts from rawAmount if available
+      emissions = emissions.map(e => ({
+        ...e,
+        amount: e.details?.rawAmount ? parseFloat(e.details.rawAmount) : parseFloat(e.amount),
+        unit: e.details?.rawUnit || e.unit
+      }));
+
       console.log(`Found ${emissions.length} emissions for category: ${category}`);
       res.json(emissions);
     } catch (error) {
