@@ -16,6 +16,14 @@ import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
 import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectEmailDisplay } from "@/components/project-email-display";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const ELECTRICITY_PROVIDERS = [
   {
