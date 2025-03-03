@@ -5,6 +5,7 @@ import session from "express-session";
 import createMemoryStore from "memorystore";
 import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams } from "@shared/schema";
 import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team } from "@shared/schema";
+import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
 
@@ -157,8 +158,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit> {
-    const [newUnit] = await db.insert(businessUnits).values(unit).returning();
-    return newUnit;
+    // Generate project email
+    const tempId = crypto.randomUUID(); // Temporary ID for email generation
+    const projectEmail = generateProjectEmail(tempId, unit.organizationId);
+
+    const [newUnit] = await db.insert(businessUnits).values({
+      ...unit,
+      projectEmail,
+      createdAt: new Date(),
+    }).returning();
+
+    // Update with the actual ID
+    const updatedProjectEmail = generateProjectEmail(newUnit.id, unit.organizationId);
+    const [finalUnit] = await db
+      .update(businessUnits)
+      .set({ projectEmail: updatedProjectEmail })
+      .where(eq(businessUnits.id, newUnit.id))
+      .returning();
+
+    return finalUnit;
   }
 
   // Emission operations
@@ -220,6 +238,13 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(auditLogs.createdAt));
   }
 }
+
+//Helper function - needs implementation based on your requirements.
+const generateProjectEmail = (id: string, organizationId: string): string => {
+    //Example implementation - replace with your actual logic.
+    return `project-${id}@${organizationId}.com`;
+}
+
 
 // Export a single instance
 export const storage = new DatabaseStorage();

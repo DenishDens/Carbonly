@@ -45,6 +45,7 @@ export const businessUnits = pgTable("business_units", {
   status: text("status"), // active, inactive, archived
   budget: decimal("budget"), // For tracking financial aspects
   targetEmission: decimal("target_emission"), // Emission reduction target
+  projectEmail: text("project_email"), // Encrypted project-specific email
   metadata: jsonb("metadata"), // For flexible additional data
   protocolSettings: jsonb("protocol_settings").$type<{
     version: string;
@@ -165,6 +166,7 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
     metadata: true,
     protocolSettings: true,
     integrations: true,
+    projectEmail: true,
   })
   .extend({
     label: z.string().optional(),

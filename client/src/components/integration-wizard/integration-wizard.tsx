@@ -12,9 +12,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
+import { SiGoogledrive } from "react-icons/si";
 import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectEmailDisplay } from "@/components/project-email-display";
 import {
   Dialog,
   DialogContent,
@@ -95,7 +96,6 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     },
   });
 
-  // Query for fetching files from the selected storage provider
   const { data: files, refetch: refreshFiles } = useQuery({
     queryKey: ["storage-files", businessUnitId, config.provider, selectedPath],
     queryFn: async () => {
@@ -201,6 +201,14 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
       toast({ title: "Custom API refreshed" });
+    },
+  });
+
+  const { data: businessUnit } = useQuery({
+    queryKey: ["/api/business-units", businessUnitId],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/business-units/${businessUnitId}`);
+      return res.json();
     },
   });
 
@@ -559,6 +567,13 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {businessUnit?.projectEmail && (
+          <ProjectEmailDisplay 
+            email={businessUnit.projectEmail}
+            description="Forward your bills and data files to this email address. Our AI will automatically process and categorize them."
+          />
+        )}
+
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="storage">Storage</TabsTrigger>
