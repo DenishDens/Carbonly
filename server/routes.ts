@@ -5,6 +5,8 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { extractEmissionData, getChatResponse } from "./openai"; // Fix import
 import { insertBusinessUnitSchema } from "@shared/schema";
+import passport from "passport";
+import { Strategy as SamlStrategy } from "passport-saml";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -339,6 +341,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const updatedUnit = await storage.updateBusinessUnitTeam(id, teamId);
     res.json(updatedUnit);
   });
+
+  // Add SSO routes here
+  app.post("/api/organization/sso", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "super_admin") {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const { enabled, settings } = req.body;
+
+      const org = await storage.updateOrganization(req.user.organizationId, {
+        ssoEnabled: enabled,
+        ssoSettings: settings,
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "UPDATE",
+        entityType: "organization",
+        entityId: org.id,
+        changes: { ssoEnabled: enabled, ssoSettings: settings },
+      });
+
+      res.json(org);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error occurred";
+      res.status(400).json({ message });
+    }
+  });
+
+  // SSO login endpoint
+  app.post("/api/auth/sso/:orgSlug", async (req, res) => {
+    const { orgSlug } = req.params;
+
+    try {
+      const org = await storage.getOrganizationBySlug(orgSlug);
+      if (!org || !org.ssoEnabled) {
+        return res.status(400).json({ message: "SSO not configured for this organization" });
+      }
+
+      const ssoConfig = org.ssoSettings;
+
+      // Configure SSO strategy dynamically based on organization settings
+      const strategy = new SamlStrategy(
+        {
+          path: '/api/auth/sso/callback',
+          entryPoint: ssoConfig.entryPoint,
+          issuer: ssoConfig.issuer,
+          cert: ssoConfig.cert,
+        },
+        (profile: any, done: any) => {
+          // Find or create user based on SSO profile
+          storage.getUserByEmail(profile.email)
+            .then(user => {
+              if (user) {
+                return done(null, user);
+              }
+              // Create new user if doesn't exist
+              return storage.createUser({
+                email: profile.email,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                organizationId: org.id,
+                role: 'user',
+                password: null, // SSO users don't need password
+              }).then(newUser => done(null, newUser));
+            })
+            .catch(error => done(error));
+        }
+      );
+
+      passport.use('saml', strategy);
+      passport.authenticate('saml')(req, res);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "SSO authentication failed";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post('/api/auth/sso/callback', passport.authenticate('saml'), (req, res) => {
+    res.redirect('/');
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;
