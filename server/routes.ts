@@ -4,7 +4,12 @@ import multer from "multer";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { extractEmissionData } from "./openai";
-import { insertBusinessUnitSchema, insertEmissionSchema } from "@shared/schema";
+import { 
+  insertBusinessUnitSchema, 
+  insertEmissionSchema,
+  insertInvitationSchema 
+} from "@shared/schema";
+import crypto from "crypto";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -17,7 +22,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Business Units
   app.get("/api/business-units", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const units = await storage.getBusinessUnits(req.user.id);
+    const units = await storage.getBusinessUnits(req.user.organizationId);
     res.json(units);
   });
 
@@ -26,7 +31,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const data = insertBusinessUnitSchema.parse(req.body);
     const unit = await storage.createBusinessUnit({
       ...data,
-      userId: req.user.id,
+      organizationId: req.user.organizationId,
       description: data.description ?? null,
     });
     res.json(unit);
@@ -56,6 +61,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const message = error instanceof Error ? error.message : "Unknown error occurred";
       res.status(400).json({ message });
     }
+  });
+
+  // Organization Logo
+  app.post("/api/organization/logo", upload.single("logo"), async (req: Express.Request & { file?: Express.Multer.File }, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ message: "No logo uploaded" });
+
+    try {
+      // In a production environment, this would upload to S3/CloudStorage
+      // For now, we'll store it as a base64 string
+      const logoBase64 = req.file.buffer.toString('base64');
+      const logoUrl = `data:${req.file.mimetype};base64,${logoBase64}`;
+
+      const org = await storage.updateOrganizationLogo(
+        req.user.organizationId,
+        logoUrl
+      );
+      res.json(org);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error occurred";
+      res.status(400).json({ message });
+    }
+  });
+
+  // User Invitations
+  app.post("/api/invitations", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!['super_admin', 'admin'].includes(req.user.role)) {
+      return res.status(403).json({ message: "Only admins can invite users" });
+    }
+
+    try {
+      const data = insertInvitationSchema.parse(req.body);
+
+      // Generate a unique token
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
+
+      const invitation = await storage.createInvitation({
+        ...data,
+        organizationId: req.user.organizationId,
+        token,
+        expiresAt: expiresAt.toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+
+      // In production, send an email with the invitation link
+      // For now, just return the token
+      res.json({ 
+        ...invitation,
+        invitationLink: `/auth/join?token=${token}` 
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error occurred";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.get("/api/invitations/:token", async (req, res) => {
+    const invitation = await storage.getInvitationByToken(req.params.token);
+    if (!invitation) {
+      return res.status(404).json({ message: "Invalid or expired invitation" });
+    }
+
+    if (new Date(invitation.expiresAt) < new Date()) {
+      await storage.deleteInvitation(invitation.id);
+      return res.status(400).json({ message: "Invitation has expired" });
+    }
+
+    res.json(invitation);
   });
 
   const httpServer = createServer(app);
