@@ -139,6 +139,7 @@ export const incidents = pgTable("incidents", {
   reportedBy: uuid("reported_by").references(() => users.id),
   assignedTo: uuid("assigned_to").references(() => users.id),
   resolutionDetails: text("resolution_details"),
+  incidentDate: timestamp("incident_date").notNull(), // Adding incident date field
   environmentalImpact: jsonb("environmental_impact").$type<{
     impactType: string;
     estimatedEmissions: number;
@@ -269,11 +270,13 @@ export const insertIncidentSchema = createInsertSchema(incidents)
     reportedBy: true,
     assignedTo: true,
     environmentalImpact: true,
+    incidentDate: true,
   })
   .extend({
     severity: z.enum(['low', 'medium', 'high', 'critical']),
     status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
     type: z.enum(['spill', 'leak', 'equipment_failure', 'power_outage', 'other']),
+    incidentDate: z.string(), // Accept string date that will be converted to Date
     environmentalImpact: z.object({
       impactType: z.string(),
       estimatedEmissions: z.number(),
