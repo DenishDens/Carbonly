@@ -1,5 +1,11 @@
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -70,7 +76,7 @@ export function FuelForm() {
   });
 
   // Calculate emissions whenever inputs change
-  React.useEffect(() => {
+  useEffect(() => {
     if (!amount || !unit || !fuelType || !protocolSettings) return;
 
     const factor = protocolSettings.emissionFactors[fuelType];
@@ -78,7 +84,7 @@ export function FuelForm() {
 
     // Convert to liters if needed
     const liters = unit === "gallons" ? parseFloat(amount) * 3.78541 : parseFloat(amount);
-    
+
     // Calculate emissions
     const emissions = liters * parseFloat(factor);
     setCalculatedEmissions(emissions.toFixed(2));
