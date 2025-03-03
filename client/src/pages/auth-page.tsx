@@ -9,17 +9,69 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertOrganizationSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
-import { Leaf } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Leaf, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+
+function ResetPasswordForm({ onBack }: { onBack: () => void }) {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
+  const form = useForm({
+    defaultValues: { email: "" },
+  });
+
+  const onSubmit = form.handleSubmit(async (data) => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) throw new Error("Failed to send reset link");
+      toast({
+        title: "Reset link sent",
+        description: "Check your email for password reset instructions",
+      });
+      onBack();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  });
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="name@company.com"
+          {...form.register("email")}
+        />
+      </div>
+      <div className="flex justify-between">
+        <Button type="button" variant="ghost" onClick={onBack}>
+          Back to login
+        </Button>
+        <Button type="submit" disabled={loading}>
+          {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+          Send Reset Link
+        </Button>
+      </div>
+    </form>
+  );
+}
 
 function LoginForm() {
   const { loginMutation } = useAuth();
+  const [ssoLoading, setSSOLoading] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const form = useForm({
     defaultValues: {
       username: "",
@@ -33,7 +85,7 @@ function LoginForm() {
 
   const handleSSOLogin = async () => {
     try {
-      // Get current domain from window.location
+      setSSOLoading(true);
       const domain = window.location.hostname;
       const response = await fetch(`/api/auth/sso`, {
         method: "POST",
@@ -43,14 +95,23 @@ function LoginForm() {
         },
         body: JSON.stringify({ domain })
       });
+
       if (!response.ok) {
-        throw new Error("SSO authentication failed");
+        const error = await response.json();
+        throw new Error(error.message || "SSO authentication failed");
       }
+
       // The SAML redirect will happen automatically
     } catch (error) {
       console.error("SSO login error:", error);
+    } finally {
+      setSSOLoading(false);
     }
   };
+
+  if (showResetPassword) {
+    return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
+  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -71,7 +132,12 @@ function LoginForm() {
           {...form.register("password")}
         />
         <div className="flex justify-end">
-          <Button variant="link" className="text-sm">
+          <Button
+            type="button"
+            variant="link"
+            className="text-sm"
+            onClick={() => setShowResetPassword(true)}
+          >
             Forgot password?
           </Button>
         </div>
@@ -81,6 +147,9 @@ function LoginForm() {
         className="w-full"
         disabled={loginMutation.isPending}
       >
+        {loginMutation.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
         Sign In
       </Button>
 
@@ -100,7 +169,9 @@ function LoginForm() {
         variant="outline"
         className="w-full"
         onClick={handleSSOLogin}
+        disabled={ssoLoading}
       >
+        {ssoLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Sign in with SSO
       </Button>
     </form>
@@ -142,17 +213,15 @@ function RegisterForm() {
         <p className="text-sm text-muted-foreground">
           At least 8 characters long
         </p>
-        <div className="flex justify-end">
-          <Button variant="link" className="text-sm">
-            Forgot password?
-          </Button>
-        </div>
       </div>
       <Button
         type="submit"
         className="w-full"
         disabled={registerMutation.isPending}
       >
+        {registerMutation.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
         Create Account
       </Button>
     </form>
