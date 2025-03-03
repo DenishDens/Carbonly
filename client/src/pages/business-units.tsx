@@ -32,6 +32,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Building2, Edit, Trash2, Settings } from "lucide-react";
 import type { BusinessUnit, User, Team } from "@shared/schema";
 import { useState } from "react";
+import { InviteUsersDialog } from "@/components/invite-users-dialog";
 
 const UNIT_LABELS = [
   "Business Unit",
@@ -77,6 +78,8 @@ export default function BusinessUnits() {
       },
     },
   });
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [selectedUnitForInvite, setSelectedUnitForInvite] = useState<BusinessUnit>();
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
@@ -95,7 +98,7 @@ export default function BusinessUnits() {
       const res = await apiRequest("POST", "/api/business-units", data);
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (createdUnit) => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
       toast({ title: "Business unit created" });
       setShowAddDialog(false);
@@ -106,8 +109,8 @@ export default function BusinessUnits() {
         location: "",
         category: "",
         status: "active",
-        managerId: "",
-        teamId: "", // Added teamId
+        managerId: "none",
+        teamId: "none",
         protocolSettings: {
           version: "org",
           emissionFactors: {
@@ -118,6 +121,8 @@ export default function BusinessUnits() {
           },
         },
       });
+      setSelectedUnitForInvite(createdUnit);
+      setShowInviteDialog(true);
     },
   });
 
@@ -228,10 +233,10 @@ export default function BusinessUnits() {
               <SelectValue placeholder="Select manager" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No Manager</SelectItem>
+              <SelectItem value="none">No Manager</SelectItem>
               {users?.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName} {user.email}
+                  {user.firstName} {user.lastName} ({user.email})
                 </SelectItem>
               ))}
             </SelectContent>
@@ -248,7 +253,7 @@ export default function BusinessUnits() {
               <SelectValue placeholder="Select team" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">No Team</SelectItem>
+              <SelectItem value="none">No Team</SelectItem>
               {teams?.map((team) => (
                 <SelectItem key={team.id} value={team.id}>
                   {team.name}
@@ -523,6 +528,16 @@ export default function BusinessUnits() {
               <ProtocolSettingsForm unit={selectedUnit} />
             </DialogContent>
           </Dialog>
+        )}
+
+        {/* Invite Users Dialog */}
+        {selectedUnitForInvite && (
+          <InviteUsersDialog
+            open={showInviteDialog}
+            onOpenChange={setShowInviteDialog}
+            businessUnitId={selectedUnitForInvite.id}
+            businessUnitName={selectedUnitForInvite.name}
+          />
         )}
       </div>
     </DashboardLayout>

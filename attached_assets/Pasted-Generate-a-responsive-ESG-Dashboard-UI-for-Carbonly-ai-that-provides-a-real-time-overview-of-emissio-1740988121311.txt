@@ -1,0 +1,44 @@
+Generate a responsive ESG Dashboard UI for Carbonly.ai that provides a real-time overview of emissions, energy, waste, and travel data. Include interactive charts, KPI cards, and filters for Business Unit, Project, and Date Range. Add visual indicators for auto-imported vs. manually entered data. Implement quick navigation to ESG categories and compliance reports."
+
+🔹 Dashboard Layout
+✅ Sticky Filters (Top Bar)
+
+Business Unit Selector (Dropdown)
+Project Selector (Dropdown)
+Date Range Picker (Calendar)
+Filter Button
+✅ 📊 KPI Summary Cards (Top Section)
+
+Metric	Description	Source
+Total CO₂e Emissions	Scope 1, 2, 3 combined	Fuel, Energy, Travel
+Energy Consumption	Grid & Renewable energy use	Electricity, Heat, Cooling
+Water Usage	Water consumption trends	Water imports & usage
+Waste Management	Recycled vs. landfill waste	Waste data sources
+Business Travel Emissions	Flights, Hotels, Ride-sharing	Scope 3 Travel
+Auto-Fetched Transactions	% of data imported vs. manual	Integrations
+✅ 📈 Charts & Visuals (Middle Section)
+
+Chart Type	Purpose
+CO₂e Emission Trends (Line Chart)	Shows total emissions over time
+Energy Mix (Pie Chart)	Breakdown of fuel vs. renewable energy
+Waste Distribution (Stacked Bar Chart)	Recycling vs. landfill trends
+Business Travel Impact (Bar Chart)	Flight vs. car vs. public transport emissions
+Top Contributing Projects (Heatmap)	Projects generating the highest emissions
+✅ 📂 Data Import Status (Right Sidebar)
+
+Recent Auto-Fetched Files (Xero, Google Drive, OneDrive)
+Pending Data Validations
+Failed Imports & Fix Suggestions
+✅ 📄 Quick Access Widgets (Bottom Section)
+
+Widget	Action
+View All ESG Transactions	Button to open full data table
+Add Manual Data	Quick link to Manual Entry page
+Incident Reports	Shortcut to Incident Management
+Export Reports	Generate ESG compliance reports
+🔹 Expected Output from AI Agent
+1️⃣ Fully structured ESG Dashboard UI (React + Tailwind CSS)
+2️⃣ Interactive KPI Cards, Charts, and Data Widgets
+3️⃣ Filters for Business Unit, Project, and Date Range
+4️⃣ Auto-import tracking from integrations
+5️⃣ Quick access to manual entry & compliance reports

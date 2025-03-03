@@ -1,0 +1,103 @@
+Carbonly.ai must support both manual and automated ESG data entry across Scope 1, 2, and 3. Users can manually enter transactions or auto-fetch data from Xero, SharePoint, OneDrive, and Google Drive. Background processing extracts, classifies, and stores ESG data in the appropriate categories (Fuel, Electricity, Water, Travel, Waste, Procurement). Users should be able to filter transactions by type (Manual, Auto Fetch, API Sync), track their source, and edit entries before finalizing reports. SSO (OAuth + SAML) must be included for seamless authentication.
+
+🛠 Prompt for AI Agent
+"Integrate a complete ESG data entry system in Carbonly.ai that allows users to manually input transactions while also supporting auto-import from Xero, SharePoint, OneDrive, and Google Drive. Users should be able to filter data by source type (Manual, Auto Fetch, API Sync), view real-time extraction progress, and edit data before import. Background processing should categorize transactions into Scope 1, 2, and 3 and apply pre-configured emission factors. Implement Single Sign-On (SSO) using OAuth (Google, Microsoft) and SAML for enterprise authentication."
+
+🔹 Manual Data Entry for ESG Transactions
+✅ User Flow for Manual Entry
+1️⃣ User selects an ESG category (Fuel, Electricity, Water, Travel, etc.)
+2️⃣ Inputs transaction details (Date, Quantity, Source, Emission Factor, etc.)
+3️⃣ AI applies Emission Factor & JV allocation (if applicable)
+4️⃣ User saves entry → Data is stored & available in reports
+
+✅ Manual Entry Fields (All Categories)
+
+Field	Type	Description
+transaction_id	UUID	Primary Key
+category	Enum	(Fuel, Electricity, Water, Waste, Travel, etc.)
+source_type	Enum	(Manual, Auto Fetch, API Sync)
+date	DateTime	Transaction Date
+source	String	Emission Source (Diesel, Grid Electricity, etc.)
+quantity	Float	Emission Quantity
+unit	String	(Liters, kWh, Tons, etc.)
+emission_factor	Float	Factor Applied from Settings
+total_emissions	Float	Calculated CO₂e
+jv_allocation	JSON	{ "Company A": 50%, "Company B": 50% }
+final_emissions	JSON	{ "Company A": 5000 CO₂e, "Company B": 5000 CO₂e }
+✅ Manual Entry UI Features
+
+✅ Inline Editing: Users can modify transaction data
+✅ Auto-Suggestions: AI predicts Emission Factors
+✅ Bulk Data Entry: Add multiple transactions at once
+🔹 Automated ESG Data Import
+✅ User Flow for Auto-Fetch
+1️⃣ User connects Xero, SharePoint, OneDrive, or Google Drive
+2️⃣ User selects a folder → AI scans files in the background
+3️⃣ AI extracts relevant ESG data (fuel, electricity, travel, etc.)
+4️⃣ Data is auto-classified & mapped to the right category
+5️⃣ Transactions are stored with source tracking (Manual, Auto Fetch, API Sync)
+
+✅ API Endpoints for File Fetching
+
+POST /api/integrations/connect → Authenticate & connect to a service
+GET /api/integrations/folders → Fetch available folders
+POST /api/integrations/select-folder → Set folder for auto-processing
+GET /api/integrations/status → Background processing progress
+GET /api/integrations/transactions → Fetch imported ESG transactions with source details
+✅ Transaction Source Tracking (Stored with Each Record)
+
+Field	Type	Description
+source_type	Enum	(Manual Entry, Auto Fetch, API Sync)
+file_name	String	If auto-imported, shows file name
+folder_path	String	Folder where file was stored
+date_imported	DateTime	Timestamp of data extraction
+status	Enum	(Pending, Imported, Error)
+✅ Filters for Users to View Imported Data
+
+Source Type: Manual Entry / Auto Fetch / API Sync
+Date Range: Filter ESG data imports over time
+Transaction Type: Fuel, Electricity, Water, Travel, Freight, Waste, etc.
+🔹 SSO Implementation (Google, Microsoft, SAML)
+✅ OAuth2-Based SSO for:
+
+Google Login
+Microsoft (Azure AD, Office 365)
+Enterprise SAML Support
+✅ SSO API Endpoints
+
+GET /api/auth/login → Redirect to SSO provider
+GET /api/auth/callback → Process authentication response
+POST /api/auth/token → Exchange OAuth token for session
+GET /api/auth/user → Retrieve authenticated user profile
+✅ User Roles & Permissions
+
+Role	Access Level
+Admin	Full control over ESG data & integrations
+Manager	Can view and edit ESG data, approve imports
+Auditor	Read-only access to reports & compliance logs
+🔹 UI Enhancements (Replit-Friendly)
+✅ New Pages in UI
+
+Page	Functionality
+Integrations Page	Connect Xero, SharePoint, OneDrive, Google Drive
+Import Dashboard	Show all imported ESG data (with source details)
+Fuel Data Page	Filter & display fuel-related transactions
+Electricity Data Page	Show electricity transactions
+Travel & Transport Page	Show all Scope 3 travel emissions
+Waste & Procurement Page	Show Scope 3 waste & procurement emissions
+Manual Entry Page	Allow users to manually input ESG data
+Incident Reporting Page	Track environmental incidents
+SSO Login Page	Allow Google/Microsoft authentication
+✅ Navigation Fixes (UI Menu Cleanup)
+
+Move ESG data under "Transactions"
+Add "Integrations" as a separate menu
+Keep "SSO Login" under Settings
+Add "Manual Entry" page for direct input transactions
+🎯 Expected Output from AI Agent
+1️⃣ Full ESG data entry support (Manual + Auto Fetch) with proper transaction tracking
+2️⃣ Fully integrated file import system (Xero, SharePoint, OneDrive, Google Drive)
+3️⃣ Background processing for ESG data extraction & auto-categorization
+4️⃣ Transaction records with source tracking (Manual, Auto, API Sync)
+5️⃣ SSO authentication with Google, Microsoft, and Enterprise SAML
+6️⃣ New UI pages for filtering, displaying, and manually inputting ESG data
