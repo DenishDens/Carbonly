@@ -192,7 +192,7 @@ export default function Dashboard() {
                   disabled={!file || !selectedUnit}
                 >
                   <Upload className="h-4 w-4 mr-2" />
-                  Process Report
+                  Process File
                 </Button>
               </CardContent>
             </Card>
