@@ -18,10 +18,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Upload, Save } from "lucide-react";
+import { Building2, Upload, Save, Key } from "lucide-react";
 import type { Organization } from "@shared/schema";
 
 export default function OrganizationSettings() {
@@ -36,6 +37,34 @@ export default function OrganizationSettings() {
     naturalGas: "0.0",
     diesel: "0.0",
     gasoline: "0.0",
+  });
+  const [ssoConfig, setSsoConfig] = useState({
+    enabled: false,
+    provider: "google",
+    domain: "",
+    clientId: "",
+    clientSecret: "",
+    samlMetadata: "",
+  });
+
+  const [integrations, setIntegrations] = useState({
+    xero: {
+      enabled: false,
+      clientId: "",
+      clientSecret: "",
+    },
+    myob: {
+      enabled: false,
+      apiKey: "",
+      companyFile: "",
+    },
+    sharepoint: {
+      enabled: false,
+      clientId: "",
+      clientSecret: "",
+      tenantId: "",
+      siteUrl: "",
+    },
   });
 
   const { data: organization } = useQuery<Organization>({
@@ -83,6 +112,28 @@ export default function OrganizationSettings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/organization"] });
       toast({ title: "Protocol settings updated" });
+    },
+  });
+
+  const updateSSOConfig = useMutation({
+    mutationFn: async (config: typeof ssoConfig) => {
+      const res = await apiRequest("PATCH", "/api/organization/sso", config);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organization"] });
+      toast({ title: "SSO configuration updated" });
+    },
+  });
+
+  const updateIntegrations = useMutation({
+    mutationFn: async (data: typeof integrations) => {
+      const res = await apiRequest("PATCH", "/api/organization/integrations", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/organization"] });
+      toast({ title: "Integrations updated" });
     },
   });
 
@@ -281,6 +332,287 @@ export default function OrganizationSettings() {
                   Upload
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Single Sign-On (SSO)</CardTitle>
+              <CardDescription>
+                Configure SSO for your organization members
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="sso-enabled">Enable SSO</Label>
+                <Switch
+                  id="sso-enabled"
+                  checked={ssoConfig.enabled}
+                  onCheckedChange={(enabled) => setSsoConfig({ ...ssoConfig, enabled })}
+                />
+              </div>
+
+              {ssoConfig.enabled && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>SSO Provider</Label>
+                    <Select
+                      value={ssoConfig.provider}
+                      onValueChange={(provider) => setSsoConfig({ ...ssoConfig, provider })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="google">Google Workspace</SelectItem>
+                        <SelectItem value="microsoft">Microsoft Azure AD</SelectItem>
+                        <SelectItem value="saml">Custom SAML Provider</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Allowed Email Domain</Label>
+                    <Input
+                      placeholder="company.com"
+                      value={ssoConfig.domain}
+                      onChange={(e) => setSsoConfig({ ...ssoConfig, domain: e.target.value })}
+                    />
+                  </div>
+
+                  {ssoConfig.provider === "saml" ? (
+                    <div className="space-y-2">
+                      <Label>SAML Metadata XML</Label>
+                      <Input
+                        type="file"
+                        accept=".xml"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setSsoConfig({
+                                ...ssoConfig,
+                                samlMetadata: e.target?.result as string,
+                              });
+                            };
+                            reader.readAsText(file);
+                          }
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Client ID</Label>
+                        <Input
+                          value={ssoConfig.clientId}
+                          onChange={(e) => setSsoConfig({ ...ssoConfig, clientId: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Client Secret</Label>
+                        <Input
+                          type="password"
+                          value={ssoConfig.clientSecret}
+                          onChange={(e) => setSsoConfig({ ...ssoConfig, clientSecret: e.target.value })}
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  <Button
+                    onClick={() => updateSSOConfig.mutate(ssoConfig)}
+                    disabled={updateSSOConfig.isPending}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save SSO Configuration
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Third-Party Integrations</CardTitle>
+              <CardDescription>
+                Connect your accounting and document management systems
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <Label className="text-lg font-medium">Xero Integration</Label>
+                <div className="space-y-4 pl-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Enable Xero</Label>
+                    <Switch
+                      checked={integrations.xero.enabled}
+                      onCheckedChange={(enabled) =>
+                        setIntegrations({
+                          ...integrations,
+                          xero: { ...integrations.xero, enabled },
+                        })
+                      }
+                    />
+                  </div>
+                  {integrations.xero.enabled && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Client ID</Label>
+                        <Input
+                          value={integrations.xero.clientId}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              xero: { ...integrations.xero, clientId: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Client Secret</Label>
+                        <Input
+                          type="password"
+                          value={integrations.xero.clientSecret}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              xero: { ...integrations.xero, clientSecret: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="text-lg font-medium">MYOB Integration</Label>
+                <div className="space-y-4 pl-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Enable MYOB</Label>
+                    <Switch
+                      checked={integrations.myob.enabled}
+                      onCheckedChange={(enabled) =>
+                        setIntegrations({
+                          ...integrations,
+                          myob: { ...integrations.myob, enabled },
+                        })
+                      }
+                    />
+                  </div>
+                  {integrations.myob.enabled && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>API Key</Label>
+                        <Input
+                          value={integrations.myob.apiKey}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              myob: { ...integrations.myob, apiKey: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Company File</Label>
+                        <Input
+                          value={integrations.myob.companyFile}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              myob: { ...integrations.myob, companyFile: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <Label className="text-lg font-medium">SharePoint Integration</Label>
+                <div className="space-y-4 pl-4">
+                  <div className="flex items-center justify-between">
+                    <Label>Enable SharePoint</Label>
+                    <Switch
+                      checked={integrations.sharepoint.enabled}
+                      onCheckedChange={(enabled) =>
+                        setIntegrations({
+                          ...integrations,
+                          sharepoint: { ...integrations.sharepoint, enabled },
+                        })
+                      }
+                    />
+                  </div>
+                  {integrations.sharepoint.enabled && (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Client ID</Label>
+                        <Input
+                          value={integrations.sharepoint.clientId}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              sharepoint: { ...integrations.sharepoint, clientId: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Client Secret</Label>
+                        <Input
+                          type="password"
+                          value={integrations.sharepoint.clientSecret}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              sharepoint: { ...integrations.sharepoint, clientSecret: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tenant ID</Label>
+                        <Input
+                          value={integrations.sharepoint.tenantId}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              sharepoint: { ...integrations.sharepoint, tenantId: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>SharePoint Site URL</Label>
+                        <Input
+                          value={integrations.sharepoint.siteUrl}
+                          onChange={(e) =>
+                            setIntegrations({
+                              ...integrations,
+                              sharepoint: { ...integrations.sharepoint, siteUrl: e.target.value },
+                            })
+                          }
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <Button
+                className="w-full"
+                onClick={() => updateIntegrations.mutate(integrations)}
+                disabled={updateIntegrations.isPending}
+              >
+                <Key className="h-4 w-4 mr-2" />
+                Save Integration Settings
+              </Button>
             </CardContent>
           </Card>
         </div>
