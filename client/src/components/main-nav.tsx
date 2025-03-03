@@ -44,15 +44,14 @@ const navItems: NavItem[] = [
 
 export function MainNav() {
   return (
-    <nav className="flex flex-col gap-2">
+    <nav className="flex items-center space-x-4 lg:space-x-6">
       {navItems.map((item) => (
         <Link
           key={item.href}
           href={item.href}
           className={cn(
-            "flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-colors",
-            "hover:bg-accent hover:text-accent-foreground",
-            "cursor-pointer"
+            "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
+            "text-muted-foreground"
           )}
         >
           <item.icon className="h-4 w-4" />

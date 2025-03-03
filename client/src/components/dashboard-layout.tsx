@@ -11,50 +11,53 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="md:hidden"
-              onClick={() => setShowMobileMenu(!showMobileMenu)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-bold">Carbonly.ai</h1>
+      {/* Header with Navigation */}
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+        <div className="container flex h-14 items-center">
+          <div className="mr-4 hidden md:flex">
+            <a href="/" className="mr-6 flex items-center space-x-2">
+              <span className="font-bold">Carbonly.ai</span>
+            </a>
+            <MainNav />
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-muted-foreground hidden sm:inline">
-              {user?.email}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => logoutMutation.mutate()}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+          <div className="flex flex-1 items-center justify-end space-x-4">
+            <nav className="flex items-center space-x-2">
+              <span className="text-sm text-muted-foreground hidden sm:inline">
+                {user?.email}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => logoutMutation.mutate()}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </nav>
           </div>
         </div>
+
+        {/* Mobile Navigation */}
+        {showMobileMenu && (
+          <div className="border-b md:hidden">
+            <div className="container py-4">
+              <MainNav />
+            </div>
+          </div>
+        )}
       </header>
 
-      {/* Main content */}
-      <div className="container mx-auto px-4 py-8 flex gap-8">
-        {/* Sidebar navigation */}
-        <aside
-          className={cn(
-            "fixed inset-y-0 left-0 z-50 w-64 border-r bg-background p-6 transition-transform md:relative md:translate-x-0",
-            showMobileMenu ? "translate-x-0" : "-translate-x-full"
-          )}
-        >
-          <MainNav />
-        </aside>
-
-        {/* Page content */}
-        <main className="flex-1">{children}</main>
-      </div>
+      {/* Page Content */}
+      <main className="container mx-auto px-4 py-8">
+        {children}
+      </main>
     </div>
   );
 }
