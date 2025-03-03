@@ -27,7 +27,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { BusinessUnit, Emission } from "@shared/schema";
-import { Download, Filter, LineChart, Upload, FileType2, Pencil } from "lucide-react";
+import { Download, Filter, LineChart, Upload, FileType2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -35,6 +35,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { ElectricityForm } from "@/components/manual-entry-forms/electricity-form";
+import { apiRequest } from "@/lib/queryClient";
 
 interface EnergyStats {
   totalKwh: number;
@@ -54,9 +55,9 @@ export default function EnergyDataPage() {
   const { toast } = useToast();
   const [file, setFile] = useState<File>();
   const [dragActive, setDragActive] = useState(false);
-  const [selectedUnit, setSelectedUnit] = useState<string>("all");
-  const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [showManualEntry, setShowManualEntry] = useState(false);
+  const [filterBusinessUnit, setFilterBusinessUnit] = useState<string>("all");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -68,6 +69,10 @@ export default function EnergyDataPage() {
 
   const { data: emissions, isLoading: loadingEmissions } = useQuery<Emission[]>({
     queryKey: ["/api/emissions", { category: "energy" }],
+    queryFn: async () => {
+      const res = await apiRequest("GET", "/api/emissions?category=energy");
+      return res.json();
+    },
   });
 
   const uploadFile = useMutation({
@@ -95,7 +100,7 @@ export default function EnergyDataPage() {
     },
     onError: (error) => {
       toast({
-        title: "Processing failed",
+        title: "Upload failed",
         description: error.message,
         variant: "destructive",
       });
@@ -158,7 +163,7 @@ export default function EnergyDataPage() {
   };
 
   const filteredEmissions = emissions?.filter(emission => {
-    const matchesUnit = selectedUnit === "all" || emission.businessUnitId === selectedUnit;
+    const matchesUnit = filterBusinessUnit === "all" || emission.businessUnitId === filterBusinessUnit;
     const matchesDateRange = !dateRange.start || !dateRange.end ||
       (new Date(emission.date) >= new Date(dateRange.start) &&
         new Date(emission.date) <= new Date(dateRange.end));
@@ -305,7 +310,10 @@ export default function EnergyDataPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Business Unit</Label>
-                <Select value={selectedUnit} onValueChange={setSelectedUnit}>
+                <Select 
+                  value={filterBusinessUnit} 
+                  onValueChange={setFilterBusinessUnit}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="All Business Units" />
                   </SelectTrigger>
@@ -387,7 +395,6 @@ export default function EnergyDataPage() {
                   <TableRow>
                     <TableHead>Date</TableHead>
                     <TableHead>Business Unit</TableHead>
-                    <TableHead>Source</TableHead>
                     <TableHead>Consumption</TableHead>
                     <TableHead>Emissions</TableHead>
                     <TableHead>Notes</TableHead>
@@ -401,9 +408,6 @@ export default function EnergyDataPage() {
                       </TableCell>
                       <TableCell>
                         {businessUnits?.find(u => u.id === emission.businessUnitId)?.name}
-                      </TableCell>
-                      <TableCell className="capitalize">
-                        {emission.details?.source || 'Grid'}
                       </TableCell>
                       <TableCell>
                         {emission.details?.rawAmount} kWh
