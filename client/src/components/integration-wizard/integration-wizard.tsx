@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
-import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw } from "lucide-react";
+import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -25,31 +25,31 @@ import {
 } from "@/components/ui/dialog";
 
 const ELECTRICITY_PROVIDERS = [
-  { 
+  {
     id: "agl",
     name: "AGL",
     apiDocs: "https://api.agl.com.au/docs",
     description: "AGL Energy API integration for electricity usage data"
   },
-  { 
+  {
     id: "origin",
     name: "Origin Energy",
     apiDocs: "https://api.originenergy.com.au/docs",
     description: "Origin Energy API for consumption data"
   },
-  { 
+  {
     id: "energyaustralia",
     name: "Energy Australia",
     apiDocs: "https://api.energyaustralia.com.au/docs",
     description: "Energy Australia consumption data API"
   },
-  { 
+  {
     id: "alinta",
     name: "Alinta Energy",
     apiDocs: "https://api.alintaenergy.com.au/docs",
     description: "Alinta Energy usage data API"
   },
-  { 
+  {
     id: "ergon",
     name: "Ergon Energy",
     apiDocs: "https://api.ergon.com.au/docs",
@@ -65,6 +65,12 @@ interface StorageFile {
   lastModified: string;
 }
 
+interface CustomApi {
+  name: string;
+  baseUrl: string;
+  apiToken: string;
+}
+
 interface WizardProps {
   businessUnitId: string;
   onComplete: () => void;
@@ -76,15 +82,16 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   const [selectedTab, setSelectedTab] = useState("storage");
   const [showFileBrowser, setShowFileBrowser] = useState(false);
   const [selectedPath, setSelectedPath] = useState("");
+  const [customApis, setCustomApis] = useState<CustomApi[]>([]);
+  const [showAddCustomApi, setShowAddCustomApi] = useState(false);
   const [config, setConfig] = useState({
     provider: "",
     credentials: {
-      clientId: "",
-      clientSecret: "",
       apiKey: "",
       apiToken: "",
-      folderPath: "",
-      accountNumber: ""
+      accountNumber: "",
+      baseUrl: "",
+      name: ""
     },
   });
 
@@ -106,7 +113,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest(
-        "POST", 
+        "POST",
         `/api/business-units/${businessUnitId}/integrations`,
         {
           type: selectedTab,
@@ -128,6 +135,72 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
         description: error.message,
         variant: "destructive",
       });
+    },
+  });
+
+  const addCustomApiMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/business-units/${businessUnitId}/integrations`,
+        {
+          type: "custom",
+          name: config.credentials.name,
+          baseUrl: config.credentials.baseUrl,
+          apiToken: config.credentials.apiToken,
+        }
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
+      toast({ title: "Custom API added successfully" });
+      setShowAddCustomApi(false);
+      setCustomApis([...customApis, {name: config.credentials.name, baseUrl: config.credentials.baseUrl, apiToken: config.credentials.apiToken}])
+      setConfig({
+        ...config,
+        credentials: {
+          ...config.credentials,
+          name: "",
+          baseUrl: "",
+          apiToken: ""
+        }
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add custom API",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteCustomApiMutation = useMutation({
+    mutationFn: async (name: string) => {
+      await apiRequest(
+        "DELETE",
+        `/api/business-units/${businessUnitId}/integrations/custom/${name}`
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
+      toast({ title: "Custom API removed" });
+      setCustomApis(customApis.filter(api => api.name !== name));
+    },
+  });
+
+  const refreshCustomApiMutation = useMutation({
+    mutationFn: async (name: string) => {
+      const res = await apiRequest(
+        "POST",
+        `/api/business-units/${businessUnitId}/integrations/custom/${name}/refresh`
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
+      toast({ title: "Custom API refreshed" });
     },
   });
 
@@ -194,8 +267,8 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   const renderStorageTab = () => (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2">
-        <Card 
-          className="cursor-pointer hover:border-primary" 
+        <Card
+          className="cursor-pointer hover:border-primary"
           onClick={async () => {
             try {
               const res = await apiRequest(
@@ -222,8 +295,8 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:border-primary" 
+        <Card
+          className="cursor-pointer hover:border-primary"
           onClick={async () => {
             try {
               const res = await apiRequest(
@@ -250,8 +323,8 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
           </CardContent>
         </Card>
 
-        <Card 
-          className="cursor-pointer hover:border-primary" 
+        <Card
+          className="cursor-pointer hover:border-primary"
           onClick={() => {
             setConfig({ ...config, provider: "sharepoint" });
             setShowFileBrowser(true);
@@ -273,25 +346,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
 
   const renderAccountingTab = () => (
     <div className="grid gap-4 md:grid-cols-2">
-      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "xero" })}>
-        <CardContent className="p-6 flex items-center gap-4">
-          <SiXero className="h-8 w-8" />
-          <div>
-            <h3 className="font-semibold">Xero</h3>
-            <p className="text-sm text-muted-foreground">Connect Xero accounting</p>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "myob" })}>
-        <CardContent className="p-6 flex items-center gap-4">
-          <SiMyob className="h-8 w-8" />
-          <div>
-            <h3 className="font-semibold">MYOB</h3>
-            <p className="text-sm text-muted-foreground">Connect MYOB accounting</p>
-          </div>
-        </CardContent>
-      </Card>
+      {/*Removed Xero and MYOB cards per instructions*/}
     </div>
   );
 
@@ -302,9 +357,9 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {ELECTRICITY_PROVIDERS.map((provider) => (
-          <Card 
+          <Card
             key={provider.id}
-            className="cursor-pointer hover:border-primary" 
+            className="cursor-pointer hover:border-primary"
             onClick={() => setConfig({ ...config, provider: provider.id })}
           >
             <CardContent className="p-6">
@@ -316,9 +371,9 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
                 </div>
               </div>
               <div className="text-xs text-muted-foreground">
-                <a 
-                  href={provider.apiDocs} 
-                  target="_blank" 
+                <a
+                  href={provider.apiDocs}
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="hover:underline"
                   onClick={(e) => e.stopPropagation()}
@@ -334,156 +389,43 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   );
 
   const renderCustomTab = () => (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label>Integration Name</Label>
-        <Input 
-          placeholder="e.g., Custom API"
-          value={config.provider}
-          onChange={(e) => setConfig({ ...config, provider: e.target.value })}
-        />
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">Custom API Integrations</h3>
+        <Button onClick={() => setShowAddCustomApi(true)}>Add New API</Button>
       </div>
-      <div className="space-y-2">
-        <Label>API Base URL</Label>
-        <Input 
-          placeholder="https://api.example.com"
-          value={config.credentials.apiKey}
-          onChange={(e) => setConfig({
-            ...config,
-            credentials: { ...config.credentials, apiKey: e.target.value }
-          })}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>API Token</Label>
-        <Input 
-          type="password"
-          placeholder="Enter API token"
-          value={config.credentials.apiToken}
-          onChange={(e) => setConfig({
-            ...config,
-            credentials: { ...config.credentials, apiToken: e.target.value }
-          })}
-        />
-      </div>
-    </div>
-  );
 
-  const renderCredentialsForm = () => {
-    if (!config.provider) return null;
-
-    const selectedProvider = ELECTRICITY_PROVIDERS.find(p => p.id === config.provider);
-
-    return (
-      <div className="space-y-4 mt-6">
-        <h3 className="font-semibold">
-          Configure {selectedProvider ? selectedProvider.name : config.provider}
-        </h3>
-        {["onedrive", "googledrive", "sharepoint"].includes(config.provider) && (
-          <>
-            <div className="space-y-2">
-              <Label>Selected Folder</Label>
-              <div className="flex items-center space-x-2">
-                <Input
-                  value={selectedPath}
-                  readOnly
-                  placeholder="No folder selected"
-                />
-                <Button
-                  variant="outline"
-                  onClick={() => setShowFileBrowser(true)}
-                >
-                  Browse
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {["xero", "myob"].includes(config.provider) && (
-          <>
-            <div className="space-y-2">
-              <Label>Client ID</Label>
-              <Input
-                value={config.credentials.clientId}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    credentials: { ...config.credentials, clientId: e.target.value },
-                  })
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Client Secret</Label>
-              <Input
-                type="password"
-                value={config.credentials.clientSecret}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    credentials: { ...config.credentials, clientSecret: e.target.value },
-                  })
-                }
-              />
-            </div>
-          </>
-        )}
-
-        {ELECTRICITY_PROVIDERS.map(p => p.id).includes(config.provider) && (
-          <>
-            <div className="space-y-2">
-              <Label>API Key</Label>
-              <Input
-                type="password"
-                value={config.credentials.apiKey}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    credentials: { ...config.credentials, apiKey: e.target.value },
-                  })
-                }
-                placeholder="Enter your API key"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Account Number</Label>
-              <Input
-                value={config.credentials.accountNumber}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    credentials: { ...config.credentials, accountNumber: e.target.value },
-                  })
-                }
-                placeholder="Enter your account number"
-              />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              You can find your API credentials in your {selectedProvider?.name} account dashboard.
-            </p>
-          </>
-        )}
-
-        {config.provider === "custom" && (
-          <>
+      <Dialog open={showAddCustomApi} onOpenChange={setShowAddCustomApi}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Custom API</DialogTitle>
+            <DialogDescription>
+              Configure your custom API integration
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
             <div className="space-y-2">
               <Label>Integration Name</Label>
               <Input
                 placeholder="e.g., Custom API"
-                value={config.provider}
-                onChange={(e) => setConfig({ ...config, provider: e.target.value })}
+                value={config.credentials.name}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    credentials: { ...config.credentials, name: e.target.value },
+                  })
+                }
               />
             </div>
             <div className="space-y-2">
               <Label>API Base URL</Label>
               <Input
                 placeholder="https://api.example.com"
-                value={config.credentials.apiKey}
+                value={config.credentials.baseUrl}
                 onChange={(e) =>
                   setConfig({
                     ...config,
-                    credentials: { ...config.credentials, apiKey: e.target.value },
+                    credentials: { ...config.credentials, baseUrl: e.target.value },
                   })
                 }
               />
@@ -502,13 +444,105 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
                 }
               />
             </div>
-          </>
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={() => addCustomApiMutation.mutate()}
+              disabled={!config.credentials.name || !config.credentials.baseUrl || addCustomApiMutation.isPending}
+            >
+              {addCustomApiMutation.isPending ? "Adding..." : "Add Integration"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <div className="grid gap-4">
+        {customApis.map((api) => (
+          <Card key={api.name}>
+            <CardHeader className="space-y-0 pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">{api.name}</CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => refreshCustomApiMutation.mutate(api.name)}
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => deleteCustomApiMutation.mutate(api.name)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                {api.baseUrl}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+        {customApis.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            No custom APIs configured. Click "Add New API" to get started.
+          </div>
         )}
+      </div>
+    </div>
+  );
+
+  const renderCredentialsForm = () => {
+    if (!config.provider) return null;
+
+    const selectedProvider = ELECTRICITY_PROVIDERS.find(p => p.id === config.provider);
+
+    if (!selectedProvider) return null;
+
+    return (
+      <div className="space-y-4 mt-6">
+        <h3 className="font-semibold">
+          Configure {selectedProvider.name}
+        </h3>
+        <div className="space-y-2">
+          <Label>API Key</Label>
+          <Input
+            type="password"
+            value={config.credentials.apiKey}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                credentials: { ...config.credentials, apiKey: e.target.value },
+              })
+            }
+            placeholder="Enter your API key"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Account Number</Label>
+          <Input
+            value={config.credentials.accountNumber}
+            onChange={(e) =>
+              setConfig({
+                ...config,
+                credentials: { ...config.credentials, accountNumber: e.target.value },
+              })
+            }
+            placeholder="Enter your account number"
+          />
+        </div>
+        <p className="text-sm text-muted-foreground">
+          You can find your API credentials in your {selectedProvider.name} account dashboard.
+        </p>
 
         <Button
           className="w-full"
           onClick={() => connectMutation.mutate()}
-          disabled={!config.provider || (!selectedPath && ["onedrive", "googledrive", "sharepoint"].includes(config.provider)) || connectMutation.isPending}
+          disabled={!config.credentials.apiKey || !config.credentials.accountNumber || connectMutation.isPending}
         >
           {connectMutation.isPending ? "Connecting..." : "Connect Integration"}
         </Button>
