@@ -24,12 +24,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/business-units", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     const data = insertBusinessUnitSchema.parse(req.body);
+
     const unit = await storage.createBusinessUnit({
       ...data,
       organizationId: req.user.organizationId,
       createdAt: new Date(),
       description: data.description ?? null,
     });
+
+    // Create audit log
+    await storage.createAuditLog({
+      userId: req.user.id,
+      organizationId: req.user.organizationId,
+      actionType: "CREATE",
+      entityType: "business_unit",
+      entityId: unit.id,
+      changes: { after: unit },
+    });
+
     res.json(unit);
   });
 
@@ -177,6 +189,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message });
     }
   });
+
+  // Audit Logs
+  app.get("/api/audit-logs", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    const filters = {
+      entityType: req.query.entityType as string,
+      startDate: req.query.date ? new Date(req.query.date as string) : undefined,
+    };
+
+    const logs = await storage.getAuditLogs(req.user.organizationId, filters);
+    res.json(logs);
+  });
+
 
   const httpServer = createServer(app);
   return httpServer;

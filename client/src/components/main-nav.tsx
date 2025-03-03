@@ -6,6 +6,7 @@ import {
   Upload,
   Settings,
   Users,
+  FileText,
 } from "lucide-react";
 
 interface NavItem {
@@ -34,6 +35,11 @@ const navItems: NavItem[] = [
     title: "Teams",
     href: "/users",
     icon: Users,
+  },
+  {
+    title: "Audit Logs",
+    href: "/audit-logs",
+    icon: FileText,
   },
   {
     title: "Settings",

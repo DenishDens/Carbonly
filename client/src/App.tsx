@@ -12,6 +12,8 @@ import FileProcessing from "@/pages/file-processing";
 import EmissionsData from "@/pages/emissions";
 import UserManagement from "@/pages/users";
 import OrganizationSettings from "@/pages/organization-settings";
+// Add audit logs route
+import AuditLogViewer from "@/pages/audit-logs";
 
 function Router() {
   return (
@@ -22,6 +24,7 @@ function Router() {
       <ProtectedRoute path="/file-processing" component={FileProcessing} />
       <ProtectedRoute path="/emissions" component={EmissionsData} />
       <ProtectedRoute path="/users" component={UserManagement} />
+      <ProtectedRoute path="/audit-logs" component={AuditLogViewer} />
       <ProtectedRoute path="/settings" component={OrganizationSettings} />
       <Route component={NotFound} />
     </Switch>

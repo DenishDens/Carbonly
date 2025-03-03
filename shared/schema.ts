@@ -51,6 +51,23 @@ export const processingTransactions = pgTable("processing_transactions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Add audit log table definition
+export const auditLogs = pgTable("audit_logs", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  actionType: text("action_type").notNull(), // CREATE, UPDATE, DELETE
+  entityType: text("entity_type").notNull(), // organization, user, business_unit, emission
+  entityId: text("entity_id").notNull(),
+  changes: jsonb("changes"), // Store before/after state
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Add audit log types
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
+
+
 // Schema for registration
 export const insertOrganizationSchema = z.object({
   email: z.string().email(),

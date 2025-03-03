@@ -1,10 +1,10 @@
 import { Pool } from "@neondatabase/serverless";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc, gte, lte } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users, businessUnits, emissions, processingTransactions } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction } from "@shared/schema";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -34,6 +34,15 @@ export interface IStorage {
   // Transaction logging
   createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction>;
   updateTransactionStatus(id: string, status: string, errorType?: string | null): Promise<ProcessingTransaction>;
+
+  // Audit logging
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(organizationId: string, filters?: {
+    entityType?: string;
+    entityId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<AuditLog[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -123,6 +132,39 @@ export class DatabaseStorage implements IStorage {
       .where(eq(processingTransactions.id, id))
       .returning();
     return updatedTransaction;
+  }
+
+  // Audit logging implementation
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db.insert(auditLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getAuditLogs(organizationId: string, filters?: {
+    entityType?: string;
+    entityId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<AuditLog[]> {
+    let query = db.select()
+      .from(auditLogs)
+      .where(eq(auditLogs.organizationId, organizationId))
+      .orderBy(desc(auditLogs.createdAt));
+
+    if (filters?.entityType) {
+      query = query.where(eq(auditLogs.entityType, filters.entityType));
+    }
+    if (filters?.entityId) {
+      query = query.where(eq(auditLogs.entityId, filters.entityId));
+    }
+    if (filters?.startDate) {
+      query = query.where(gte(auditLogs.createdAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      query = query.where(lte(auditLogs.createdAt, filters.endDate));
+    }
+
+    return query;
   }
 }
 
