@@ -32,6 +32,7 @@ import type { BusinessUnit, FuelData } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 const fuelFormSchema = z.object({
   businessUnitId: z.string({
@@ -44,6 +45,8 @@ const fuelFormSchema = z.object({
   unit: z.enum(["liters", "gallons"]),
   date: z.string().min(1, "Date is required"),
   notes: z.string().optional(),
+  paidBySubcontractor: z.boolean().default(false),
+  subcontractorName: z.string().optional(),
 });
 
 const FUEL_TYPES = [
@@ -72,19 +75,15 @@ export function FuelForm() {
     defaultValues: {
       unit: "liters",
       date: new Date().toISOString().split('T')[0],
+      paidBySubcontractor: false,
     },
   });
 
-  const { data: businessUnits, isLoading: loadingUnits } = useQuery<BusinessUnit[]>({
-    queryKey: ["/api/business-units"],
-  });
-
-  // Watch form values for real-time calculation
   const amount = form.watch("amount");
   const unit = form.watch("unit");
   const fuelType = form.watch("fuelType");
+  const paidBySubcontractor = form.watch("paidBySubcontractor");
 
-  // Calculate emissions whenever inputs change
   useState(() => {
     if (!amount || !unit || !fuelType) return;
 
@@ -118,6 +117,8 @@ export function FuelForm() {
             fuelType: data.fuelType,
             category: "fuel",
             notes: data.notes,
+            paidBySubcontractor: data.paidBySubcontractor,
+            subcontractorName: data.subcontractorName,
           },
         }),
         credentials: "include",
@@ -141,6 +142,10 @@ export function FuelForm() {
         variant: "destructive",
       });
     },
+  });
+
+  const { data: businessUnits, isLoading: loadingUnits } = useQuery<BusinessUnit[]>({
+    queryKey: ["/api/business-units"],
   });
 
   if (loadingUnits) {
@@ -284,6 +289,45 @@ export function FuelForm() {
                 </FormItem>
               )}
             />
+
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="paidBySubcontractor"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">Paid by Subcontractor</FormLabel>
+                      <FormDescription>
+                        Indicate if this fuel consumption was paid by a subcontractor
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {paidBySubcontractor && (
+                <FormField
+                  control={form.control}
+                  name="subcontractorName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Subcontractor Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter subcontractor name" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
 
             {calculatedEmissions && (
               <div className="p-4 bg-muted rounded-lg">

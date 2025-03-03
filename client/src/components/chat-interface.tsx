@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { MessageSquare, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -74,9 +74,18 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [showPrompts, setShowPrompts] = useState(false);
 
+  // Get user's accessible business units
+  const { data: accessibleUnits } = useQuery({
+    queryKey: ["/api/business-units/accessible"],
+    enabled: !!user,
+  });
+
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const res = await apiRequest("POST", "/api/chat", { message });
+      const res = await apiRequest("POST", "/api/chat", { 
+        message,
+        accessibleUnits: accessibleUnits?.map(unit => unit.id) || [],
+      });
       return res.json();
     },
     onSuccess: (response) => {
@@ -120,9 +129,10 @@ export function ChatInterface() {
   // Show greeting when chat is opened
   const handleOpen = () => {
     if (!isOpen && messages.length === 0) {
+      const unitCount = accessibleUnits?.length || 0;
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help you analyze your emission data and provide insights. Feel free to ask me anything or try one of the suggested questions below.`
+        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help analyze data from your ${unitCount} accessible business unit${unitCount !== 1 ? 's' : ''}. Feel free to ask me anything or try one of the suggested questions below.`
       };
       setMessages([greeting]);
     }
@@ -142,7 +152,7 @@ export function ChatInterface() {
 
       <Card
         className={cn(
-          "w-[400px] transition-all duration-200 mb-12",
+          "w-[400px] transition-all duration-200",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
         )}
       >
