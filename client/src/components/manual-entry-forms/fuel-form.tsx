@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Form,
   FormControl,
@@ -28,6 +29,22 @@ import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { BusinessUnit, FuelData } from "@shared/schema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Loader2 } from "lucide-react";
+
+const fuelFormSchema = z.object({
+  businessUnitId: z.string({
+    required_error: "Please select a business unit",
+  }),
+  fuelType: z.enum(["diesel", "gasoline"], {
+    required_error: "Please select a fuel type",
+  }),
+  amount: z.string().min(1, "Amount is required"),
+  unit: z.enum(["liters", "gallons"]),
+  date: z.string().min(1, "Date is required"),
+  notes: z.string().optional(),
+});
 
 const FUEL_TYPES = [
   { id: "diesel", label: "Diesel" },
@@ -39,19 +56,26 @@ const UNITS = [
   { id: "gallons", label: "Gallons (gal)" },
 ];
 
+// Emission factors (kgCO2e per liter)
+const EMISSION_FACTORS = {
+  diesel: 2.68,
+  gasoline: 2.31,
+};
+
 export function FuelForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [calculatedEmissions, setCalculatedEmissions] = useState<string>();
 
-  const form = useForm<FuelData>({
+  const form = useForm<z.infer<typeof fuelFormSchema>>({
+    resolver: zodResolver(fuelFormSchema),
     defaultValues: {
       unit: "liters",
       date: new Date().toISOString().split('T')[0],
     },
   });
 
-  const { data: businessUnits } = useQuery<BusinessUnit[]>({
+  const { data: businessUnits, isLoading: loadingUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
   });
 
@@ -59,40 +83,34 @@ export function FuelForm() {
   const amount = form.watch("amount");
   const unit = form.watch("unit");
   const fuelType = form.watch("fuelType");
-  const businessUnitId = form.watch("businessUnitId");
-
-  // Get protocol settings when business unit changes
-  const { data: protocolSettings } = useQuery({
-    queryKey: ["/api/business-units", businessUnitId, "protocol-settings"],
-    enabled: !!businessUnitId,
-  });
 
   // Calculate emissions whenever inputs change
-  useEffect(() => {
-    if (!amount || !unit || !fuelType || !protocolSettings) return;
+  useState(() => {
+    if (!amount || !unit || !fuelType) return;
 
-    const factor = protocolSettings.emissionFactors[fuelType];
+    const factor = EMISSION_FACTORS[fuelType];
     if (!factor) return;
 
     // Convert to liters if needed
     const liters = unit === "gallons" ? parseFloat(amount) * 3.78541 : parseFloat(amount);
 
     // Calculate emissions
-    const emissions = liters * parseFloat(factor);
+    const emissions = liters * factor;
     setCalculatedEmissions(emissions.toFixed(2));
-  }, [amount, unit, fuelType, protocolSettings]);
+  }, [amount, unit, fuelType]);
 
   const saveFuelData = useMutation({
-    mutationFn: async (data: FuelData) => {
+    mutationFn: async (data: z.infer<typeof fuelFormSchema>) => {
       const res = await fetch("/api/emissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...data,
-          category: "fuel",
-          scope: "Scope 1",
+          businessUnitId: data.businessUnitId,
+          scope: "Scope 1", // Direct emissions from fuel consumption
+          emissionSource: `${data.fuelType} consumption`,
           amount: calculatedEmissions,
           unit: "kgCO2e",
+          date: new Date(data.date).toISOString(),
           details: {
             rawAmount: data.amount,
             rawUnit: data.unit,
@@ -120,12 +138,24 @@ export function FuelForm() {
     },
   });
 
+  if (loadingUnits) {
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <div className="flex justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Fuel Consumption</CardTitle>
+        <CardTitle>Manual Fuel Entry</CardTitle>
         <CardDescription>
-          Enter fuel consumption data - we'll automatically calculate CO2e emissions
+          Enter fuel consumption data manually - we'll calculate the CO2e emissions automatically
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -134,7 +164,6 @@ export function FuelForm() {
             <FormField
               control={form.control}
               name="businessUnitId"
-              rules={{ required: "Business unit is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Business Unit</FormLabel>
@@ -160,7 +189,6 @@ export function FuelForm() {
             <FormField
               control={form.control}
               name="fuelType"
-              rules={{ required: "Fuel type is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Fuel Type</FormLabel>
@@ -187,7 +215,6 @@ export function FuelForm() {
               <FormField
                 control={form.control}
                 name="amount"
-                rules={{ required: "Amount is required" }}
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Amount</FormLabel>
@@ -228,7 +255,6 @@ export function FuelForm() {
             <FormField
               control={form.control}
               name="date"
-              rules={{ required: "Date is required" }}
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Date</FormLabel>
@@ -247,7 +273,7 @@ export function FuelForm() {
                 <FormItem>
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <Input placeholder="Any additional notes" {...field} />
+                    <Textarea placeholder="Add any additional notes or comments" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -258,10 +284,14 @@ export function FuelForm() {
               <div className="p-4 bg-muted rounded-lg">
                 <p className="text-sm font-medium">Calculated Emissions</p>
                 <p className="text-2xl font-bold">{calculatedEmissions} kgCO2e</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Based on standard emission factors for {form.getValues("fuelType")} fuel
+                </p>
               </div>
             )}
 
             <Button type="submit" className="w-full" disabled={saveFuelData.isPending}>
+              {saveFuelData.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {saveFuelData.isPending ? "Saving..." : "Save Fuel Data"}
             </Button>
           </form>
