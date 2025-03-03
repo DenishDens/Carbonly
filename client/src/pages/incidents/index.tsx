@@ -92,6 +92,22 @@ export default function IncidentsPage() {
     },
   });
 
+  // Update the submit handler
+  const onSubmit = (values: InsertIncident) => {
+    createIncidentMutation.mutate({
+      ...values,
+      status: "open", // Set initial status to open
+      // Make sure all required fields are present
+      businessUnitId: values.businessUnitId,
+      title: values.title,
+      description: values.description,
+      type: values.type,
+      severity: values.severity,
+      incidentDate: values.incidentDate,
+      location: values.location
+    });
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "critical":
@@ -204,7 +220,7 @@ export default function IncidentsPage() {
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form className="space-y-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="businessUnitId"
@@ -233,6 +249,18 @@ export default function IncidentsPage() {
 
                 <FormField
                   control={form.control}
+                  name="incidentDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Incident Date</FormLabel>
+                      <Input type="datetime-local" {...field} />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="title"
                   render={({ field }) => (
                     <FormItem>
@@ -253,18 +281,6 @@ export default function IncidentsPage() {
                         placeholder="Detailed description of the incident"
                         {...field}
                       />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="incidentDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Incident Date</FormLabel>
-                      <Input type="datetime-local" {...field} />
                       <FormMessage />
                     </FormItem>
                   )}
@@ -342,25 +358,19 @@ export default function IncidentsPage() {
                   )}
                 />
               </form>
+              <DialogFooter>
+                <Button
+                  type="submit"
+                  disabled={createIncidentMutation.isPending}
+                >
+                  {createIncidentMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Create Incident"
+                  )}
+                </Button>
+              </DialogFooter>
             </Form>
-            <DialogFooter>
-              <Button
-                onClick={() => {
-                  const values = form.getValues();
-                  createIncidentMutation.mutate({
-                    ...values,
-                    status: "open",
-                  });
-                }}
-                disabled={createIncidentMutation.isPending}
-              >
-                {createIncidentMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Create Incident"
-                )}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
