@@ -48,6 +48,13 @@ export default function FuelDataPage() {
 
   const { data: emissions, isLoading: loadingEmissions } = useQuery<Emission[]>({
     queryKey: ["/api/emissions", { category: "fuel" }],
+    queryFn: async () => {
+      const response = await fetch("/api/emissions?category=fuel");
+      if (!response.ok) {
+        throw new Error("Failed to fetch fuel data");
+      }
+      return response.json();
+    }
   });
 
   // Calculate fuel statistics

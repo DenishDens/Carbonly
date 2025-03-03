@@ -172,6 +172,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add a new endpoint for getting all emissions with category filtering
+  app.get("/api/emissions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      // Get all business units for the organization
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+
+      // Get emissions for all business units
+      const allEmissions = await Promise.all(
+        units.map(unit => storage.getEmissions(unit.id))
+      );
+
+      // Flatten and filter by category if specified
+      let emissions = allEmissions.flat();
+      const category = req.query.category as string;
+
+      if (category) {
+        emissions = emissions.filter(e =>
+          e.details && 'category' in e.details && e.details.category === category
+        );
+      }
+
+      res.json(emissions);
+    } catch (error) {
+      console.error("Error fetching emissions:", error);
+      res.status(500).json({ message: "Failed to fetch emissions data" });
+    }
+  });
+
+
   // Organization Settings
   app.get("/api/organization", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
