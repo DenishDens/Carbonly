@@ -45,10 +45,19 @@ const UNIT_LABELS = [
 
 const UNIT_STATUSES = ["active", "inactive", "archived"];
 
+const PROTOCOLS = [
+  { id: "org", label: "Use Organization Settings" },
+  { id: "2024", label: "GHG Protocol 2024" },
+  { id: "2023", label: "GHG Protocol 2023" },
+  { id: "2022", label: "GHG Protocol 2022" },
+];
+
 export default function BusinessUnits() {
   const { toast } = useToast();
   const [editingUnit, setEditingUnit] = useState<BusinessUnit>();
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showSettingsDialog, setShowSettingsDialog] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<BusinessUnit>();
   const [newUnit, setNewUnit] = useState({
     name: "",
     label: "",
@@ -57,6 +66,15 @@ export default function BusinessUnits() {
     category: "",
     status: "active",
     managerId: "",
+    protocolSettings: {
+      version: "org",
+      emissionFactors: {
+        electricity: "",
+        naturalGas: "",
+        diesel: "",
+        gasoline: "",
+      },
+    },
   });
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
@@ -84,6 +102,15 @@ export default function BusinessUnits() {
         category: "",
         status: "active",
         managerId: "",
+        protocolSettings: {
+          version: "org",
+          emissionFactors: {
+            electricity: "",
+            naturalGas: "",
+            diesel: "",
+            gasoline: "",
+          },
+        },
       });
     },
   });
@@ -107,6 +134,19 @@ export default function BusinessUnits() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
       toast({ title: "Business unit deleted" });
+    },
+  });
+
+  const updateProtocolSettings = useMutation({
+    mutationFn: async ({ id, protocolSettings }: { id: string; protocolSettings: any }) => {
+      const res = await apiRequest("PATCH", `/api/business-units/${id}/protocol-settings`, protocolSettings);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
+      toast({ title: "Protocol settings updated" });
+      setShowSettingsDialog(false);
+      setSelectedUnit(undefined);
     },
   });
 
@@ -211,6 +251,120 @@ export default function BusinessUnits() {
     </div>
   );
 
+  const ProtocolSettingsForm = ({ unit }: { unit: BusinessUnit }) => {
+    const [settings, setSettings] = useState(unit.protocolSettings || {
+      version: "org",
+      emissionFactors: {
+        electricity: "",
+        naturalGas: "",
+        diesel: "",
+        gasoline: "",
+      },
+    });
+
+    return (
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label>Protocol Version</Label>
+          <Select
+            value={settings.version}
+            onValueChange={(value) => setSettings({ ...settings, version: value })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PROTOCOLS.map((protocol) => (
+                <SelectItem key={protocol.id} value={protocol.id}>
+                  {protocol.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {settings.version !== "org" && (
+          <div className="space-y-4">
+            <Label>Emission Factors Override (kgCO2e per unit)</Label>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Electricity (per kWh)</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={settings.emissionFactors.electricity}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    emissionFactors: {
+                      ...settings.emissionFactors,
+                      electricity: e.target.value,
+                    },
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Natural Gas (per m³)</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={settings.emissionFactors.naturalGas}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    emissionFactors: {
+                      ...settings.emissionFactors,
+                      naturalGas: e.target.value,
+                    },
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Diesel (per L)</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={settings.emissionFactors.diesel}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    emissionFactors: {
+                      ...settings.emissionFactors,
+                      diesel: e.target.value,
+                    },
+                  })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Gasoline (per L)</Label>
+                <Input
+                  type="number"
+                  step="0.0001"
+                  value={settings.emissionFactors.gasoline}
+                  onChange={(e) => setSettings({
+                    ...settings,
+                    emissionFactors: {
+                      ...settings.emissionFactors,
+                      gasoline: e.target.value,
+                    },
+                  })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        <Button
+          className="w-full mt-4"
+          onClick={() => updateProtocolSettings.mutate({
+            id: unit.id,
+            protocolSettings: settings,
+          })}
+          disabled={updateProtocolSettings.isPending}
+        >
+          Save Protocol Settings
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -278,9 +432,14 @@ export default function BusinessUnits() {
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                  <Button>
+                  <Button
+                    onClick={() => {
+                      setSelectedUnit(unit);
+                      setShowSettingsDialog(true);
+                    }}
+                  >
                     <Settings className="h-4 w-4 mr-2" />
-                    Manage
+                    Settings
                   </Button>
                 </div>
               </CardContent>
@@ -318,6 +477,21 @@ export default function BusinessUnits() {
                   Save Changes
                 </Button>
               </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {/* Protocol Settings Dialog */}
+        {selectedUnit && (
+          <Dialog open={showSettingsDialog} onOpenChange={setShowSettingsDialog}>
+            <DialogContent className="sm:max-w-[600px]">
+              <DialogHeader>
+                <DialogTitle>Protocol Settings - {selectedUnit.name}</DialogTitle>
+                <DialogDescription>
+                  Configure emission calculation protocol and factors for this business unit
+                </DialogDescription>
+              </DialogHeader>
+              <ProtocolSettingsForm unit={selectedUnit} />
             </DialogContent>
           </Dialog>
         )}
