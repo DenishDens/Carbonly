@@ -43,7 +43,7 @@ Categorize the data appropriately based on the source:
         },
         {
           role: "user",
-          content: `Please extract emission data from this text and categorize it appropriately: ${text}`,
+          content: `Please extract emission data from this text and return as JSON: ${text}`,
         },
       ],
       response_format: { type: "json_object" },
@@ -74,7 +74,7 @@ Categorize the data appropriately based on the source:
       amount,
       businessUnitId: "", // This will be set by the upload handler
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error extracting emission data:", error);
     throw new Error(`Failed to extract emission data: ${error.message}`);
   }
@@ -129,10 +129,10 @@ Total Emissions: ${totalEmissions} tCO2e
 Emissions by Scope: ${JSON.stringify(emissionsByScope)}
 Emissions by Category: ${JSON.stringify(emissionsByCategory)}
 
-When users ask for visualizations, include chart data in your response using this format:
+Respond with a JSON object following this format:
 {
-  "message": "Your analysis text here",
-  "chart": {
+  "message": "Your response text here",
+  "chart": {  // Optional, include only if visualization is needed
     "type": "line|bar|pie",
     "data": {
       "labels": [...],
@@ -142,18 +142,13 @@ When users ask for visualizations, include chart data in your response using thi
   }
 }
 
-If no chart is needed, simply return:
-{
-  "message": "Your response text here"
-}
-
 Focus on providing actionable insights and recommendations for reducing emissions.
 When comparing data, use percentages and trends to make insights more meaningful.
 If asked about predictions, use historical trends to make educated forecasts.`,
         },
         {
           role: "user",
-          content: `Please analyze this request and provide insights with visualization if needed: ${message}`,
+          content: `Please analyze this request and provide insights as JSON: ${message}`,
         },
       ],
       response_format: { type: "json_object" },
@@ -164,8 +159,8 @@ If asked about predictions, use historical trends to make educated forecasts.`,
       throw new Error("Failed to get response from OpenAI");
     }
 
-    return JSON.parse(content);
-  } catch (error) {
+    return JSON.parse(content) as ChatResponse;
+  } catch (error: any) {
     console.error("Error getting chat response:", error);
     throw new Error(`Failed to process chat message: ${error.message}`);
   }

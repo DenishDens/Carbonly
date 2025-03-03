@@ -281,6 +281,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Team Management
+  app.get("/api/teams", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const teams = await storage.getTeams(req.user.organizationId);
+    res.json(teams);
+  });
+
+  app.post("/api/teams", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const team = await storage.createTeam({
+      ...req.body,
+      organizationId: req.user.organizationId,
+      createdAt: new Date(),
+    });
+    res.json(team);
+  });
+
+  app.patch("/api/teams/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { id } = req.params;
+    const teams = await storage.getTeams(req.user.organizationId);
+    const team = teams.find(t => t.id === id);
+    if (!team) return res.sendStatus(403);
+
+    const updatedTeam = await storage.updateTeam({
+      ...team,
+      ...req.body,
+      id,
+    });
+    res.json(updatedTeam);
+  });
+
+  app.delete("/api/teams/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { id } = req.params;
+    const teams = await storage.getTeams(req.user.organizationId);
+    const team = teams.find(t => t.id === id);
+    if (!team) return res.sendStatus(403);
+
+    await storage.deleteTeam(id);
+    res.sendStatus(200);
+  });
+
+  // Update business unit endpoints to include team data
+  app.get("/api/business-units/:id/team", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { id } = req.params;
+    const team = await storage.getBusinessUnitTeam(id);
+    res.json(team);
+  });
+
+  app.patch("/api/business-units/:id/team", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { id } = req.params;
+    const { teamId } = req.body;
+    const updatedUnit = await storage.updateBusinessUnitTeam(id, teamId);
+    res.json(updatedUnit);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

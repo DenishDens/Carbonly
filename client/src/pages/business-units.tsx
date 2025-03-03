@@ -30,7 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Building2, Edit, Trash2, Settings } from "lucide-react";
-import type { BusinessUnit, User } from "@shared/schema";
+import type { BusinessUnit, User, Team } from "@shared/schema";
 import { useState } from "react";
 
 const UNIT_LABELS = [
@@ -66,6 +66,7 @@ export default function BusinessUnits() {
     category: "",
     status: "active",
     managerId: "",
+    teamId: "", // Added teamId
     protocolSettings: {
       version: "org",
       emissionFactors: {
@@ -85,6 +86,10 @@ export default function BusinessUnits() {
     queryKey: ["/api/users"],
   });
 
+  const { data: teams } = useQuery<Team[]>({
+    queryKey: ["/api/teams"],
+  });
+
   const createBusinessUnit = useMutation({
     mutationFn: async (data: typeof newUnit) => {
       const res = await apiRequest("POST", "/api/business-units", data);
@@ -102,6 +107,7 @@ export default function BusinessUnits() {
         category: "",
         status: "active",
         managerId: "",
+        teamId: "", // Added teamId
         protocolSettings: {
           version: "org",
           emissionFactors: {
@@ -150,106 +156,129 @@ export default function BusinessUnits() {
     },
   });
 
-  const UnitForm = ({ data, onChange }: { data: any; onChange: (data: any) => void }) => (
-    <div className="space-y-4 py-4">
-      <div className="space-y-2">
-        <Label htmlFor="name">Name</Label>
-        <Input
-          id="name"
-          value={data.name}
-          onChange={(e) => onChange({ ...data, name: e.target.value })}
-          placeholder="Enter business unit name"
-        />
-      </div>
+  const UnitForm = ({ data, onChange }: { data: any; onChange: (data: any) => void }) => {
+    return (
+      <div className="space-y-4 py-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Name</Label>
+          <Input
+            id="name"
+            value={data.name}
+            onChange={(e) => onChange({ ...data, name: e.target.value })}
+            placeholder="Enter business unit name"
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="label">Label</Label>
-        <Select
-          value={data.label}
-          onValueChange={(value) => onChange({ ...data, label: value })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select label type" />
-          </SelectTrigger>
-          <SelectContent>
-            {UNIT_LABELS.map((label) => (
-              <SelectItem key={label} value={label.toLowerCase()}>
-                {label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="label">Label</Label>
+          <Select
+            value={data.label}
+            onValueChange={(value) => onChange({ ...data, label: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select label type" />
+            </SelectTrigger>
+            <SelectContent>
+              {UNIT_LABELS.map((label) => (
+                <SelectItem key={label} value={label.toLowerCase()}>
+                  {label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
-        <Textarea
-          id="description"
-          value={data.description}
-          onChange={(e) => onChange({ ...data, description: e.target.value })}
-          placeholder="Enter description"
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={data.description}
+            onChange={(e) => onChange({ ...data, description: e.target.value })}
+            placeholder="Enter description"
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="location">Location</Label>
-        <Input
-          id="location"
-          value={data.location}
-          onChange={(e) => onChange({ ...data, location: e.target.value })}
-          placeholder="e.g., Queensland, Victoria"
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="location">Location</Label>
+          <Input
+            id="location"
+            value={data.location}
+            onChange={(e) => onChange({ ...data, location: e.target.value })}
+            placeholder="e.g., Queensland, Victoria"
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="category">Category</Label>
-        <Input
-          id="category"
-          value={data.category}
-          onChange={(e) => onChange({ ...data, category: e.target.value })}
-          placeholder="e.g., Commercial, Residential"
-        />
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category"
+            value={data.category}
+            onChange={(e) => onChange({ ...data, category: e.target.value })}
+            placeholder="e.g., Commercial, Residential"
+          />
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="manager">Manager</Label>
-        <Select
-          value={data.managerId}
-          onValueChange={(value) => onChange({ ...data, managerId: value })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select manager" />
-          </SelectTrigger>
-          <SelectContent>
-            {users?.map((user) => (
-              <SelectItem key={user.id} value={user.id}>
-                {user.firstName} {user.lastName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+        <div className="space-y-2">
+          <Label htmlFor="manager">Manager</Label>
+          <Select
+            value={data.managerId}
+            onValueChange={(value) => onChange({ ...data, managerId: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select manager" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No Manager</SelectItem>
+              {users?.map((user) => (
+                <SelectItem key={user.id} value={user.id}>
+                  {user.firstName} {user.lastName} {user.email}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="status">Status</Label>
-        <Select
-          value={data.status}
-          onValueChange={(value) => onChange({ ...data, status: value })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select status" />
-          </SelectTrigger>
-          <SelectContent>
-            {UNIT_STATUSES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {status.charAt(0).toUpperCase() + status.slice(1)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="space-y-2">
+          <Label htmlFor="team">Team</Label>
+          <Select
+            value={data.teamId}
+            onValueChange={(value) => onChange({ ...data, teamId: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select team" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">No Team</SelectItem>
+              {teams?.map((team) => (
+                <SelectItem key={team.id} value={team.id}>
+                  {team.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="status">Status</Label>
+          <Select
+            value={data.status}
+            onValueChange={(value) => onChange({ ...data, status: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {UNIT_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status.charAt(0).toUpperCase() + status.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const ProtocolSettingsForm = ({ unit }: { unit: BusinessUnit }) => {
     const [settings, setSettings] = useState(unit.protocolSettings || {
@@ -418,8 +447,8 @@ export default function BusinessUnits() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="icon"
                     onClick={() => setEditingUnit(unit)}
                   >
@@ -465,8 +494,8 @@ export default function BusinessUnits() {
                   Update the business unit details
                 </DialogDescription>
               </DialogHeader>
-              <UnitForm 
-                data={editingUnit} 
+              <UnitForm
+                data={editingUnit}
                 onChange={(data) => setEditingUnit({ ...editingUnit, ...data })}
               />
               <DialogFooter>

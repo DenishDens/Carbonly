@@ -14,6 +14,7 @@ import UserManagement from "@/pages/users";
 import OrganizationSettings from "@/pages/organization-settings";
 import AuditLogViewer from "@/pages/audit-logs";
 import CategoryProcessing from "@/pages/data-processing/[category]";
+import Teams from "@/pages/teams";
 
 function Router() {
   return (
@@ -25,6 +26,7 @@ function Router() {
       <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
       <ProtectedRoute path="/emissions" component={EmissionsData} />
       <ProtectedRoute path="/users" component={UserManagement} />
+      <ProtectedRoute path="/teams" component={Teams} />
       <ProtectedRoute path="/audit-logs" component={AuditLogViewer} />
       <ProtectedRoute path="/settings" component={OrganizationSettings} />
       <Route component={NotFound} />
