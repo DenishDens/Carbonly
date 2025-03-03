@@ -30,11 +30,18 @@ import type { BusinessUnit, Emission } from "@shared/schema";
 import { Download, Filter, LineChart, Upload, FileType2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { ElectricityForm } from "@/components/manual-entry-forms/electricity-form";
+
+interface EnergyStats {
+  totalKwh: number;
+  totalEmissions: number;
+  byProject: Record<string, { kwh: number; emissions: number }>;
+  bySource: Record<string, { kwh: number; emissions: number }>;
+}
 
 const formSchema = z.object({
   businessUnitId: z.string().min(1, "Please select a business unit"),
@@ -47,6 +54,9 @@ export default function EnergyDataPage() {
   const { toast } = useToast();
   const [file, setFile] = useState<File>();
   const [dragActive, setDragActive] = useState(false);
+  const [selectedUnit, setSelectedUnit] = useState<string>("all");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+  const [showManualEntry, setShowManualEntry] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -58,13 +68,6 @@ export default function EnergyDataPage() {
 
   const { data: emissions, isLoading: loadingEmissions } = useQuery<Emission[]>({
     queryKey: ["/api/emissions", { category: "energy" }],
-    queryFn: async () => {
-      const response = await fetch("/api/emissions?category=energy");
-      if (!response.ok) {
-        throw new Error("Failed to fetch energy data");
-      }
-      return response.json();
-    }
   });
 
   const uploadFile = useMutation({
@@ -87,8 +90,8 @@ export default function EnergyDataPage() {
     },
     onSuccess: () => {
       setFile(undefined);
-      toast({ title: "File processed successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/emissions"] });
+      toast({ title: "File processed successfully" });
     },
     onError: (error) => {
       toast({
@@ -155,10 +158,11 @@ export default function EnergyDataPage() {
   };
 
   const filteredEmissions = emissions?.filter(emission => {
+    const matchesUnit = selectedUnit === "all" || emission.businessUnitId === selectedUnit;
     const matchesDateRange = !dateRange.start || !dateRange.end ||
       (new Date(emission.date) >= new Date(dateRange.start) &&
         new Date(emission.date) <= new Date(dateRange.end));
-    return matchesDateRange;
+    return matchesUnit && matchesDateRange;
   });
 
   const stats = calculateStats(filteredEmissions);
@@ -178,13 +182,22 @@ export default function EnergyDataPage() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Energy Data</h1>
-          <Button onClick={() => {
-            // Export functionality here
-          }}>
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="space-x-2">
+            <Button onClick={() => setShowManualEntry(!showManualEntry)}>
+              {showManualEntry ? "Hide Manual Entry" : "Manual Entry"}
+            </Button>
+            <Button>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
+
+        {showManualEntry && (
+          <ElectricityForm onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ["/api/emissions"] });
+          }} />
+        )}
 
         <Card>
           <CardHeader>
@@ -412,13 +425,3 @@ export default function EnergyDataPage() {
     </DashboardLayout>
   );
 }
-
-interface EnergyStats {
-  totalKwh: number;
-  totalEmissions: number;
-  byProject: Record<string, { kwh: number; emissions: number }>;
-  bySource: Record<string, { kwh: number; emissions: number }>;
-}
-
-const dateRange = useState({ start: "", end: "" });
-const selectedUnit = useState<string>("all");
