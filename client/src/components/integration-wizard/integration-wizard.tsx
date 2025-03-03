@@ -24,7 +24,38 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
-// ... (keep existing ELECTRICITY_PROVIDERS constant)
+const ELECTRICITY_PROVIDERS = [
+  { 
+    id: "agl",
+    name: "AGL",
+    apiDocs: "https://api.agl.com.au/docs",
+    description: "AGL Energy API integration for electricity usage data"
+  },
+  { 
+    id: "origin",
+    name: "Origin Energy",
+    apiDocs: "https://api.originenergy.com.au/docs",
+    description: "Origin Energy API for consumption data"
+  },
+  { 
+    id: "energyaustralia",
+    name: "Energy Australia",
+    apiDocs: "https://api.energyaustralia.com.au/docs",
+    description: "Energy Australia consumption data API"
+  },
+  { 
+    id: "alinta",
+    name: "Alinta Energy",
+    apiDocs: "https://api.alintaenergy.com.au/docs",
+    description: "Alinta Energy usage data API"
+  },
+  { 
+    id: "ergon",
+    name: "Ergon Energy",
+    apiDocs: "https://api.ergon.com.au/docs",
+    description: "Ergon Energy consumption data API"
+  }
+];
 
 interface StorageFile {
   id: string;
@@ -53,6 +84,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
       apiKey: "",
       apiToken: "",
       folderPath: "",
+      accountNumber: ""
     },
   });
 
@@ -240,22 +272,40 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   );
 
   const renderElectricityTab = () => (
-    <div className="grid gap-4 md:grid-cols-2">
-      {ELECTRICITY_PROVIDERS.map((provider) => (
-        <Card 
-          key={provider.id}
-          className="cursor-pointer hover:border-primary" 
-          onClick={() => setConfig({ ...config, provider: provider.id })}
-        >
-          <CardContent className="p-6 flex items-center gap-4">
-            <Zap className="h-8 w-8" />
-            <div>
-              <h3 className="font-semibold">{provider.name}</h3>
-              <p className="text-sm text-muted-foreground">Connect electricity data</p>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div className="space-y-6">
+      <div className="text-sm text-muted-foreground pb-4">
+        Select your electricity provider to connect their API for automated consumption data tracking.
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {ELECTRICITY_PROVIDERS.map((provider) => (
+          <Card 
+            key={provider.id}
+            className="cursor-pointer hover:border-primary" 
+            onClick={() => setConfig({ ...config, provider: provider.id })}
+          >
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4 mb-4">
+                <Zap className="h-8 w-8" />
+                <div>
+                  <h3 className="font-semibold">{provider.name}</h3>
+                  <p className="text-sm text-muted-foreground">{provider.description}</p>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">
+                <a 
+                  href={provider.apiDocs} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View API Documentation →
+                </a>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 
@@ -298,9 +348,13 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   const renderCredentialsForm = () => {
     if (!config.provider) return null;
 
+    const selectedProvider = ELECTRICITY_PROVIDERS.find(p => p.id === config.provider);
+
     return (
       <div className="space-y-4 mt-6">
-        <h3 className="font-semibold">Configure {config.provider}</h3>
+        <h3 className="font-semibold">
+          Configure {selectedProvider ? selectedProvider.name : config.provider}
+        </h3>
         {["onedrive", "googledrive", "sharepoint"].includes(config.provider) && (
           <>
             <div className="space-y-2">
@@ -353,19 +407,78 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
         )}
 
         {ELECTRICITY_PROVIDERS.map(p => p.id).includes(config.provider) && (
-          <div className="space-y-2">
-            <Label>API Key</Label>
-            <Input
-              type="password"
-              value={config.credentials.apiKey}
-              onChange={(e) =>
-                setConfig({
-                  ...config,
-                  credentials: { ...config.credentials, apiKey: e.target.value },
-                })
-              }
-            />
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label>API Key</Label>
+              <Input
+                type="password"
+                value={config.credentials.apiKey}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    credentials: { ...config.credentials, apiKey: e.target.value },
+                  })
+                }
+                placeholder="Enter your API key"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Account Number</Label>
+              <Input
+                value={config.credentials.accountNumber}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    credentials: { ...config.credentials, accountNumber: e.target.value },
+                  })
+                }
+                placeholder="Enter your account number"
+              />
+            </div>
+            <p className="text-sm text-muted-foreground">
+              You can find your API credentials in your {selectedProvider?.name} account dashboard.
+            </p>
+          </>
+        )}
+
+        {config.provider === "custom" && (
+          <>
+            <div className="space-y-2">
+              <Label>Integration Name</Label>
+              <Input
+                placeholder="e.g., Custom API"
+                value={config.provider}
+                onChange={(e) => setConfig({ ...config, provider: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>API Base URL</Label>
+              <Input
+                placeholder="https://api.example.com"
+                value={config.credentials.apiKey}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    credentials: { ...config.credentials, apiKey: e.target.value },
+                  })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>API Token</Label>
+              <Input
+                type="password"
+                placeholder="Enter API token"
+                value={config.credentials.apiToken}
+                onChange={(e) =>
+                  setConfig({
+                    ...config,
+                    credentials: { ...config.credentials, apiToken: e.target.value },
+                  })
+                }
+              />
+            </div>
+          </>
         )}
 
         <Button
