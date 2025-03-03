@@ -12,14 +12,8 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { 
-  SiMicrosoft, 
-  SiGoogledrive, 
-  SiMicrosoftteams,
-  SiXero,
-  SiMyob
-} from "react-icons/si";
-import { Building2, Zap, Database } from "lucide-react";
+import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
+import { Building2, Zap, Cloud, Network } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ELECTRICITY_PROVIDERS = [
@@ -81,7 +75,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     <div className="grid gap-4 md:grid-cols-2">
       <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "onedrive" })}>
         <CardContent className="p-6 flex items-center gap-4">
-          <SiMicrosoft className="h-8 w-8" />
+          <Cloud className="h-8 w-8" />
           <div>
             <h3 className="font-semibold">OneDrive</h3>
             <p className="text-sm text-muted-foreground">Connect OneDrive folders</p>
@@ -101,7 +95,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
 
       <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "sharepoint" })}>
         <CardContent className="p-6 flex items-center gap-4">
-          <SiMicrosoftteams className="h-8 w-8" />
+          <Network className="h-8 w-8" />
           <div>
             <h3 className="font-semibold">SharePoint</h3>
             <p className="text-sm text-muted-foreground">Connect SharePoint sites</p>
