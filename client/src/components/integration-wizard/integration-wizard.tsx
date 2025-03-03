@@ -196,9 +196,21 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
       <div className="grid gap-4 md:grid-cols-2">
         <Card 
           className="cursor-pointer hover:border-primary" 
-          onClick={() => {
-            setConfig({ ...config, provider: "onedrive" });
-            setShowFileBrowser(true);
+          onClick={async () => {
+            try {
+              const res = await apiRequest(
+                "GET",
+                `/api/auth/onedrive/authorize?businessUnitId=${businessUnitId}`
+              );
+              const { authUrl } = await res.json();
+              window.location.href = authUrl;
+            } catch (error) {
+              toast({
+                title: "Failed to start OneDrive authentication",
+                description: error.message,
+                variant: "destructive",
+              });
+            }
           }}
         >
           <CardContent className="p-6 flex items-center gap-4">
@@ -212,9 +224,21 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
 
         <Card 
           className="cursor-pointer hover:border-primary" 
-          onClick={() => {
-            setConfig({ ...config, provider: "googledrive" });
-            setShowFileBrowser(true);
+          onClick={async () => {
+            try {
+              const res = await apiRequest(
+                "GET",
+                `/api/auth/googledrive/authorize?businessUnitId=${businessUnitId}`
+              );
+              const { authUrl } = await res.json();
+              window.location.href = authUrl;
+            } catch (error) {
+              toast({
+                title: "Failed to start Google Drive authentication",
+                description: error.message,
+                variant: "destructive",
+              });
+            }
           }}
         >
           <CardContent className="p-6 flex items-center gap-4">

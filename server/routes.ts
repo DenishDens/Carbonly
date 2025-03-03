@@ -7,7 +7,7 @@ import { extractEmissionData, getChatResponse } from "./openai";
 import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
-import {getStorageClient} from './storageClient' //Assumed to exist
+import {getStorageClient} from './storageClient'
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -537,6 +537,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add these new endpoints to the existing routes file
+  app.get("/api/auth/onedrive/authorize", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { businessUnitId } = req.query;
+    if (!businessUnitId) return res.status(400).json({ message: "Business unit ID is required" });
+
+    try {
+      // Generate a state parameter to prevent CSRF
+      const state = `${businessUnitId}:${Date.now()}`;
+      // Store state in session
+      req.session.oauthState = state;
+
+      // Get authorization URL
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const authUrl = getOneDriveAuthUrl(state, baseUrl);
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("OneDrive auth error:", error);
+      res.status(500).json({ message: "Failed to start authentication" });
+    }
+  });
+
+  app.get("/api/auth/onedrive/callback", async (req, res) => {
+    const { code, state } = req.query;
+    const [businessUnitId] = (state as string).split(':');
+
+    try {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const tokens = await handleOneDriveCallback(code as string, businessUnitId, baseUrl);
+
+      // Redirect back to the application
+      res.redirect('/#/integrations/success');
+    } catch (error) {
+      console.error("OneDrive callback error:", error);
+      res.redirect('/#/integrations/error');
+    }
+  });
+
+  app.get("/api/auth/googledrive/authorize", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { businessUnitId } = req.query;
+    if (!businessUnitId) return res.status(400).json({ message: "Business unit ID is required" });
+
+    try {
+      // Generate a state parameter to prevent CSRF
+      const state = `${businessUnitId}:${Date.now()}`;
+      // Store state in session
+      req.session.oauthState = state;
+
+      // Get authorization URL
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const authUrl = getGoogleDriveAuthUrl(state, baseUrl);
+      res.json({ authUrl });
+    } catch (error) {
+      console.error("Google Drive auth error:", error);
+      res.status(500).json({ message: "Failed to start authentication" });
+    }
+  });
+
+  app.get("/api/auth/googledrive/callback", async (req, res) => {
+    const { code, state } = req.query;
+    const [businessUnitId] = (state as string).split(':');
+
+    try {
+      const baseUrl = `${req.protocol}://${req.get('host')}`;
+      const tokens = await handleGoogleDriveCallback(code as string, businessUnitId, baseUrl);
+
+      // Redirect back to the application
+      res.redirect('/#/integrations/success');
+    } catch (error) {
+      console.error("Google Drive callback error:", error);
+      res.redirect('/#/integrations/error');
+    }
+  });
 
   // Add this endpoint for fetching files from storage providers
   app.get("/api/business-units/:id/storage/:provider/files", async (req, res) => {
