@@ -27,9 +27,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const unit = await storage.createBusinessUnit({
       ...data,
       organizationId: req.user.organizationId,
+      createdAt: new Date(),
       description: data.description ?? null,
     });
     res.json(unit);
+  });
+
+  app.patch("/api/business-units/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { id } = req.params;
+    const data = insertBusinessUnitSchema.parse(req.body);
+
+    // Verify ownership
+    const unit = await storage.getBusinessUnit(id);
+    if (!unit || unit.organizationId !== req.user.organizationId) {
+      return res.sendStatus(403);
+    }
+
+    const updatedUnit = await storage.updateBusinessUnit(id, {
+      ...data,
+      organizationId: req.user.organizationId,
+    });
+    res.json(updatedUnit);
+  });
+
+  app.delete("/api/business-units/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const { id } = req.params;
+
+    // Verify ownership
+    const unit = await storage.getBusinessUnit(id);
+    if (!unit || unit.organizationId !== req.user.organizationId) {
+      return res.sendStatus(403);
+    }
+
+    await storage.deleteBusinessUnit(id);
+    res.sendStatus(204);
   });
 
   // Emissions

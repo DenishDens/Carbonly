@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MainNav } from "@/components/main-nav";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Menu } from "lucide-react";
+import { LogOut, Menu, Leaf } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -15,8 +15,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center">
           <div className="mr-4 hidden md:flex">
-            <a href="/" className="mr-6 flex items-center space-x-2">
-              <span className="font-bold">Carbonly.ai</span>
+            <a href="/" className="mr-6 flex items-center gap-2">
+              <Leaf className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                Carbonly.ai
+              </h1>
             </a>
             <MainNav />
           </div>
