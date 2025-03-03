@@ -107,17 +107,17 @@ export default function FileProcessing() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Data Processing</h1>
-          <div className="flex gap-2">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold">Data Processing</h1>
+          <div className="flex flex-wrap gap-2">
             {EMISSION_CATEGORIES.map((category) => (
               <Button
                 key={category.id}
                 variant="outline"
                 size="sm"
-                className="gap-2"
+                className="gap-1 text-xs md:text-sm"
               >
-                {category.icon} {category.label}
+                {category.icon} <span className="hidden sm:inline">{category.label}</span>
               </Button>
             ))}
           </div>

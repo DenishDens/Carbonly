@@ -25,14 +25,16 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center">
-          <div className="mr-4 hidden md:flex">
-            <a href="/" className="mr-6 flex items-center gap-2">
-              <Leaf className="h-6 w-6 text-primary" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+          <div className="flex items-center md:mr-4">
+            <a href="/" className="mr-4 md:mr-6 flex items-center gap-2">
+              <Leaf className="h-5 w-5 md:h-6 md:w-6 text-primary" />
+              <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Carbonly.ai
               </h1>
             </a>
-            <MainNav />
+            <div className="hidden md:flex">
+              <MainNav />
+            </div>
           </div>
           <Button
             variant="ghost"
@@ -42,7 +44,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <div className="flex flex-1 items-center justify-end space-x-4">
+          <div className="flex flex-1 items-center justify-end space-x-2 md:space-x-4">
             <nav className="flex items-center space-x-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -91,21 +93,21 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
         {showMobileMenu && (
           <div className="border-b md:hidden">
-            <div className="container py-4">
-              <MainNav />
+            <div className="container py-3">
+              <MainNav className="flex flex-col space-y-2" />
             </div>
           </div>
         )}
       </header>
 
-      <main className="flex-1 container mx-auto px-4 py-8">
+      <main className="flex-1 container mx-auto px-3 md:px-4 py-4 md:py-8">
         {children}
       </main>
 
       <Footer />
 
       {/* Position the chat interface at the bottom right */}
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="fixed bottom-3 right-3 z-50">
         <ChatInterface />
       </div>
     </div>
