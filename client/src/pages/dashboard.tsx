@@ -21,6 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Upload, Building2 } from "lucide-react";
 import type { BusinessUnit } from "@shared/schema";
+import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Assuming these are available
+
 
 export default function Dashboard() {
   const { toast } = useToast();
@@ -44,7 +46,9 @@ export default function Dashboard() {
 
   const uploadFile = useMutation({
     mutationFn: async () => {
-      if (!file || !selectedUnit) return;
+      if (!file || !selectedUnit) {
+        throw new Error("Please select a business unit and file");
+      }
       const formData = new FormData();
       formData.append("file", file);
       formData.append("businessUnitId", selectedUnit);
@@ -60,6 +64,13 @@ export default function Dashboard() {
       setFile(undefined);
       toast({ title: "File processed successfully" });
     },
+    onError: (error) => {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   });
 
   return (
@@ -75,21 +86,30 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Select
-                value={selectedUnit}
-                onValueChange={setSelectedUnit}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select business unit" />
-                </SelectTrigger>
-                <SelectContent>
-                  {businessUnits?.map((unit) => (
-                    <SelectItem key={unit.id} value={unit.id}>
-                      {unit.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FormField
+                name="businessUnit"
+                render={() => (
+                  <FormItem>
+                    <FormLabel>Business Unit</FormLabel>
+                    <Select
+                      value={selectedUnit}
+                      onValueChange={setSelectedUnit}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select business unit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {businessUnits?.map((unit) => (
+                          <SelectItem key={unit.id} value={unit.id}>
+                            {unit.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div className="flex gap-2">
                 <Input
                   placeholder="Add new business unit"
@@ -112,18 +132,29 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Input
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0])}
-                accept=".pdf,.csv,.xlsx"
-              />
+              <div className="space-y-2">
+                <Input
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0])}
+                  accept=".pdf,.csv,.xlsx"
+                />
+                {!selectedUnit && (
+                  <p className="text-sm text-destructive">Please select a business unit first</p>
+                )}
+              </div>
               <Button
                 className="w-full"
                 onClick={() => uploadFile.mutate()}
                 disabled={!file || !selectedUnit || uploadFile.isPending}
               >
-                <Upload className="h-4 w-4 mr-2" />
-                Process File
+                {uploadFile.isPending ? (
+                  "Processing..."
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Process File
+                  </>
+                )}
               </Button>
             </CardContent>
           </Card>

@@ -42,6 +42,7 @@ export function FileProcessing() {
   const [file, setFile] = useState<File>();
   const [dragActive, setDragActive] = useState(false);
   const [processingResult, setProcessingResult] = useState<any>();
+  const [selectedBusinessUnitId, setSelectedBusinessUnitId] = useState<string>('');
 
   const form = useForm<EmissionData>({
     defaultValues: {
@@ -56,9 +57,10 @@ export function FileProcessing() {
 
   const uploadFile = useMutation({
     mutationFn: async () => {
-      if (!file) return;
+      if (!file || !selectedBusinessUnitId) return;
       const formData = new FormData();
       formData.append("file", file);
+      formData.append("businessUnitId", selectedBusinessUnitId);
       const res = await fetch("/api/emissions/upload", {
         method: "POST",
         body: formData,
@@ -136,6 +138,34 @@ export function FileProcessing() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <FormField
+              control={form.control}
+              name="businessUnitId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Unit</FormLabel>
+                  <Select
+                    value={selectedBusinessUnitId}
+                    onValueChange={setSelectedBusinessUnitId}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select business unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {businessUnits?.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div
               className={cn(
                 "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
@@ -176,7 +206,7 @@ export function FileProcessing() {
             <Button
               className="w-full"
               onClick={() => uploadFile.mutate()}
-              disabled={!file || uploadFile.isPending}
+              disabled={!file || !selectedBusinessUnitId || uploadFile.isPending}
             >
               {uploadFile.isPending ? (
                 <>Processing...</>
