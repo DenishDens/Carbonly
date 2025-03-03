@@ -1,7 +1,10 @@
-import createMemoryStore from "memorystore";
+import { Pool } from "@neondatabase/serverless";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import session from "express-session";
-import { User, Organization, BusinessUnit, Emission, ProcessingTransaction } from "@shared/schema";
-import * as crypto from 'crypto';
+import createMemoryStore from "memorystore";
+import { organizations, users, businessUnits, emissions, processingTransactions } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -33,51 +36,37 @@ export interface IStorage {
   updateTransactionStatus(id: string, status: string, errorType?: string | null): Promise<ProcessingTransaction>;
 }
 
-export class MemStorage implements IStorage {
-  private organizations: Map<string, Organization>;
-  private users: Map<string, User>;
-  private businessUnits: Map<string, BusinessUnit>;
-  private emissions: Map<string, Emission>;
-  private transactions: Map<string, ProcessingTransaction>;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.organizations = new Map();
-    this.users = new Map();
-    this.businessUnits = new Map();
-    this.emissions = new Map();
-    this.transactions = new Map();
     this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000,
+      checkPeriod: 86400000, // 24 hours
     });
   }
 
-  private generateUUID(): string {
-    return crypto.randomUUID();
-  }
-
+  // Organization operations
   async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
-    return Array.from(this.organizations.values()).find(
-      (org) => org.slug === slug
-    );
+    const [org] = await db.select().from(organizations).where(eq(organizations.slug, slug));
+    return org;
   }
 
   async getOrganizationById(id: string): Promise<Organization | undefined> {
-    return this.organizations.get(id);
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
   }
 
   async createOrganization(org: Omit<Organization, "id">): Promise<Organization> {
-    const id = this.generateUUID();
-    const newOrg = { ...org, id };
-    this.organizations.set(id, newOrg);
+    const [newOrg] = await db.insert(organizations).values(org).returning();
     return newOrg;
   }
 
   async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization> {
-    const org = await this.getOrganizationById(id);
-    if (!org) throw new Error("Organization not found");
-    const updatedOrg = { ...org, ...updates };
-    this.organizations.set(id, updatedOrg);
+    const [updatedOrg] = await db
+      .update(organizations)
+      .set(updates)
+      .where(eq(organizations.id, id))
+      .returning();
     return updatedOrg;
   }
 
@@ -85,63 +74,57 @@ export class MemStorage implements IStorage {
     return this.updateOrganization(id, { logo: logoUrl });
   }
 
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email === email
-    );
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
   }
 
   async createUser(user: Omit<User, "id">): Promise<User> {
-    const id = this.generateUUID();
-    const newUser = { ...user, id };
-    this.users.set(id, newUser);
+    const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
   }
 
+  // Business unit operations
   async getBusinessUnits(organizationId: string): Promise<BusinessUnit[]> {
-    return Array.from(this.businessUnits.values()).filter(
-      (unit) => unit.organizationId === organizationId
-    );
+    return db.select().from(businessUnits).where(eq(businessUnits.organizationId, organizationId));
   }
 
   async createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit> {
-    const id = this.generateUUID();
-    const newUnit = { ...unit, id };
-    this.businessUnits.set(id, newUnit);
+    const [newUnit] = await db.insert(businessUnits).values(unit).returning();
     return newUnit;
   }
 
+  // Emission operations
   async getEmissions(businessUnitId: string): Promise<Emission[]> {
-    return Array.from(this.emissions.values()).filter(
-      (emission) => emission.businessUnitId === businessUnitId
-    );
+    return db.select().from(emissions).where(eq(emissions.businessUnitId, businessUnitId));
   }
 
   async createEmission(emission: Omit<Emission, "id">): Promise<Emission> {
-    const id = this.generateUUID();
-    const newEmission = { ...emission, id };
-    this.emissions.set(id, newEmission);
+    const [newEmission] = await db.insert(emissions).values(emission).returning();
     return newEmission;
   }
 
+  // Transaction logging
   async createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction> {
-    const id = this.generateUUID();
-    const newTransaction = { ...transaction, id };
-    this.transactions.set(id, newTransaction);
+    const [newTransaction] = await db.insert(processingTransactions).values(transaction).returning();
     return newTransaction;
   }
 
   async updateTransactionStatus(id: string, status: string, errorType: string | null = null): Promise<ProcessingTransaction> {
-    const transaction = this.transactions.get(id);
-    if (!transaction) throw new Error("Transaction not found");
-    const updatedTransaction = { ...transaction, status, errorType };
-    this.transactions.set(id, updatedTransaction);
+    const [updatedTransaction] = await db
+      .update(processingTransactions)
+      .set({ status, errorType })
+      .where(eq(processingTransactions.id, id))
+      .returning();
     return updatedTransaction;
   }
 }
 
-export const storage = new MemStorage();
+// Export a single instance
+export const storage = new DatabaseStorage();
