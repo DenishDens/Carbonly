@@ -72,7 +72,7 @@ export function setupAuth(app: Express) {
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
-  passport.deserializeUser(async (id: number, done) => {
+  passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
       done(null, user);
@@ -83,10 +83,10 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const orgData = insertOrganizationSchema.parse(req.body);
+      const userData = insertOrganizationSchema.parse(req.body);
 
-      // Check if admin email is available
-      const existingUser = await storage.getUserByEmail(orgData.adminEmail);
+      // Check if email is available
+      const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
         return res.status(400).json({ message: "Email is already registered" });
       }
@@ -96,7 +96,7 @@ export function setupAuth(app: Express) {
 
       // Create organization
       const organization = await storage.createOrganization({
-        name: orgData.name,
+        name: userData.email.split('@')[0], // Use email username as org name temporarily
         slug: tempSlug,
         logo: null,
         ssoEnabled: false,
@@ -104,50 +104,15 @@ export function setupAuth(app: Express) {
         createdAt: new Date().toISOString(),
       });
 
-      // Create admin user
+      // Create user
       const user = await storage.createUser({
         organizationId: organization.id,
-        username: orgData.adminEmail,
-        email: orgData.adminEmail,
-        password: await hashPassword(orgData.adminPassword),
+        name: userData.email.split('@')[0],
+        email: userData.email,
+        password: await hashPassword(userData.password),
         role: "super_admin",
         createdAt: new Date().toISOString(),
       });
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
-      });
-    } catch (error) {
-      next(error);
-    }
-  });
-
-  // Handle user invitation acceptance
-  app.post("/api/join", async (req, res, next) => {
-    try {
-      const { token, password } = req.body;
-
-      const invitation = await storage.getInvitationByToken(token);
-      if (!invitation) {
-        return res.status(404).json({ message: "Invalid invitation" });
-      }
-
-      if (new Date(invitation.expiresAt) < new Date()) {
-        await storage.deleteInvitation(invitation.id);
-        return res.status(400).json({ message: "Invitation has expired" });
-      }
-
-      const user = await storage.createUser({
-        organizationId: invitation.organizationId,
-        username: invitation.email.split("@")[0],
-        email: invitation.email,
-        password: await hashPassword(password),
-        role: invitation.role,
-        createdAt: new Date().toISOString(),
-      });
-
-      await storage.deleteInvitation(invitation.id);
 
       req.login(user, (err) => {
         if (err) return next(err);
