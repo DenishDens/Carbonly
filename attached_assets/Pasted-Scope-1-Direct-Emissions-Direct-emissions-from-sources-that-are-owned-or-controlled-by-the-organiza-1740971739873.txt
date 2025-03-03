@@ -1,0 +1,176 @@
+Scope 1: Direct Emissions
+Direct emissions from sources that are owned or controlled by the organization.
+
+Subcategories:
+Stationary Combustion:
+
+Emissions from burning fuels in stationary equipment (e.g., boilers, furnaces, turbines).
+
+Examples: Natural gas, coal, diesel, propane.
+
+Mobile Combustion:
+
+Emissions from vehicles owned or operated by the organization.
+
+Examples: Cars, trucks, buses, airplanes, ships.
+
+Process Emissions:
+
+Emissions from chemical or physical processes.
+
+Examples: Cement production, ammonia production, aluminum smelting.
+
+Fugitive Emissions:
+
+Unintentional leaks or releases of greenhouse gases.
+
+Examples: Refrigerant leaks, methane leaks from pipelines.
+
+Scope 2: Indirect Emissions from Purchased Energy
+Emissions from the generation of electricity, steam, heating, or cooling purchased by the organization.
+
+Subcategories:
+Purchased Electricity:
+
+Emissions from electricity consumed by the organization.
+
+Examples: Grid electricity, renewable energy credits.
+
+Purchased Steam:
+
+Emissions from steam purchased for heating or industrial processes.
+
+Purchased Heating/Cooling:
+
+Emissions from district heating or cooling systems.
+
+Scope 3: Other Indirect Emissions
+All other indirect emissions that occur in the organization’s value chain, both upstream and downstream.
+
+Subcategories:
+Upstream Emissions:
+
+Purchased Goods and Services:
+
+Emissions from the production of goods and services purchased by the organization.
+
+Examples: Raw materials, office supplies, IT services.
+
+Capital Goods:
+
+Emissions from the production of capital assets (e.g., machinery, buildings).
+
+Fuel- and Energy-Related Activities:
+
+Emissions from the extraction, production, and transportation of fuels and energy.
+
+Examples: Well-to-tank emissions for fuels, transmission losses for electricity.
+
+Upstream Transportation and Distribution:
+
+Emissions from transporting goods to the organization.
+
+Examples: Supplier logistics, third-party shipping.
+
+Waste Generated in Operations:
+
+Emissions from waste disposal (e.g., landfill, incineration).
+
+Business Travel:
+
+Emissions from employee travel for business purposes.
+
+Examples: Air travel, train travel, car rentals.
+
+Employee Commuting:
+
+Emissions from employees commuting to and from work.
+
+Examples: Personal cars, public transportation.
+
+Upstream Leased Assets:
+
+Emissions from assets leased by the organization (e.g., leased vehicles, buildings).
+
+Downstream Emissions:
+
+Downstream Transportation and Distribution:
+
+Emissions from transporting sold products to customers.
+
+Examples: Retail distribution, e-commerce shipping.
+
+Processing of Sold Products:
+
+Emissions from processing products sold by the organization.
+
+Examples: Refining, manufacturing.
+
+Use of Sold Products:
+
+Emissions from the use of products sold by the organization.
+
+Examples: Emissions from vehicles, appliances, or electronics.
+
+End-of-Life Treatment of Sold Products:
+
+Emissions from the disposal or recycling of sold products.
+
+Examples: Landfill, incineration, recycling.
+
+Downstream Leased Assets:
+
+Emissions from assets leased to others (e.g., leased vehicles, buildings).
+
+Franchises:
+
+Emissions from franchise operations.
+
+Investments:
+
+Emissions from investments (e.g., equity, debt).
+
+Example Data for Each Scope and Subcategory
+Scope 1: Direct Emissions
+Category	Example Data
+Stationary Combustion	Natural gas used in boilers (500 m³)
+Mobile Combustion	Diesel used in company trucks (200 L)
+Process Emissions	CO2 from cement production (1,000 kg)
+Fugitive Emissions	Refrigerant leaks (50 kg)
+Scope 2: Indirect Emissions from Purchased Energy
+Category	Example Data
+Purchased Electricity	Grid electricity (10,000 kWh)
+Purchased Steam	Steam for heating (5,000 kg)
+Purchased Heating/Cooling	District heating (2,000 MJ)
+Scope 3: Other Indirect Emissions
+Category	Example Data
+Purchased Goods and Services	Emissions from office supplies (100 kg)
+Capital Goods	Emissions from machinery production (500 kg)
+Fuel- and Energy-Related Activities	Well-to-tank emissions for diesel (300 kg)
+Upstream Transportation and Distribution	Supplier logistics (200 kg)
+Waste Generated in Operations	Landfill emissions (50 kg)
+Business Travel	Air travel (1,000 kg CO2e)
+Employee Commuting	Car emissions (500 kg CO2e)
+Downstream Transportation and Distribution	Retail distribution (300 kg)
+Use of Sold Products	Emissions from sold vehicles (2,000 kg)
+End-of-Life Treatment of Sold Products	Recycling emissions (100 kg)
+How to Use This in the UI
+Scope-Based Tabs:
+
+Organize data into Scope 1, Scope 2, and Scope 3 tabs.
+
+Subcategory Filters:
+
+Allow users to filter data by subcategories (e.g., Stationary Combustion, Business Travel).
+
+Dynamic Tables:
+
+Display data in tables with columns like Date, Category, Quantity, Unit, Emissions, and Status.
+
+Visualizations:
+
+Use charts to show emissions breakdown by scope and subcategory.
+
+Reporting:
+
+Generate reports for each scope and subcategory for compliance and analysis.
