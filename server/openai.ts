@@ -15,7 +15,7 @@ interface ExtractionResult {
   details: Record<string, any>;
 }
 
-export async function extractEmissionData(text: string): Promise<z.infer<typeof insertEmissionSchema>> {
+export async function extractEmissionData(text: string, scope: string): Promise<z.infer<typeof insertEmissionSchema>> {
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
@@ -33,11 +33,13 @@ export async function extractEmissionData(text: string): Promise<z.infer<typeof 
 Categorize the data appropriately based on the source. For example:
 - Fuel receipts should be categorized as 'fuel'
 - Electricity bills as 'electricity'
-- Flight records as 'travel'`,
+- Flight records as 'travel'
+
+The scope provided by the user is: ${scope}`,
       },
       {
         role: "user",
-        content: text,
+        content: `Please extract emission data from this text and categorize it appropriately: ${text}`,
       },
     ],
     response_format: { type: "json_object" },
@@ -50,7 +52,6 @@ Categorize the data appropriately based on the source. For example:
 
   const extractedData: ExtractionResult = JSON.parse(content);
 
-  // Convert amount to string as required by schema
   return {
     ...extractedData,
     amount: extractedData.amount.toString(),
@@ -100,7 +101,7 @@ Focus on providing actionable insights and recommendations for reducing emission
       },
       {
         role: "user",
-        content: message,
+        content: `Please analyze this request and provide insights with visualization if needed: ${message}`,
       },
     ],
     response_format: { type: "json_object" },

@@ -11,10 +11,11 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-// Add request type with body
+// Update the file upload request interface
 interface FileUploadRequest extends Express.Request {
   body: {
     businessUnitId: string;
+    scope: string;
     [key: string]: any;
   };
 }
@@ -102,10 +103,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(emissions);
   });
 
+  // Update the emissions upload endpoint
   app.post("/api/emissions/upload", upload.single("file"), async (req: FileUploadRequest & { file?: Express.Multer.File }, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     if (!req.body.businessUnitId) return res.status(400).json({ message: "Business unit ID is required" });
+    if (!req.body.scope) return res.status(400).json({ message: "Emission scope is required" });
 
     try {
       // Create initial transaction record
@@ -119,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const fileContent = req.file.buffer.toString();
-        const extractedData = await extractEmissionData(fileContent);
+        const extractedData = await extractEmissionData(fileContent, req.body.scope);
 
         const emission = await storage.createEmission({
           businessUnitId: req.body.businessUnitId,

@@ -1,0 +1,137 @@
+the platform needs to handle Scope 1, Scope 2, and Scope 3 emissions data, which can include a wide variety of data types (e.g., fuel, electricity, business travel, supply chain emissions, waste, etc.). A better UI should be flexible, scalable, and intuitive to accommodate all types of emissions data while maintaining clarity and usability.
+
+Here's a revised UI design that caters to all scopes and data types:
+
+Key Principles for the UI
+Categorization by Scope: Organize data into Scope 1, Scope 2, and Scope 3 for clarity.
+
+Dynamic Data Handling: Allow users to view and manage any type of emissions data (e.g., fuel, electricity, travel, waste).
+
+Unified Dashboard: Provide a single view for all processed data with filters, visualizations, and actions.
+
+Flexible Data Display: Use a combination of tables, charts, and cards to display data in a meaningful way.
+
+Actionable Insights: Highlight key metrics, trends, and anomalies for quick decision-making.
+
+UI Layout for All Scopes and Data Types
+1. File Upload Section
+Upload Button: Allow users to upload files (e.g., CSV, Excel).
+
+Drag-and-Drop Area: Support drag-and-drop for multiple files.
+
+Supported Formats: Display supported formats (e.g., CSV, XLSX, JSON).
+
+Progress Indicator: Show a progress bar or spinner during processing.
+
+2. Processed Data Overview
+Scope-Based Tabs:
+
+Use tabs for Scope 1, Scope 2, and Scope 3.
+
+Each tab displays a summary of processed data for that scope.
+
+Summary Cards:
+
+Show key metrics for each scope (e.g., total emissions, number of records, data sources).
+
+Example:
+
+Scope 1: "15 records processed | Total Emissions: 1,200 kg CO2e."
+
+Scope 2: "10 records processed | Total Emissions: 800 kg CO2e."
+
+Scope 3: "25 records processed | Total Emissions: 2,500 kg CO2e."
+
+3. Data Display by Scope
+Dynamic Table:
+
+Display all processed data in a sortable, filterable table.
+
+Columns: Date, Category (e.g., Fuel, Electricity, Travel), Quantity, Unit, Emissions (CO2e), Source, Status.
+
+Allow users to edit or reprocess individual rows.
+
+Filters:
+
+Add filters for Date Range, Category, Source, and Status.
+
+Search Bar:
+
+Allow users to search for specific entries (e.g., by Category or Date).
+
+4. Visualizations
+Scope-Wise Charts:
+
+Show a bar chart for emissions breakdown by category (e.g., Fuel, Electricity, Travel).
+
+Show a line chart for emissions trends over time.
+
+Pie Chart:
+
+Display the proportion of emissions by scope (Scope 1, Scope 2, Scope 3).
+
+Emissions Heatmap:
+
+Show emissions intensity by month or category.
+
+5. Data Actions
+Reprocess Button:
+
+Allow users to reprocess the entire file or selected rows.
+
+Export Button:
+
+Export data as CSV, Excel, or PDF.
+
+Delete Button:
+
+Remove incorrect or unwanted data.
+
+6. Notifications and Alerts
+Success Message:
+
+Display a confirmation message after successful processing (e.g., "25 records processed successfully").
+
+Error Handling:
+
+Highlight rows with errors (e.g., missing data, incorrect format) and provide suggestions for correction.
+
+Change Detection:
+
+If the source file is updated, prompt the user to rescan and accept changes.
+
+Example UI Flow
+Step 1: File Upload
+User lands on the Upload Page.
+
+Drags and drops a file or clicks "Upload."
+
+Sees a progress bar while the file is processed.
+
+Step 2: Processed Data Overview
+After processing, the user is redirected to the Processed Data Page.
+
+Sees summary cards for each scope (e.g., Scope 1: 15 records, Scope 2: 10 records, Scope 3: 25 records).
+
+Categorized tabs appear: Scope 1, Scope 2, Scope 3.
+
+Step 3: Data Display by Scope
+User clicks the Scope 1 tab.
+
+Sees a table with Scope 1 data (e.g., Fuel, Company Vehicles).
+
+Uses filters to view specific data (e.g., Diesel only).
+
+Edits a row if necessary.
+
+Step 4: Visualizations
+User views a bar chart showing emissions breakdown by category (e.g., Fuel, Electricity).
+
+Sees a line chart showing emissions trends over time.
+
+Views a pie chart showing the proportion of emissions by scope.
+
+Step 5: Actions
+User exports the data as CSV.
+
+Reprocesses the file to correct errors.
