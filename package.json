@@ -11,9 +11,13 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
+    "@azure/identity": "^4.7.0",
+    "@google-cloud/storage": "^7.15.2",
     "@hookform/resolvers": "^3.9.1",
     "@jridgewell/trace-mapping": "^0.3.25",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@neondatabase/serverless": "^0.10.4",
+    "@pnp/sp": "^4.10.0",
     "@radix-ui/react-accordion": "^1.2.1",
     "@radix-ui/react-alert-dialog": "^1.1.2",
     "@radix-ui/react-aspect-ratio": "^1.1.0",

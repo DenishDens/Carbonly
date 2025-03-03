@@ -10,19 +10,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
-import { Building2, Zap, Cloud, Network } from "lucide-react";
+import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-const ELECTRICITY_PROVIDERS = [
-  { id: "energyaustralia", name: "Energy Australia" },
-  { id: "agl", name: "AGL" },
-  { id: "origin", name: "Origin Energy" },
-  { id: "alinta", name: "Alinta Energy" },
-  { id: "ergon", name: "Ergon Energy" },
-];
+// ... (keep existing ELECTRICITY_PROVIDERS constant)
+
+interface StorageFile {
+  id: string;
+  name: string;
+  path: string;
+  type: "file" | "folder";
+  lastModified: string;
+}
 
 interface WizardProps {
   businessUnitId: string;
@@ -33,6 +43,8 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [selectedTab, setSelectedTab] = useState("storage");
+  const [showFileBrowser, setShowFileBrowser] = useState(false);
+  const [selectedPath, setSelectedPath] = useState("");
   const [config, setConfig] = useState({
     provider: "",
     credentials: {
@@ -44,6 +56,21 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     },
   });
 
+  // Query for fetching files from the selected storage provider
+  const { data: files, refetch: refreshFiles } = useQuery({
+    queryKey: ["storage-files", businessUnitId, config.provider, selectedPath],
+    queryFn: async () => {
+      if (!config.provider || !selectedPath) return [];
+      const res = await apiRequest(
+        "GET",
+        `/api/business-units/${businessUnitId}/storage/${config.provider}/files`,
+        { path: selectedPath }
+      );
+      return res.json() as Promise<StorageFile[]>;
+    },
+    enabled: Boolean(config.provider && selectedPath),
+  });
+
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest(
@@ -53,6 +80,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
           type: selectedTab,
           provider: config.provider,
           credentials: config.credentials,
+          selectedPath,
         }
       );
       return res.json();
@@ -71,37 +99,119 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     },
   });
 
+  const renderFileBrowser = () => (
+    <Dialog open={showFileBrowser} onOpenChange={setShowFileBrowser}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Select Folder</DialogTitle>
+          <DialogDescription>
+            Choose a folder to sync with your business unit
+          </DialogDescription>
+        </DialogHeader>
+        <div className="min-h-[300px] space-y-4">
+          <div className="flex items-center justify-between">
+            <Input
+              value={selectedPath}
+              onChange={(e) => setSelectedPath(e.target.value)}
+              placeholder="/path/to/folder"
+            />
+            <Button
+              variant="outline"
+              className="ml-2"
+              onClick={() => refreshFiles()}
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="border rounded-lg p-4 space-y-2">
+            {files?.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between p-2 hover:bg-muted rounded-lg cursor-pointer"
+                onClick={() => file.type === "folder" && setSelectedPath(file.path)}
+              >
+                <div className="flex items-center space-x-2">
+                  {file.type === "folder" ? (
+                    <FolderOpen className="h-4 w-4" />
+                  ) : (
+                    <div className="h-4 w-4 border rounded" />
+                  )}
+                  <span>{file.name}</span>
+                </div>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(file.lastModified).toLocaleDateString()}
+                </span>
+              </div>
+            ))}
+            {!files?.length && (
+              <div className="text-center text-muted-foreground py-8">
+                No files found in this location
+              </div>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button onClick={() => setShowFileBrowser(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+
   const renderStorageTab = () => (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "onedrive" })}>
-        <CardContent className="p-6 flex items-center gap-4">
-          <Cloud className="h-8 w-8" />
-          <div>
-            <h3 className="font-semibold">OneDrive</h3>
-            <p className="text-sm text-muted-foreground">Connect OneDrive folders</p>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card 
+          className="cursor-pointer hover:border-primary" 
+          onClick={() => {
+            setConfig({ ...config, provider: "onedrive" });
+            setShowFileBrowser(true);
+          }}
+        >
+          <CardContent className="p-6 flex items-center gap-4">
+            <Cloud className="h-8 w-8" />
+            <div>
+              <h3 className="font-semibold">OneDrive</h3>
+              <p className="text-sm text-muted-foreground">Connect OneDrive folders</p>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "googledrive" })}>
-        <CardContent className="p-6 flex items-center gap-4">
-          <SiGoogledrive className="h-8 w-8" />
-          <div>
-            <h3 className="font-semibold">Google Drive</h3>
-            <p className="text-sm text-muted-foreground">Connect Google Drive folders</p>
-          </div>
-        </CardContent>
-      </Card>
+        <Card 
+          className="cursor-pointer hover:border-primary" 
+          onClick={() => {
+            setConfig({ ...config, provider: "googledrive" });
+            setShowFileBrowser(true);
+          }}
+        >
+          <CardContent className="p-6 flex items-center gap-4">
+            <SiGoogledrive className="h-8 w-8" />
+            <div>
+              <h3 className="font-semibold">Google Drive</h3>
+              <p className="text-sm text-muted-foreground">Connect Google Drive folders</p>
+            </div>
+          </CardContent>
+        </Card>
 
-      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "sharepoint" })}>
-        <CardContent className="p-6 flex items-center gap-4">
-          <Network className="h-8 w-8" />
-          <div>
-            <h3 className="font-semibold">SharePoint</h3>
-            <p className="text-sm text-muted-foreground">Connect SharePoint sites</p>
-          </div>
-        </CardContent>
-      </Card>
+        <Card 
+          className="cursor-pointer hover:border-primary" 
+          onClick={() => {
+            setConfig({ ...config, provider: "sharepoint" });
+            setShowFileBrowser(true);
+          }}
+        >
+          <CardContent className="p-6 flex items-center gap-4">
+            <Network className="h-8 w-8" />
+            <div>
+              <h3 className="font-semibold">SharePoint</h3>
+              <p className="text-sm text-muted-foreground">Connect SharePoint sites</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {renderFileBrowser()}
     </div>
   );
 
@@ -194,17 +304,20 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
         {["onedrive", "googledrive", "sharepoint"].includes(config.provider) && (
           <>
             <div className="space-y-2">
-              <Label>Folder Path</Label>
-              <Input
-                placeholder="/path/to/folder"
-                value={config.credentials.folderPath}
-                onChange={(e) =>
-                  setConfig({
-                    ...config,
-                    credentials: { ...config.credentials, folderPath: e.target.value },
-                  })
-                }
-              />
+              <Label>Selected Folder</Label>
+              <div className="flex items-center space-x-2">
+                <Input
+                  value={selectedPath}
+                  readOnly
+                  placeholder="No folder selected"
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFileBrowser(true)}
+                >
+                  Browse
+                </Button>
+              </div>
             </div>
           </>
         )}
@@ -258,7 +371,7 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
         <Button
           className="w-full"
           onClick={() => connectMutation.mutate()}
-          disabled={!config.provider || connectMutation.isPending}
+          disabled={!config.provider || (!selectedPath && ["onedrive", "googledrive", "sharepoint"].includes(config.provider)) || connectMutation.isPending}
         >
           {connectMutation.isPending ? "Connecting..." : "Connect Integration"}
         </Button>

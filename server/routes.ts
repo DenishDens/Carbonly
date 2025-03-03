@@ -7,6 +7,7 @@ import { extractEmissionData, getChatResponse } from "./openai";
 import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
+import {getStorageClient} from './storageClient' //Assumed to exist
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -535,6 +536,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })(req, res, next);
   });
 
+  // Add these new endpoints to the existing routes file
+
+  // Add this endpoint for fetching files from storage providers
+  app.get("/api/business-units/:id/storage/:provider/files", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id, provider } = req.params;
+      const { path } = req.query;
+
+      // Verify business unit ownership
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const unit = units.find(u => u.id === id);
+      if (!unit) return res.sendStatus(403);
+
+      // Get provider-specific client
+      const client = await getStorageClient(provider, unit.integrations);
+      if (!client) {
+        return res.status(400).json({ message: "Storage provider not configured" });
+      }
+
+      // List files in the specified path
+      const files = await client.listFiles(path as string);
+      res.json(files);
+    } catch (error) {
+      console.error("Error listing files:", error);
+      res.status(500).json({ message: "Failed to list files" });
+    }
+  });
+
+  // Add this endpoint for syncing files from storage providers
+  app.post("/api/business-units/:id/storage/:provider/sync", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id, provider } = req.params;
+      const { path } = req.body;
+
+      // Verify business unit ownership
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const unit = units.find(u => u.id === id);
+      if (!unit) return res.sendStatus(403);
+
+      // Get provider-specific client
+      const client = await getStorageClient(provider, unit.integrations);
+      if (!client) {
+        return res.status(400).json({ message: "Storage provider not configured" });
+      }
+
+      // Sync files from the specified path
+      const syncResult = await client.syncFiles(path);
+
+      // Create audit log for the sync operation
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "SYNC",
+        entityType: "storage",
+        entityId: id,
+        changes: { provider, path, result: syncResult },
+      });
+
+      res.json(syncResult);
+    } catch (error) {
+      console.error("Error syncing files:", error);
+      res.status(500).json({ message: "Failed to sync files" });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

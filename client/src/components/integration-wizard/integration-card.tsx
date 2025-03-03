@@ -18,10 +18,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
-import { Building2, Cloud, Network, Zap } from "lucide-react";
+import { Building2, Cloud, Network, Zap, RefreshCw, FolderOpen, File } from "lucide-react";
+
+interface StorageFile {
+  id: string;
+  name: string;
+  path: string;
+  type: "file" | "folder";
+  lastModified: string;
+}
 
 interface IntegrationCardProps {
   businessUnitId: string;
@@ -92,6 +100,21 @@ export function IntegrationCard({
     : INTEGRATION_CONFIG[type] || INTEGRATION_CONFIG.custom;
   const Icon = config.icon;
 
+  // Query for connected files if this is a storage integration
+  const { data: files, refetch: refreshFiles } = useQuery({
+    queryKey: ["storage-files", businessUnitId, type, folderPath],
+    queryFn: async () => {
+      if (!["onedrive", "googledrive", "sharepoint"].includes(type) || !folderPath) return null;
+      const res = await apiRequest(
+        "GET",
+        `/api/business-units/${businessUnitId}/storage/${type}/files`,
+        { path: folderPath }
+      );
+      return res.json() as Promise<StorageFile[]>;
+    },
+    enabled: status === "connected" && ["onedrive", "googledrive", "sharepoint"].includes(type),
+  });
+
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest(
@@ -112,7 +135,7 @@ export function IntegrationCard({
       toast({ title: `${config.name} connected successfully` });
       setShowConfig(false);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Connection failed",
         description: error.message,
@@ -131,6 +154,28 @@ export function IntegrationCard({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
       toast({ title: `${config.name} disconnected` });
+    },
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest(
+        "POST",
+        `/api/business-units/${businessUnitId}/storage/${type}/sync`,
+        { path: folderPath }
+      );
+      return res.json();
+    },
+    onSuccess: () => {
+      refreshFiles();
+      toast({ title: "Files synchronized successfully" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Sync failed",
+        description: error.message,
+        variant: "destructive",
+      });
     },
   });
 
@@ -160,9 +205,36 @@ export function IntegrationCard({
         {status === "connected" ? (
           <div className="space-y-4">
             {folderPath && (
-              <div className="text-sm">
-                <span className="font-medium">Connected Folder:</span>{" "}
-                <span className="text-muted-foreground">{folderPath}</span>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">Connected Folder:</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => syncMutation.mutate()}
+                    disabled={syncMutation.isPending}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+                <div className="text-sm text-muted-foreground">{folderPath}</div>
+                {files && files.length > 0 && (
+                  <div className="border rounded-lg p-2 mt-2 space-y-1 max-h-40 overflow-y-auto">
+                    {files.map((file) => (
+                      <div
+                        key={file.id}
+                        className="flex items-center space-x-2 text-sm p-1 hover:bg-muted rounded"
+                      >
+                        {file.type === "folder" ? (
+                          <FolderOpen className="h-4 w-4" />
+                        ) : (
+                          <File className="h-4 w-4" />
+                        )}
+                        <span>{file.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             {clientId && (
