@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -42,6 +42,11 @@ function LoginForm() {
           type="password"
           {...form.register("password")}
         />
+        <div className="flex justify-end">
+          <Button variant="link" className="text-sm">
+            Forgot password?
+          </Button>
+        </div>
       </div>
       <Button
         type="submit"
@@ -59,9 +64,8 @@ function RegisterForm() {
   const form = useForm({
     resolver: zodResolver(insertOrganizationSchema),
     defaultValues: {
-      name: "",
-      adminEmail: "",
-      adminPassword: "",
+      email: "",
+      password: "",
     },
   });
 
@@ -72,40 +76,36 @@ function RegisterForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="name">Organization Name</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="name"
-          type="text"
-          placeholder="Acme Corp"
-          {...form.register("name")}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="adminEmail">Admin Email</Label>
-        <Input
-          id="adminEmail"
+          id="email"
           type="email"
-          placeholder="admin@company.com"
-          {...form.register("adminEmail")}
+          placeholder="name@company.com"
+          {...form.register("email")}
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="adminPassword">Password</Label>
+        <Label htmlFor="password">Password</Label>
         <Input
-          id="adminPassword"
+          id="password"
           type="password"
-          {...form.register("adminPassword")}
+          {...form.register("password")}
         />
         <p className="text-sm text-muted-foreground">
           At least 8 characters long
         </p>
+        <div className="flex justify-end">
+          <Button variant="link" className="text-sm">
+            Forgot password?
+          </Button>
+        </div>
       </div>
       <Button
         type="submit"
         className="w-full"
         disabled={registerMutation.isPending}
       >
-        Create Organization
+        Create Account
       </Button>
     </form>
   );

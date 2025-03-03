@@ -83,14 +83,10 @@ export const processingTransactions = pgTable("processing_transactions", {
 });
 
 // Schema for organization creation (registration)
-export const insertOrganizationSchema = createInsertSchema(organizations)
-  .pick({
-    name: true,
-  })
-  .extend({
-    adminEmail: z.string().email(),
-    adminPassword: z.string().min(8),
-  });
+export const insertOrganizationSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
 
 // Schema for business unit creation
 export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
