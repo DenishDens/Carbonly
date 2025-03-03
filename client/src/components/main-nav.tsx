@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
     children: [
       {
         title: "Fuel",
-        href: "/data-processing/fuel",
+        href: "/fuel-data",
         icon: Flame,
       },
       {

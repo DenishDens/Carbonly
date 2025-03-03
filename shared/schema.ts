@@ -57,10 +57,15 @@ export const emissions = pgTable("emissions", {
   amount: decimal("amount").notNull(),
   unit: text("unit").notNull(), // 'kg', 'tCO2e'
   date: timestamp("date").defaultNow().notNull(),
-  details: jsonb("details"),
+  details: jsonb("details").$type<{
+    fuelType?: "diesel" | "gasoline";
+    rawAmount?: string;
+    rawUnit?: "liters" | "gallons";
+    notes?: string;
+    category?: string;
+  }>(), // Explicitly type the details column
 });
 
-// Add these types back to schema.ts
 export const processingTransactions = pgTable("processing_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   fileName: text("file_name").notNull(),
@@ -144,3 +149,22 @@ export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;
+
+// Add export type for FuelData
+export interface FuelData {
+  businessUnitId: string;
+  fuelType: "diesel" | "gasoline";
+  amount: string;
+  unit: "liters" | "gallons";
+  date: string;
+  notes?: string;
+}
+
+// Create a specific type for Emission details
+export type EmissionDetails = {
+  fuelType?: "diesel" | "gasoline";
+  rawAmount?: string;
+  rawUnit?: "liters" | "gallons";
+  notes?: string;
+  category?: string;
+};
