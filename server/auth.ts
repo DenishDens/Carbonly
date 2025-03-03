@@ -81,18 +81,9 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/register", upload.single("logo"), async (req: Express.Request & { file?: Express.Multer.File }, res, next) => {
+  app.post("/api/register", async (req, res, next) => {
     try {
-      const orgData = insertOrganizationSchema.parse({
-        ...req.body,
-        logo: req.file,
-      });
-
-      // Check if organization slug is available
-      const existingOrg = await storage.getOrganizationBySlug(orgData.slug);
-      if (existingOrg) {
-        return res.status(400).json({ message: "Organization URL is already taken" });
-      }
+      const orgData = insertOrganizationSchema.parse(req.body);
 
       // Check if admin email is available
       const existingUser = await storage.getUserByEmail(orgData.adminEmail);
@@ -100,18 +91,14 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email is already registered" });
       }
 
-      // Process logo if uploaded
-      let logoUrl = null;
-      if (req.file) {
-        const logoBase64 = req.file.buffer.toString('base64');
-        logoUrl = `data:${req.file.mimetype};base64,${logoBase64}`;
-      }
+      // Generate a temporary unique slug
+      const tempSlug = `org-${Date.now()}`;
 
       // Create organization
       const organization = await storage.createOrganization({
         name: orgData.name,
-        slug: orgData.slug,
-        logo: logoUrl,
+        slug: tempSlug,
+        logo: null,
         ssoEnabled: false,
         ssoSettings: null,
         createdAt: new Date().toISOString(),
@@ -120,7 +107,7 @@ export function setupAuth(app: Express) {
       // Create admin user
       const user = await storage.createUser({
         organizationId: organization.id,
-        username: orgData.adminEmail.split("@")[0],
+        username: orgData.adminEmail,
         email: orgData.adminEmail,
         password: await hashPassword(orgData.adminPassword),
         role: "super_admin",

@@ -5,8 +5,8 @@ import { z } from "zod";
 export const organizations = pgTable("organizations", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
-  slug: text("slug").notNull().unique(), // Custom URL segment
-  logo: text("logo"), // URL to the uploaded logo
+  slug: text("slug").unique(), // Custom URL segment - now optional
+  logo: text("logo"), // URL to the uploaded logo - now optional
   ssoEnabled: boolean("sso_enabled").default(false),
   ssoSettings: jsonb("sso_settings"), // Store SSO configuration
   createdAt: text("created_at").notNull(),
@@ -53,12 +53,12 @@ export const emissions = pgTable("emissions", {
 export const insertOrganizationSchema = createInsertSchema(organizations)
   .pick({
     name: true,
-    slug: true,
   })
   .extend({
     adminEmail: z.string().email(),
     adminPassword: z.string().min(8),
-    logo: z.string().optional(), // Assuming logo is a URL string
+    slug: z.string().optional(),
+    logo: z.string().optional(),
   });
 
 export const insertUserSchema = createInsertSchema(users)
