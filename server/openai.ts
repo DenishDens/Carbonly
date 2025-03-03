@@ -123,6 +123,12 @@ export async function getChatResponse(message: string, context: {
           role: "system",
           content: `You are an AI assistant for Carbonly.ai, a carbon emission tracking platform.
 You help users understand their emission data and provide insights.
+
+Important terms and equivalences:
+- "Business Unit" and "Project" mean the same thing in our system
+- When users ask about "projects", treat it the same as queries about business units
+- Use these terms interchangeably in your responses to match the user's preferred terminology
+
 You have access to the following data:
 
 Total Emissions: ${totalEmissions} tCO2e
@@ -144,7 +150,8 @@ Respond with a JSON object following this format:
 
 Focus on providing actionable insights and recommendations for reducing emissions.
 When comparing data, use percentages and trends to make insights more meaningful.
-If asked about predictions, use historical trends to make educated forecasts.`,
+If asked about predictions, use historical trends to make educated forecasts.
+If asked about projects or business units, treat them as the same concept and provide data accordingly.`,
         },
         {
           role: "user",
