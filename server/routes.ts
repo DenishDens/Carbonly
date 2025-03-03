@@ -172,11 +172,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add a new endpoint for getting all emissions with category filtering
+  // Add or update the emissions endpoints
+  app.post("/api/emissions", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const emission = await storage.createEmission({
+        ...req.body,
+        createdAt: new Date(),
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "CREATE",
+        entityType: "emission",
+        entityId: emission.id,
+        changes: { data: req.body },
+      });
+
+      res.json(emission);
+    } catch (error) {
+      console.error("Error creating emission:", error);
+      res.status(500).json({ message: "Failed to save emission data" });
+    }
+  });
+
+  // Update the GET endpoint to include better error handling
   app.get("/api/emissions", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      console.log("Fetching emissions with category:", req.query.category);
+
       // Get all business units for the organization
       const units = await storage.getBusinessUnits(req.user.organizationId);
 
@@ -191,10 +220,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (category) {
         emissions = emissions.filter(e =>
-          e.details && 'category' in e.details && e.details.category === category
+          e.details &&
+          typeof e.details === 'object' &&
+          'category' in e.details &&
+          e.details.category === category
         );
       }
 
+      console.log(`Found ${emissions.length} emissions for category: ${category}`);
       res.json(emissions);
     } catch (error) {
       console.error("Error fetching emissions:", error);
