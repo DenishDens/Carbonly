@@ -24,7 +24,7 @@ export async function extractEmissionData(text: string): Promise<z.infer<typeof 
         content: `Extract carbon emission data from the following text. Return a JSON object with:
 - scope: one of ['Scope 1', 'Scope 2', 'Scope 3']
 - emissionSource: string describing the source
-- amount: number
+- amount: number value (will be converted to string)
 - unit: one of ['kg', 'tCO2e']
 - date: YYYY-MM-DD
 - category: one of ['fuel', 'electricity', 'travel', 'waste', 'other']
@@ -50,8 +50,10 @@ Categorize the data appropriately based on the source. For example:
 
   const extractedData: ExtractionResult = JSON.parse(content);
 
+  // Convert amount to string as required by schema
   return {
     ...extractedData,
+    amount: extractedData.amount.toString(),
     businessUnitId: "", // This will be set by the upload handler
   };
 }
