@@ -1,0 +1,136 @@
+### **Prompt for AI Agent to Generate ESG Data APIs in Carbonly.ai**  
+
+**Scenario:**  
+Carbonly.ai needs REST APIs to retrieve **detailed ESG transaction-level data** across different sustainability categories. Each API should support **filtering by Business Unit, Project, and Date Range**, apply **pre-configured Emission Factors**, and handle **Joint Venture (JV) ownership allocation**. The response should include **both aggregated totals and individual transactions**.  
+
+---
+
+### **Prompt for AI Agent:**  
+
+*"Generate a set of REST APIs for retrieving ESG-related data at both the aggregated and transaction level. Each API should support filtering by Business Unit, Project, and Date Range. If the project is a Joint Venture, emissions and ESG data should be allocated based on ownership percentage. The APIs should return both summary totals and all transaction-level details, supporting pagination and error handling. Responses should be in JSON format and structured with clear field names."*  
+
+---
+
+### **API Endpoints & Descriptions**  
+
+#### **1. Emissions Data APIs**  
+- `GET /api/emissions/scope1/transactions` → Get detailed transaction-level Scope 1 emissions data  
+- `GET /api/emissions/scope2/transactions` → Get detailed transaction-level Scope 2 emissions data  
+- `GET /api/emissions/scope3/transactions` → Get detailed transaction-level Scope 3 emissions data  
+
+#### **2. Energy Consumption APIs**  
+- `GET /api/energy/fuel/transactions` → Get detailed fuel consumption data  
+- `GET /api/energy/electricity/transactions` → Get detailed electricity consumption data  
+- `GET /api/energy/renewable/transactions` → Get detailed renewable energy usage  
+
+#### **3. Water & Waste Management APIs**  
+- `GET /api/water/usage/transactions` → Get detailed water consumption records  
+- `GET /api/water/recycled/transactions` → Get detailed recycled water records  
+- `GET /api/waste/generated/transactions` → Get detailed waste generation records  
+- `GET /api/waste/recycled/transactions` → Get detailed waste recycling records  
+
+#### **4. Environmental Incidents API**  
+- `GET /api/environment/incidents/transactions` → Get detailed environmental incident reports  
+
+#### **5. Social & Governance APIs**  
+- `GET /api/social/workforce/transactions` → Get detailed workforce ESG data  
+- `GET /api/governance/compliance/transactions` → Get detailed governance compliance records  
+
+---
+
+### **API Parameters (Applicable to All APIs)**  
+- `businessUnit` → (string) Filter by Business Unit  
+- `projectId` → (string) Filter by Project  
+- `startDate` → (ISO 8601) Filter by start date  
+- `endDate` → (ISO 8601) Filter by end date  
+- `jvAllocation` → (boolean, default: true) If true, applies JV ownership percentage to results  
+- `limit` → (int, default: 50) Pagination limit  
+- `offset` → (int, default: 0) Pagination offset  
+
+---
+
+### **API Response Example (for `/api/emissions/scope1/transactions`)**  
+
+```json
+{
+  "businessUnit": "Mining Operations",
+  "project": "Project Alpha",
+  "startDate": "2024-01-01",
+  "endDate": "2024-01-31",
+  "totalEmissions": {
+    "CO2e": 12500.5,
+    "CH4": 2.3,
+    "N2O": 1.1
+  },
+  "transactions": [
+    {
+      "transactionId": "TXN123456",
+      "date": "2024-01-15",
+      "source": "Diesel Generator",
+      "quantity": 5000,
+      "unit": "liters",
+      "emissionFactor": 2.5,
+      "calculatedEmissions": {
+        "CO2e": 12500.5,
+        "CH4": 0.5,
+        "N2O": 0.3
+      },
+      "jvAllocation": 50,
+      "finalEmissions": {
+        "CO2e": 6250.25,
+        "CH4": 0.25,
+        "N2O": 0.15
+      },
+      "status": "Validated"
+    },
+    {
+      "transactionId": "TXN123457",
+      "date": "2024-01-20",
+      "source": "Gas Combustion",
+      "quantity": 1000,
+      "unit": "cubic meters",
+      "emissionFactor": 1.8,
+      "calculatedEmissions": {
+        "CO2e": 1800.0,
+        "CH4": 0.2,
+        "N2O": 0.1
+      },
+      "jvAllocation": 30,
+      "finalEmissions": {
+        "CO2e": 540.0,
+        "CH4": 0.06,
+        "N2O": 0.03
+      },
+      "status": "Pending"
+    }
+  ],
+  "pagination": {
+    "totalRecords": 2,
+    "limit": 50,
+    "offset": 0,
+    "nextPage": null
+  }
+}
+```  
+
+---
+
+### **Logic & Workflow**  
+- **Filters & Aggregations:** API supports filtering by **Business Unit, Project, Date Range**.  
+- **Emission Factor Application:** Pre-configured in **Settings** and applied automatically.  
+- **JV Allocation:** If JV is enabled, emissions & ESG metrics are **split based on ownership %**.  
+- **Transaction-Level Data:** Each API provides **detailed records for every transaction**, not just aggregated data.  
+- **Pagination Support:** Uses `limit` and `offset` for handling large datasets.  
+- **Error Handling:** Returns appropriate HTTP status codes and messages.  
+
+---
+
+### **Expected Output for AI Agent:**  
+- Generate fully functional REST APIs for retrieving **detailed ESG transaction-level data**.  
+- Implement **filtering, pagination, and JV allocation logic** within API responses.  
+- Ensure **pre-configured Emission Factors** are correctly applied to transactions.  
+- Return **structured JSON responses** with both **aggregated totals and detailed transactions**.  
+
+---
+
+This prompt will guide the AI Agent to generate API code with structured data retrieval. Let me know if you need any refinements.

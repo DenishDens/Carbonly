@@ -26,17 +26,8 @@ import {
 } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import type { BusinessUnit } from "@shared/schema";
-
-interface FuelData {
-  businessUnitId: string;
-  fuelType: "diesel" | "gasoline";
-  amount: string;
-  unit: "liters" | "gallons";
-  date: string;
-  notes: string;
-}
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { BusinessUnit, FuelData } from "@shared/schema";
 
 const FUEL_TYPES = [
   { id: "diesel", label: "Diesel" },
@@ -50,6 +41,7 @@ const UNITS = [
 
 export function FuelForm() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [calculatedEmissions, setCalculatedEmissions] = useState<string>();
 
   const form = useForm<FuelData>({
@@ -105,6 +97,8 @@ export function FuelForm() {
             rawAmount: data.amount,
             rawUnit: data.unit,
             fuelType: data.fuelType,
+            category: "fuel",
+            notes: data.notes,
           },
         }),
         credentials: "include",
@@ -114,6 +108,7 @@ export function FuelForm() {
     },
     onSuccess: () => {
       form.reset();
+      queryClient.invalidateQueries({ queryKey: ["/api/emissions"] });
       toast({ title: "Fuel data saved successfully" });
     },
     onError: (error) => {
