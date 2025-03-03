@@ -172,14 +172,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add or update the emissions endpoints
+  // Update the emissions endpoint
   app.post("/api/emissions", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      console.log("Creating emission with data:", req.body);
       const emission = await storage.createEmission({
         ...req.body,
-        createdAt: new Date(),
+        date: new Date(req.body.date),
       });
 
       // Create audit log
@@ -192,6 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         changes: { data: req.body },
       });
 
+      console.log("Emission created successfully:", emission);
       res.json(emission);
     } catch (error) {
       console.error("Error creating emission:", error);
@@ -199,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update the GET endpoint to include better error handling
+  // Update the GET endpoint
   app.get("/api/emissions", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 

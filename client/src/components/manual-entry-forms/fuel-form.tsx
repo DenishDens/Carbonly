@@ -101,6 +101,7 @@ export function FuelForm() {
 
   const saveFuelData = useMutation({
     mutationFn: async (data: z.infer<typeof fuelFormSchema>) => {
+      console.log("Submitting fuel data:", data);
       const res = await fetch("/api/emissions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -108,7 +109,7 @@ export function FuelForm() {
           businessUnitId: data.businessUnitId,
           scope: "Scope 1", // Direct emissions from fuel consumption
           emissionSource: `${data.fuelType} consumption`,
-          amount: calculatedEmissions,
+          amount: calculatedEmissions || "0",
           unit: "kgCO2e",
           date: new Date(data.date).toISOString(),
           details: {
@@ -121,7 +122,10 @@ export function FuelForm() {
         }),
         credentials: "include",
       });
-      if (!res.ok) throw new Error(await res.text());
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error);
+      }
       return res.json();
     },
     onSuccess: () => {
@@ -130,6 +134,7 @@ export function FuelForm() {
       toast({ title: "Fuel data saved successfully" });
     },
     onError: (error) => {
+      console.error("Error saving fuel data:", error);
       toast({
         title: "Failed to save fuel data",
         description: error.message,
