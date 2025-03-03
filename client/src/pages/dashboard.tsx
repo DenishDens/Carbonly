@@ -29,12 +29,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, Building2, LogOut } from "lucide-react";
 import type { BusinessUnit, Emission } from "@shared/schema";
+import { OnboardingWizard } from "@/components/onboarding-wizard";
 
 export default function Dashboard() {
   const { user, logoutMutation } = useAuth();
   const { toast } = useToast();
   const [selectedUnit, setSelectedUnit] = useState<string>();
   const [file, setFile] = useState<File>();
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
@@ -86,13 +88,40 @@ export default function Dashboard() {
     "Scope 3": e.scope3,
   }));
 
+  // Show onboarding wizard if user has no business units
+  if (showOnboarding && businessUnits?.length === 0) {
+    return (
+      <div className="min-h-screen bg-background">
+        <header className="border-b">
+          <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <h1 className="text-2xl font-bold">Carbonly.ai</h1>
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground">{user?.email}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => logoutMutation.mutate()}
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        <main className="container mx-auto px-4 py-8">
+          <OnboardingWizard onComplete={() => setShowOnboarding(false)} />
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold">Carbonly.ai</h1>
           <div className="flex items-center gap-4">
-            <span className="text-muted-foreground">{user?.username}</span>
+            <span className="text-muted-foreground">{user?.email}</span>
             <Button
               variant="ghost"
               size="icon"

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,14 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertOrganizationSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Leaf } from "lucide-react";
 
-function AuthForm({ mode }: { mode: "login" | "register" }) {
-  const { loginMutation, registerMutation } = useAuth();
+function LoginForm() {
+  const { loginMutation } = useAuth();
   const form = useForm({
-    resolver: zodResolver(insertUserSchema),
     defaultValues: {
       username: "",
       password: "",
@@ -22,22 +21,18 @@ function AuthForm({ mode }: { mode: "login" | "register" }) {
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    if (mode === "login") {
-      loginMutation.mutate(data);
-    } else {
-      registerMutation.mutate(data);
-    }
+    loginMutation.mutate(data);
   });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="username">Username</Label>
+        <Label htmlFor="username">Email</Label>
         <Input
           id="username"
-          type="text"
+          type="email"
+          placeholder="name@company.com"
           {...form.register("username")}
-          error={form.formState.errors.username?.message}
         />
       </div>
       <div className="space-y-2">
@@ -46,16 +41,134 @@ function AuthForm({ mode }: { mode: "login" | "register" }) {
           id="password"
           type="password"
           {...form.register("password")}
-          error={form.formState.errors.password?.message}
         />
       </div>
       <Button
         type="submit"
         className="w-full"
-        disabled={loginMutation.isPending || registerMutation.isPending}
+        disabled={loginMutation.isPending}
       >
-        {mode === "login" ? "Sign In" : "Create Account"}
+        Sign In
       </Button>
+    </form>
+  );
+}
+
+function RegisterForm() {
+  const { registerMutation } = useAuth();
+  const [step, setStep] = useState(1);
+  const form = useForm({
+    resolver: zodResolver(insertOrganizationSchema),
+    defaultValues: {
+      name: "",
+      slug: "",
+      adminEmail: "",
+      adminPassword: "",
+      logo: undefined,
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+      if (value !== undefined) {
+        formData.append(key, value);
+      }
+    });
+    registerMutation.mutate(formData);
+  });
+
+  if (step === 1) {
+    return (
+      <form className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Organization Name</Label>
+          <Input
+            id="name"
+            type="text"
+            placeholder="Acme Corp"
+            {...form.register("name")}
+            error={form.formState.errors.name?.message}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="slug">Organization URL</Label>
+          <div className="flex gap-2 items-center">
+            <span className="text-muted-foreground">carbonly.ai/</span>
+            <Input
+              id="slug"
+              type="text"
+              placeholder="acme"
+              {...form.register("slug")}
+              error={form.formState.errors.slug?.message}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground">
+            This will be your unique URL for accessing the platform.
+          </p>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="logo">Organization Logo</Label>
+          <Input
+            id="logo"
+            type="file"
+            accept="image/*"
+            {...form.register("logo")}
+          />
+        </div>
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => setStep(2)}
+          disabled={!form.getValues("name") || !form.getValues("slug")}
+        >
+          Next: Admin Account
+        </Button>
+      </form>
+    );
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="adminEmail">Admin Email</Label>
+        <Input
+          id="adminEmail"
+          type="email"
+          placeholder="admin@company.com"
+          {...form.register("adminEmail")}
+          error={form.formState.errors.adminEmail?.message}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="adminPassword">Password</Label>
+        <Input
+          id="adminPassword"
+          type="password"
+          {...form.register("adminPassword")}
+          error={form.formState.errors.adminPassword?.message}
+        />
+        <p className="text-sm text-muted-foreground">
+          At least 8 characters long
+        </p>
+      </div>
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1"
+          onClick={() => setStep(1)}
+        >
+          Back
+        </Button>
+        <Button
+          type="submit"
+          className="flex-1"
+          disabled={registerMutation.isPending}
+        >
+          Create Organization
+        </Button>
+      </div>
     </form>
   );
 }
@@ -87,10 +200,10 @@ export default function AuthPage() {
                 <TabsTrigger value="register">Register</TabsTrigger>
               </TabsList>
               <TabsContent value="login">
-                <AuthForm mode="login" />
+                <LoginForm />
               </TabsContent>
               <TabsContent value="register">
-                <AuthForm mode="register" />
+                <RegisterForm />
               </TabsContent>
             </Tabs>
           </CardContent>
