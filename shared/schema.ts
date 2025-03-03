@@ -127,7 +127,28 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Export types
+export const incidents = pgTable("incidents", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  severity: text("severity").notNull(), // 'low', 'medium', 'high', 'critical'
+  status: text("status").notNull(), // 'open', 'in_progress', 'resolved', 'closed'
+  type: text("type").notNull(), // 'spill', 'leak', 'equipment_failure', 'power_outage', 'other'
+  location: text("location"),
+  reportedBy: uuid("reported_by").references(() => users.id),
+  assignedTo: uuid("assigned_to").references(() => users.id),
+  resolutionDetails: text("resolution_details"),
+  environmentalImpact: jsonb("environmental_impact").$type<{
+    impactType: string;
+    estimatedEmissions: number;
+    mitigationSteps: string[];
+  }>(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 export type Organization = typeof organizations.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Team = typeof teams.$inferSelect;
@@ -135,15 +156,14 @@ export type BusinessUnit = typeof businessUnits.$inferSelect;
 export type Emission = typeof emissions.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
+export type Incident = typeof incidents.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
 
-// Schema for registration
 export const insertOrganizationSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
 });
 
-// Schema for team creation/update
 export const insertTeamSchema = createInsertSchema(teams)
   .pick({
     name: true,
@@ -151,7 +171,6 @@ export const insertTeamSchema = createInsertSchema(teams)
     members: true,
   });
 
-// Schema for business unit creation
 export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
   .pick({
     name: true,
@@ -225,7 +244,6 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
     }).optional(),
   });
 
-// Schema for emission data
 export const insertEmissionSchema = createInsertSchema(emissions)
   .pick({
     businessUnitId: true,
@@ -239,13 +257,45 @@ export const insertEmissionSchema = createInsertSchema(emissions)
     date: z.string(), // Accept string date that will be converted to Date
   });
 
-// Export insert types
+export const insertIncidentSchema = createInsertSchema(incidents)
+  .pick({
+    businessUnitId: true,
+    title: true,
+    description: true,
+    severity: true,
+    status: true,
+    type: true,
+    location: true,
+    reportedBy: true,
+    assignedTo: true,
+    environmentalImpact: true,
+  })
+  .extend({
+    severity: z.enum(['low', 'medium', 'high', 'critical']),
+    status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
+    type: z.enum(['spill', 'leak', 'equipment_failure', 'power_outage', 'other']),
+    environmentalImpact: z.object({
+      impactType: z.string(),
+      estimatedEmissions: z.number(),
+      mitigationSteps: z.array(z.string()),
+    }).optional(),
+  });
+
+export const updateIncidentSchema = insertIncidentSchema
+  .extend({
+    resolutionDetails: z.string().optional(),
+    resolvedAt: z.string().optional(), // Will be converted to Date
+  })
+  .partial();
+
+
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;
+export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
 
-// Add export type for FuelData
 export interface FuelData {
   businessUnitId: string;
   fuelType: "diesel" | "gasoline";
@@ -255,7 +305,6 @@ export interface FuelData {
   notes?: string;
 }
 
-// Create a specific type for Emission details
 export type EmissionDetails = {
   fuelType?: "diesel" | "gasoline";
   rawAmount?: string;

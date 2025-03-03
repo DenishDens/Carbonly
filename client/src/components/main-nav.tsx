@@ -8,7 +8,7 @@ interface MainNavProps extends React.HTMLAttributes<HTMLElement> {
 }
 
 export function MainNav({ className, ...props }: MainNavProps) {
-  const [_, location] = useLocation();
+  const [location] = useLocation();
   const isMobile = useIsMobile();
 
   const navItems = [
@@ -19,6 +19,10 @@ export function MainNav({ className, ...props }: MainNavProps) {
     {
       name: "Business Units",
       href: "/business-units",
+    },
+    {
+      name: "Incidents",
+      href: "/incidents",
     },
     {
       name: "Data Entry",

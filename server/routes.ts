@@ -8,6 +8,8 @@ import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
 import {getStorageClient} from './storageClient'
+import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema"; //Import schema
+
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -202,7 +204,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add this route after the existing emissions POST endpoint
   app.patch("/api/emissions/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -459,6 +460,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const { teamId } = req.body;
     const updatedUnit = await storage.updateBusinessUnitTeam(id, teamId);
     res.json(updatedUnit);
+  });
+
+  // Add these endpoints after the existing routes
+  app.get("/api/incidents", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const incidents = await storage.getIncidents(req.user.organizationId);
+      res.json(incidents);
+    } catch (error) {
+      console.error("Error fetching incidents:", error);
+      res.status(500).json({ message: "Failed to fetch incidents" });
+    }
+  });
+
+  app.post("/api/incidents", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const data = insertIncidentSchema.parse(req.body);
+
+      // Verify business unit ownership
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const hasAccess = units.some(unit => unit.id === data.businessUnitId);
+      if (!hasAccess) {
+        return res.sendStatus(403);
+      }
+
+      const incident = await storage.createIncident({
+        ...data,
+        reportedBy: req.user.id,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "CREATE",
+        entityType: "incident",
+        entityId: incident.id,
+        changes: { data: req.body },
+      });
+
+      res.json(incident);
+    } catch (error) {
+      console.error("Error creating incident:", error);
+      res.status(500).json({ message: "Failed to create incident" });
+    }
+  });
+
+  app.patch("/api/incidents/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id } = req.params;
+      const data = updateIncidentSchema.parse(req.body);
+
+      // Verify incident ownership
+      const incident = await storage.getIncidentById(id);
+      if (!incident) {
+        return res.status(404).json({ message: "Incident not found" });
+      }
+
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const hasAccess = units.some(unit => unit.id === incident.businessUnitId);
+      if (!hasAccess) {
+        return res.sendStatus(403);
+      }
+
+      const updatedIncident = await storage.updateIncident({
+        ...incident,
+        ...data,
+        id,
+        updatedAt: new Date(),
+        resolvedAt: data.status === "resolved" ? new Date() : incident.resolvedAt,
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "UPDATE",
+        entityType: "incident",
+        entityId: id,
+        changes: { before: incident, after: updatedIncident },
+      });
+
+      res.json(updatedIncident);
+    } catch (error) {
+      console.error("Error updating incident:", error);
+      res.status(500).json({ message: "Failed to update incident" });
+    }
   });
 
   // Add SSO routes here
