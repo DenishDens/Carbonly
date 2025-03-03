@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { MainNav } from "@/components/main-nav";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Menu } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
