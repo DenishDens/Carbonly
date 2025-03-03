@@ -14,7 +14,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
   const navItems = [
     {
       name: "Dashboard",
-      href: "/dashboard",
+      href: "/",
     },
     {
       name: "Business Units",
@@ -29,7 +29,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
       href: "/file-processing",
     },
     {
-      name: "Data Entry",
+      name: "Data",
       href: "/data-processing",
       subItems: [
         { name: "Energy", href: "/data-processing/energy" },
