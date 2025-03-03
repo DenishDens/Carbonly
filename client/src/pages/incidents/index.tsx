@@ -258,6 +258,18 @@ export default function IncidentsPage() {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="incidentDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Incident Date</FormLabel>
+                      <Input type="datetime-local" {...field} />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
