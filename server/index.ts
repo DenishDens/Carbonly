@@ -6,6 +6,21 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
+// Required environment variables
+const requiredEnvVars = [
+  'DATABASE_URL',
+  'OPENAI_API_KEY',
+  'SESSION_SECRET'
+];
+
+function checkEnvironmentVariables() {
+  const missing = requiredEnvVars.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+  }
+  log('All required environment variables are present');
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
@@ -40,16 +55,19 @@ app.use((req, res, next) => {
   try {
     log("Starting server initialization...");
 
+    // Check environment variables first
+    checkEnvironmentVariables();
+
     log("Registering routes...");
     const server = await registerRoutes(app);
     log("Routes registered successfully");
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      console.error('Error details:', err);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       log(`Error handler caught: ${status} - ${message}`);
       res.status(status).json({ message });
-      throw err;
     });
 
     if (app.get("env") === "development") {
@@ -77,6 +95,7 @@ app.use((req, res, next) => {
     });
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);
+    console.error('Full error details:', error);
     process.exit(1);
   }
 })();

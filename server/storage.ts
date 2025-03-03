@@ -3,8 +3,8 @@ import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog } from "@shared/schema";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -23,6 +23,14 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id">): Promise<User>;
   getUsersByOrganization(organizationId: string): Promise<User[]>;
+
+  // Team operations
+  getTeams(organizationId: string): Promise<Team[]>;
+  createTeam(team: Omit<Team, "id">): Promise<Team>;
+  updateTeam(team: Team): Promise<Team>;
+  deleteTeam(id: string): Promise<void>;
+  getBusinessUnitTeam(businessUnitId: string): Promise<Team | undefined>;
+  updateBusinessUnitTeam(businessUnitId: string, teamId: string): Promise<BusinessUnit>;
 
   // Business unit operations
   getBusinessUnits(organizationId: string): Promise<BusinessUnit[]>;
@@ -102,6 +110,45 @@ export class DatabaseStorage implements IStorage {
 
   async getUsersByOrganization(organizationId: string): Promise<User[]> {
     return db.select().from(users).where(eq(users.organizationId, organizationId));
+  }
+
+  // Team operations
+  async getTeams(organizationId: string): Promise<Team[]> {
+    return db.select().from(teams).where(eq(teams.organizationId, organizationId));
+  }
+
+  async createTeam(team: Omit<Team, "id">): Promise<Team> {
+    const [newTeam] = await db.insert(teams).values(team).returning();
+    return newTeam;
+  }
+
+  async updateTeam(team: Team): Promise<Team> {
+    const [updatedTeam] = await db
+      .update(teams)
+      .set(team)
+      .where(eq(teams.id, team.id))
+      .returning();
+    return updatedTeam;
+  }
+
+  async deleteTeam(id: string): Promise<void> {
+    await db.delete(teams).where(eq(teams.id, id));
+  }
+
+  async getBusinessUnitTeam(businessUnitId: string): Promise<Team | undefined> {
+    const [unit] = await db.select().from(businessUnits).where(eq(businessUnits.id, businessUnitId));
+    if (!unit?.teamId) return undefined;
+    const [team] = await db.select().from(teams).where(eq(teams.id, unit.teamId));
+    return team;
+  }
+
+  async updateBusinessUnitTeam(businessUnitId: string, teamId: string): Promise<BusinessUnit> {
+    const [updatedUnit] = await db
+      .update(businessUnits)
+      .set({ teamId })
+      .where(eq(businessUnits.id, businessUnitId))
+      .returning();
+    return updatedUnit;
   }
 
   // Business unit operations

@@ -23,6 +23,15 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const teams = pgTable("teams", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  members: text("members").array(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const businessUnits = pgTable("business_units", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
@@ -32,6 +41,7 @@ export const businessUnits = pgTable("business_units", {
   location: text("location"), // For tracking by state/region
   category: text("category"), // For additional categorization
   managerId: uuid("manager_id").references(() => users.id),
+  teamId: uuid("team_id").references(() => teams.id), // Reference to assigned team
   status: text("status"), // active, inactive, archived
   budget: decimal("budget"), // For tracking financial aspects
   targetEmission: decimal("target_emission"), // Emission reduction target
@@ -50,6 +60,7 @@ export const emissions = pgTable("emissions", {
   details: jsonb("details"),
 });
 
+// Add these types back to schema.ts
 export const processingTransactions = pgTable("processing_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   fileName: text("file_name").notNull(),
@@ -59,7 +70,6 @@ export const processingTransactions = pgTable("processing_transactions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Add audit log table definition
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id),
@@ -71,16 +81,29 @@ export const auditLogs = pgTable("audit_logs", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Add audit log types
+// Export types
+export type Organization = typeof organizations.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type BusinessUnit = typeof businessUnits.$inferSelect;
+export type Emission = typeof emissions.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
+export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
-
 
 // Schema for registration
 export const insertOrganizationSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
 });
+
+// Schema for team creation/update
+export const insertTeamSchema = createInsertSchema(teams)
+  .pick({
+    name: true,
+    description: true,
+    members: true,
+  });
 
 // Schema for business unit creation
 export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
@@ -91,6 +114,7 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
     location: true,
     category: true,
     managerId: true,
+    teamId: true,
     status: true,
     budget: true,
     targetEmission: true,
@@ -115,13 +139,8 @@ export const insertEmissionSchema = createInsertSchema(emissions)
     date: z.string(), // Accept string date that will be converted to Date
   });
 
-// Export types
-export type Organization = typeof organizations.$inferSelect;
-export type User = typeof users.$inferSelect;
-export type BusinessUnit = typeof businessUnits.$inferSelect;
-export type Emission = typeof emissions.$inferSelect;
-export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
-
+// Export insert types
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;
