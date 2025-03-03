@@ -82,10 +82,10 @@ export default function Dashboard() {
   });
 
   const chartData = emissions?.map((e) => ({
-    date: e.date,
-    "Scope 1": e.scope1,
-    "Scope 2": e.scope2,
-    "Scope 3": e.scope3,
+    date: new Date(e.date).toLocaleDateString(),
+    amount: parseFloat(e.amount),
+    source: e.emissionSource,
+    scope: e.scope,
   }));
 
   // Show onboarding wizard if user has no business units
@@ -135,26 +135,17 @@ export default function Dashboard() {
 
       <main className="container mx-auto px-4 py-8">
         <div className="grid gap-6">
+          <h1 className="text-3xl font-bold">Dashboard</h1>
+
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Business Units</CardTitle>
+                <CardTitle>Business Overview</CardTitle>
                 <CardDescription>
-                  Create and manage your business units
+                  Manage your business units and track emissions
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="New business unit name"
-                    onChange={(e) =>
-                      createBusinessUnit.mutate(e.currentTarget.value)
-                    }
-                  />
-                  <Button size="icon">
-                    <Building2 className="h-4 w-4" />
-                  </Button>
-                </div>
                 <Select
                   value={selectedUnit}
                   onValueChange={setSelectedUnit}
@@ -164,20 +155,31 @@ export default function Dashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     {businessUnits?.map((unit) => (
-                      <SelectItem key={unit.id} value={String(unit.id)}>
+                      <SelectItem key={unit.id} value={unit.id}>
                         {unit.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Add new business unit"
+                    onChange={(e) =>
+                      createBusinessUnit.mutate(e.currentTarget.value)
+                    }
+                  />
+                  <Button size="icon">
+                    <Building2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Upload Report</CardTitle>
+                <CardTitle>Data Processing</CardTitle>
                 <CardDescription>
-                  Upload emissions report for analysis
+                  Upload and process emission data
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -189,7 +191,7 @@ export default function Dashboard() {
                 <Button
                   className="w-full"
                   onClick={() => uploadFile.mutate()}
-                  disabled={!file || !selectedUnit}
+                  disabled={!file || !selectedUnit || uploadFile.isPending}
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Process File
@@ -203,7 +205,7 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle>Emissions Overview</CardTitle>
                 <CardDescription>
-                  Breakdown of emissions by scope
+                  Breakdown of emissions by scope and source
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -213,9 +215,7 @@ export default function Dashboard() {
                       <XAxis dataKey="date" />
                       <YAxis />
                       <Tooltip />
-                      <Bar dataKey="Scope 1" fill="var(--chart-1)" />
-                      <Bar dataKey="Scope 2" fill="var(--chart-2)" />
-                      <Bar dataKey="Scope 3" fill="var(--chart-3)" />
+                      <Bar dataKey="amount" fill="var(--primary)" />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
