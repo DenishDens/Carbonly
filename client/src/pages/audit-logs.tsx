@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import {
   Table,
   TableBody,
@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/table";
 import {
   Eye,
-  ArrowUpDown,
   FileText,
   Users,
   Building2,
@@ -42,7 +41,7 @@ import {
 } from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { AuditLog } from "@shared/schema";
+import type { AuditLog, User } from "@shared/schema";
 
 const entityIcons = {
   organization: Building2,
@@ -53,12 +52,24 @@ const entityIcons = {
 
 function AuditLogViewer() {
   const [selectedEntityType, setSelectedEntityType] = useState<string>();
-  const [date, setDate] = useState<Date>();
+  const [date, setDate] = useState<Date>(subDays(new Date(), 30));
   const [selectedLog, setSelectedLog] = useState<AuditLog>();
 
+  // Get all audit logs with date filter
   const { data: auditLogs } = useQuery<AuditLog[]>({
     queryKey: ["/api/audit-logs", selectedEntityType, date?.toISOString()],
   });
+
+  // Get users for displaying names instead of IDs
+  const { data: users } = useQuery<User[]>({
+    queryKey: ["/api/users"],
+  });
+
+  // Helper function to get user name
+  const getUserInfo = (userId: string) => {
+    const user = users?.find(u => u.id === userId);
+    return user ? `${user.name} (${user.email})` : 'Unknown User';
+  };
 
   return (
     <DashboardLayout>
@@ -74,6 +85,7 @@ function AuditLogViewer() {
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="">All Types</SelectItem>
                 <SelectItem value="organization">Organization</SelectItem>
                 <SelectItem value="user">User</SelectItem>
                 <SelectItem value="business_unit">Business Unit</SelectItem>
@@ -125,7 +137,7 @@ function AuditLogViewer() {
                       <TableCell>
                         {format(new Date(log.createdAt), "PPp")}
                       </TableCell>
-                      <TableCell>{log.userId}</TableCell>
+                      <TableCell>{getUserInfo(log.userId)}</TableCell>
                       <TableCell className="capitalize">{log.actionType.toLowerCase()}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
@@ -147,6 +159,14 @@ function AuditLogViewer() {
                     </TableRow>
                   );
                 })}
+
+                {(!auditLogs || auditLogs.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+                      No audit logs found for the selected filters
+                    </TableCell>
+                  </TableRow>
+                )}
               </TableBody>
             </Table>
           </CardContent>

@@ -196,13 +196,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     const filters = {
       entityType: req.query.entityType as string,
-      startDate: req.query.date ? new Date(req.query.date as string) : undefined,
+      startDate: req.query.date ? new Date(req.query.date as string) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Default to last 30 days
     };
 
     const logs = await storage.getAuditLogs(req.user.organizationId, filters);
     res.json(logs);
   });
 
+  // Get users for audit log display
+  app.get("/api/users", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    const users = await storage.getUsersByOrganization(req.user.organizationId);
+    res.json(users);
+  });
 
   const httpServer = createServer(app);
   return httpServer;

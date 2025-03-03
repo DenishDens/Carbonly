@@ -22,6 +22,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id">): Promise<User>;
+  getUsersByOrganization(organizationId: string): Promise<User[]>; // Added method
 
   // Business unit operations
   getBusinessUnits(organizationId: string): Promise<BusinessUnit[]>;
@@ -97,6 +98,10 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: Omit<User, "id">): Promise<User> {
     const [newUser] = await db.insert(users).values(user).returning();
     return newUser;
+  }
+
+  async getUsersByOrganization(organizationId: string): Promise<User[]> { // Added method
+    return db.select().from(users).where(eq(users.organizationId, organizationId));
   }
 
   // Business unit operations
