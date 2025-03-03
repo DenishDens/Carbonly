@@ -1,0 +1,117 @@
+### **Incident Module in Carbonly.ai**  
+
+The **Incident Module** in Carbonly.ai allows users to **report, track, and analyze environmental incidents** related to ESG compliance. It provides **real-time incident logging, categorization, severity assessment, and resolution tracking**. Users can attach **supporting documents, link incidents to projects, and generate reports** for compliance and audits.  
+
+---
+
+## **🔹 Key Features of the Incident Module**  
+
+### **1️⃣ Incident Logging & Categorization**
+✅ **Quick Incident Reporting**  
+- Users can **manually log incidents** or **automatically capture** from **integrations** (e.g., IoT sensors, external systems).  
+
+✅ **Categorization & Severity Levels**  
+- **Incident Type:** (Spill, Fire, Equipment Failure, Air Pollution, Water Contamination, Safety Violation, Compliance Breach, etc.)  
+- **Severity Levels:** (Low, Medium, High, Critical)  
+- **Impact Areas:** (Environmental, Health & Safety, Compliance, Legal, Financial)  
+
+✅ **Incident Details**  
+| Field | Type | Description |
+|--------|------|-------------|
+| `incident_id` | UUID | Primary Key |
+| `project_id` | UUID | FK → Projects |
+| `date_reported` | DateTime | When the incident was logged |
+| `reported_by` | String | User who reported the incident |
+| `incident_type` | Enum | (Spill, Fire, Equipment Failure, etc.) |
+| `severity` | Enum | (Low, Medium, High, Critical) |
+| `description` | Text | Full incident details |
+| `impact_area` | Enum | (Environmental, Safety, Compliance) |
+| `status` | Enum | (Open, Under Investigation, Resolved, Closed) |
+| `attachments` | List | Supporting documents (images, reports, PDFs) |
+
+---
+
+### **2️⃣ Incident Management & Investigation**
+✅ **Status Updates**  
+- Track incidents from **Open → Under Investigation → Resolved → Closed**.  
+- Assign incidents to **specific users or teams** for resolution.  
+
+✅ **Action Logs & Corrective Actions**  
+- Log **investigations, corrective measures, and regulatory responses**.  
+- AI can suggest **best practices based on past incidents**.  
+
+✅ **Audit Trail for Compliance**  
+- Every action taken on an incident is **logged with timestamps** for compliance reporting.  
+
+✅ **Automated Notifications & Alerts**  
+- Users receive **real-time alerts** when a new incident is logged or updated.  
+- **Escalations** for unresolved high-severity incidents.  
+
+---
+
+### **3️⃣ Incident Analysis & Reporting**
+✅ **Dashboard Analytics**  
+- **Trend Analysis:** View incident frequency over time.  
+- **Severity Breakdown:** Pie chart of Low, Medium, High, Critical incidents.  
+- **Top Incident Types:** Identify recurring problems.  
+- **Impact Assessment:** Environmental, health, and financial impacts.  
+
+✅ **Filters & Search**  
+- **Filter by:** Date Range, Project, Business Unit, Severity, Status.  
+- **Search by:** Incident ID, Keywords, Reported By.  
+
+✅ **Export Reports**  
+- Generate **audit-ready reports** in **PDF, CSV, or Excel** for regulatory submission.  
+
+---
+
+## **🔹 UI Layout for Incident Module**
+✅ **Incident Dashboard (Home Page)**
+- **KPI Cards:**  
+  - Total Incidents  
+  - Incidents by Severity  
+  - Incidents Resolved vs. Open  
+
+- **Charts & Graphs:**  
+  - **Incident Trends** (Bar Chart)  
+  - **Severity Distribution** (Pie Chart)  
+  - **Top Categories** (Heatmap)  
+
+✅ **Incident List Page**
+- Table with **sortable columns, filters, and status badges**.  
+- **Click to view details & updates**.  
+
+✅ **Incident Reporting Page**
+- **Form for logging incidents** with fields for type, severity, impact, and description.  
+- **File upload** for supporting documents.  
+
+✅ **Incident Investigation Page**
+- **Action logs & corrective measures**.  
+- **Assign responsible users or teams**.  
+- **Change status (Under Investigation → Resolved → Closed)**.  
+
+✅ **Compliance & Audit Log**
+- **View all incident actions** with timestamps.  
+- **Generate regulatory reports**.  
+
+---
+
+## **🔹 API Endpoints for Incident Management**
+- `POST /api/incidents/report` → Report a new incident.  
+- `GET /api/incidents` → Fetch all incidents with filters.  
+- `GET /api/incidents/{incident_id}` → View specific incident details.  
+- `PATCH /api/incidents/{incident_id}/update` → Update incident status or actions.  
+- `GET /api/incidents/reports/export` → Generate reports (CSV, PDF).  
+
+---
+
+## **🎯 Expected Outcome**
+1️⃣ **Real-time incident logging & tracking**  
+2️⃣ **Severity assessment & AI-powered recommendations**  
+3️⃣ **Automated notifications & compliance reports**  
+4️⃣ **Dashboards for analytics & trend monitoring**  
+5️⃣ **Full audit trail for regulatory compliance**  
+
+---
+
+This module **ensures structured environmental incident tracking**, integrates with ESG compliance, and provides **real-time insights for risk management**. 🚀 Let me know if you need refinements!
