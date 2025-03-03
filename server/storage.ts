@@ -39,7 +39,9 @@ export interface IStorage {
 
   // Emission operations
   getEmissions(businessUnitId: string): Promise<Emission[]>;
+  getEmissionById(id: string): Promise<Emission | undefined>;
   createEmission(emission: Omit<Emission, "id">): Promise<Emission>;
+  updateEmission(emission: Emission): Promise<Emission>;
 
   // Transaction logging
   createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction>;
@@ -184,9 +186,23 @@ export class DatabaseStorage implements IStorage {
     return db.select().from(emissions).where(eq(emissions.businessUnitId, businessUnitId));
   }
 
+  async getEmissionById(id: string): Promise<Emission | undefined> {
+    const [emission] = await db.select().from(emissions).where(eq(emissions.id, id));
+    return emission;
+  }
+
   async createEmission(emission: Omit<Emission, "id">): Promise<Emission> {
     const [newEmission] = await db.insert(emissions).values(emission).returning();
     return newEmission;
+  }
+
+  async updateEmission(emission: Emission): Promise<Emission> {
+    const [updatedEmission] = await db
+      .update(emissions)
+      .set(emission)
+      .where(eq(emissions.id, emission.id))
+      .returning();
+    return updatedEmission;
   }
 
   // Transaction logging

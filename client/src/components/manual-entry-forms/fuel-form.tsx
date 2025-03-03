@@ -28,7 +28,7 @@ import {
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BusinessUnit, FuelData } from "@shared/schema";
+import type { BusinessUnit, FuelData, Emission } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
@@ -59,20 +59,33 @@ const UNITS = [
   { id: "gallons", label: "Gallons (gal)" },
 ];
 
-// Emission factors (kgCO2e per liter)
 const EMISSION_FACTORS = {
   diesel: 2.68,
   gasoline: 2.31,
 };
 
-export function FuelForm() {
+interface FuelFormProps {
+  initialData?: Emission;
+  onSuccess?: () => void;
+}
+
+export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [calculatedEmissions, setCalculatedEmissions] = useState<string>();
 
   const form = useForm<z.infer<typeof fuelFormSchema>>({
     resolver: zodResolver(fuelFormSchema),
-    defaultValues: {
+    defaultValues: initialData ? {
+      businessUnitId: initialData.businessUnitId,
+      fuelType: initialData.details?.fuelType as "diesel" | "gasoline",
+      amount: initialData.details?.rawAmount || "",
+      unit: initialData.details?.rawUnit as "liters" | "gallons",
+      date: new Date(initialData.date).toISOString().split('T')[0],
+      notes: initialData.details?.notes,
+      paidBySubcontractor: initialData.details?.paidBySubcontractor || false,
+      subcontractorName: initialData.details?.subcontractorName,
+    } : {
       unit: "liters",
       date: new Date().toISOString().split('T')[0],
       paidBySubcontractor: false,
@@ -90,23 +103,22 @@ export function FuelForm() {
     const factor = EMISSION_FACTORS[fuelType];
     if (!factor) return;
 
-    // Convert to liters if needed
     const liters = unit === "gallons" ? parseFloat(amount) * 3.78541 : parseFloat(amount);
-
-    // Calculate emissions
     const emissions = liters * factor;
     setCalculatedEmissions(emissions.toFixed(2));
   }, [amount, unit, fuelType]);
 
-  const saveFuelData = useMutation({
+  const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof fuelFormSchema>) => {
-      console.log("Submitting fuel data:", data);
-      const res = await fetch("/api/emissions", {
-        method: "POST",
+      const endpoint = initialData ? `/api/emissions/${initialData.id}` : "/api/emissions";
+      const method = initialData ? "PATCH" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           businessUnitId: data.businessUnitId,
-          scope: "Scope 1", // Direct emissions from fuel consumption
+          scope: "Scope 1",
           emissionSource: `${data.fuelType} consumption`,
           amount: calculatedEmissions || "0",
           unit: "kgCO2e",
@@ -123,6 +135,7 @@ export function FuelForm() {
         }),
         credentials: "include",
       });
+
       if (!res.ok) {
         const error = await res.text();
         throw new Error(error);
@@ -132,12 +145,13 @@ export function FuelForm() {
     onSuccess: () => {
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/emissions"] });
-      toast({ title: "Fuel data saved successfully" });
+      toast({ title: initialData ? "Fuel data updated successfully" : "Fuel data saved successfully" });
+      onSuccess?.();
     },
     onError: (error) => {
       console.error("Error saving fuel data:", error);
       toast({
-        title: "Failed to save fuel data",
+        title: initialData ? "Failed to update fuel data" : "Failed to save fuel data",
         description: error.message,
         variant: "destructive",
       });
@@ -163,14 +177,14 @@ export function FuelForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Manual Fuel Entry</CardTitle>
+        <CardTitle>{initialData ? "Edit Fuel Entry" : "Manual Fuel Entry"}</CardTitle>
         <CardDescription>
           Enter fuel consumption data manually - we'll calculate the CO2e emissions automatically
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit((data) => saveFuelData.mutate(data))} className="space-y-4">
+          <form onSubmit={form.handleSubmit((data) => mutation.mutate(data))} className="space-y-4">
             <FormField
               control={form.control}
               name="businessUnitId"
@@ -339,9 +353,9 @@ export function FuelForm() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={saveFuelData.isPending}>
-              {saveFuelData.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {saveFuelData.isPending ? "Saving..." : "Save Fuel Data"}
+            <Button type="submit" className="w-full" disabled={mutation.isPending}>
+              {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {mutation.isPending ? (initialData ? "Updating..." : "Saving...") : (initialData ? "Update Fuel Data" : "Save Fuel Data")}
             </Button>
           </form>
         </Form>

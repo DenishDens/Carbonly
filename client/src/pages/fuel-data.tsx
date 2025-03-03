@@ -28,16 +28,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { FuelForm } from "@/components/manual-entry-forms/fuel-form";
 import type { BusinessUnit, Emission } from "@shared/schema";
-import { Download, Filter, LineChart, Upload, FileType2 } from "lucide-react";
+import { Download, Filter, LineChart, Upload, FileType2, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+
 
 interface FuelStats {
   totalLiters: number;
   totalEmissions: number;
   byProject: Record<string, { liters: number; emissions: number }>;
   byFuelType: Record<string, { liters: number; emissions: number }>;
+}
+
+interface EditDialogProps {
+  emission: Emission;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+function EditDialog({ emission, open, onOpenChange }: EditDialogProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <FuelForm
+          initialData={emission}
+          onSuccess={() => onOpenChange(false)}
+        />
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export default function FuelDataPage() {
@@ -48,6 +69,7 @@ export default function FuelDataPage() {
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
   const [file, setFile] = useState<File>();
   const [dragActive, setDragActive] = useState(false);
+  const [editingEmission, setEditingEmission] = useState<Emission | null>(null);
 
   const { data: businessUnits, isLoading: loadingUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
@@ -383,6 +405,7 @@ export default function FuelDataPage() {
                     <TableHead>Amount</TableHead>
                     <TableHead>Emissions</TableHead>
                     <TableHead>Notes</TableHead>
+                    <TableHead></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -406,6 +429,15 @@ export default function FuelDataPage() {
                       <TableCell className="text-muted-foreground">
                         {emission.details?.notes}
                       </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setEditingEmission(emission)}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -414,6 +446,13 @@ export default function FuelDataPage() {
           </CardContent>
         </Card>
       </div>
+      {editingEmission && (
+        <EditDialog
+          emission={editingEmission}
+          open={Boolean(editingEmission)}
+          onOpenChange={(open) => !open && setEditingEmission(null)}
+        />
+      )}
     </DashboardLayout>
   );
 }

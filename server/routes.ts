@@ -202,6 +202,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add this route after the existing emissions POST endpoint
+  app.patch("/api/emissions/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id } = req.params;
+
+      // Get the existing emission to verify ownership
+      const emission = await storage.getEmissionById(id);
+      if (!emission) {
+        return res.status(404).json({ message: "Emission record not found" });
+      }
+
+      // Verify business unit belongs to user's organization
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const hasAccess = units.some(unit => unit.id === emission.businessUnitId);
+      if (!hasAccess) {
+        return res.sendStatus(403);
+      }
+
+      console.log("Updating emission with data:", req.body);
+      const updatedEmission = await storage.updateEmission({
+        ...emission,
+        ...req.body,
+        id,
+        date: new Date(req.body.date),
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "UPDATE",
+        entityType: "emission",
+        entityId: emission.id,
+        changes: { before: emission, after: updatedEmission },
+      });
+
+      console.log("Emission updated successfully:", updatedEmission);
+      res.json(updatedEmission);
+    } catch (error) {
+      console.error("Error updating emission:", error);
+      res.status(500).json({ message: "Failed to update emission data" });
+    }
+  });
+
   // Update the GET endpoint
   app.get("/api/emissions", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
