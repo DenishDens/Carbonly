@@ -15,7 +15,6 @@ const upload = multer({
 interface FileUploadRequest extends Express.Request {
   body: {
     businessUnitId: string;
-    scope: string;
     [key: string]: any;
   };
 }
@@ -108,7 +107,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
     if (!req.body.businessUnitId) return res.status(400).json({ message: "Business unit ID is required" });
-    if (!req.body.scope) return res.status(400).json({ message: "Emission scope is required" });
 
     try {
       // Create initial transaction record
@@ -122,16 +120,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       try {
         const fileContent = req.file.buffer.toString();
-        const extractedData = await extractEmissionData(fileContent, req.body.scope);
+        // Let AI detect the scope from the content
+        const extractedData = await extractEmissionData(fileContent);
 
+        // Save emission data to database
         const emission = await storage.createEmission({
           businessUnitId: req.body.businessUnitId,
           scope: extractedData.scope,
           emissionSource: extractedData.emissionSource,
-          amount: extractedData.amount.toString(),
+          amount: extractedData.amount.toString(), // Ensure amount is string
           unit: extractedData.unit,
           date: new Date(extractedData.date),
-          details: extractedData.details,
+          details: {
+            ...extractedData.details,
+            category: extractedData.category,
+          },
         });
 
         // Create audit log
