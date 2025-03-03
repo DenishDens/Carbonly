@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tabs";
 import { SiXero } from "react-icons/si";
 import { FaMicrosoft } from "react-icons/fa";
+import { cn } from "@/lib/utils";
 
 export default function OrganizationSettings() {
   const { user } = useAuth();
@@ -226,12 +227,22 @@ export default function OrganizationSettings() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {organization?.logo && (
-                    <div className="mb-4">
+                    <div className="mb-4 transition-all duration-300 hover:scale-105">
                       <Label>Current Logo</Label>
                       <img
                         src={organization.logo}
                         alt="Organization logo"
-                        className="h-16 object-contain"
+                        className="h-16 object-contain rounded-md shadow-sm"
+                      />
+                    </div>
+                  )}
+                  {logo && (
+                    <div className="mb-4 animate-fade-in">
+                      <Label>Preview</Label>
+                      <img
+                        src={URL.createObjectURL(logo)}
+                        alt="Logo preview"
+                        className="h-16 object-contain rounded-md shadow-sm"
                       />
                     </div>
                   )}
@@ -246,8 +257,10 @@ export default function OrganizationSettings() {
                       onClick={() => logo && uploadLogoMutation.mutate(logo)}
                       disabled={!logo || uploadLogoMutation.isPending}
                     >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload
+                      <Upload className={cn("h-4 w-4 mr-2", {
+                        "animate-spin": uploadLogoMutation.isPending
+                      })} />
+                      {uploadLogoMutation.isPending ? "Uploading..." : "Upload"}
                     </Button>
                   </div>
                 </CardContent>

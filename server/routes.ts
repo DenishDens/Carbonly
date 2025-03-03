@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { extractEmissionData, getChatResponse } from "./openai"; // Fix import
+import { extractEmissionData, getChatResponse } from "./openai";
 import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
@@ -13,7 +13,6 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-// Update the file upload request interface
 interface FileUploadRequest extends Express.Request {
   body: {
     businessUnitId: string;
@@ -379,7 +378,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { domain } = req.body;
 
       // Find organization by domain
-      const org = await storage.getOrganizationByDomain(domain);
+      const org = await storage.getOrganizationBySlug(domain.split('.')[0]);
       if (!org || !org.ssoEnabled) {
         return res.status(400).json({ message: "SSO not configured for this organization" });
       }

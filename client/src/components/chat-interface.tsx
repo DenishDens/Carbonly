@@ -122,7 +122,7 @@ export function ChatInterface() {
     if (!isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName}! 👋 I'm your AI assistant. I can help you analyze your emission data and provide insights. Feel free to ask me anything or try one of the suggested questions below.`
+        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help you analyze your emission data and provide insights. Feel free to ask me anything or try one of the suggested questions below.`
       };
       setMessages([greeting]);
     }
