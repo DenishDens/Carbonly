@@ -11,6 +11,7 @@ import { insertOrganizationSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const ENVIRONMENTAL_FACTS = [
   {
@@ -90,6 +91,7 @@ function LoginForm() {
   const { loginMutation } = useAuth();
   const [ssoLoading, setSSOLoading] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const form = useForm({
     defaultValues: {
       username: "",
@@ -98,7 +100,7 @@ function LoginForm() {
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    loginMutation.mutate(data);
+    loginMutation.mutate({ ...data, rememberMe });
   });
 
   const handleSSOLogin = async () => {
@@ -149,7 +151,20 @@ function LoginForm() {
           type="password"
           {...form.register("password")}
         />
-        <div className="flex justify-end">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+            />
+            <label
+              htmlFor="remember"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Remember me
+            </label>
+          </div>
           <Button
             type="button"
             variant="link"
