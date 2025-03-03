@@ -38,8 +38,8 @@ interface FuelStats {
 }
 
 export default function FuelDataPage() {
-  const [selectedUnit, setSelectedUnit] = useState<string>("");
-  const [selectedFuelType, setSelectedFuelType] = useState<string>("");
+  const [selectedUnit, setSelectedUnit] = useState<string>("all");
+  const [selectedFuelType, setSelectedFuelType] = useState<string>("all");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
 
   const { data: businessUnits, isLoading: loadingUnits } = useQuery<BusinessUnit[]>({
@@ -57,7 +57,6 @@ export default function FuelDataPage() {
     }
   });
 
-  // Calculate fuel statistics
   const calculateStats = (emissions: Emission[] | undefined): FuelStats => {
     const stats: FuelStats = {
       totalLiters: 0,
@@ -72,16 +71,13 @@ export default function FuelDataPage() {
       const liters = parseFloat(emission.details?.rawAmount || '0');
       const emissionAmount = parseFloat(emission.amount.toString());
 
-      // Convert to liters if in gallons
       const standardizedLiters = emission.details?.rawUnit === 'gallons'
         ? liters * 3.78541
         : liters;
 
-      // Total stats
       stats.totalLiters += standardizedLiters;
       stats.totalEmissions += emissionAmount;
 
-      // By project
       const projectId = emission.businessUnitId;
       if (!stats.byProject[projectId]) {
         stats.byProject[projectId] = { liters: 0, emissions: 0 };
@@ -89,7 +85,6 @@ export default function FuelDataPage() {
       stats.byProject[projectId].liters += standardizedLiters;
       stats.byProject[projectId].emissions += emissionAmount;
 
-      // By fuel type
       const fuelType = emission.details?.fuelType || 'unknown';
       if (!stats.byFuelType[fuelType]) {
         stats.byFuelType[fuelType] = { liters: 0, emissions: 0 };
@@ -101,10 +96,9 @@ export default function FuelDataPage() {
     return stats;
   };
 
-  // Filter emissions based on selected criteria
   const filteredEmissions = emissions?.filter(emission => {
-    const matchesUnit = !selectedUnit || emission.businessUnitId === selectedUnit;
-    const matchesFuelType = !selectedFuelType || emission.details?.fuelType === selectedFuelType;
+    const matchesUnit = selectedUnit === "all" || emission.businessUnitId === selectedUnit;
+    const matchesFuelType = selectedFuelType === "all" || emission.details?.fuelType === selectedFuelType;
     const matchesDateRange = !dateRange.start || !dateRange.end ||
       (new Date(emission.date) >= new Date(dateRange.start) &&
         new Date(emission.date) <= new Date(dateRange.end));
@@ -113,7 +107,6 @@ export default function FuelDataPage() {
 
   const stats = calculateStats(filteredEmissions);
 
-  // Handle CSV export
   const handleExport = () => {
     if (!filteredEmissions || !businessUnits) return;
 
@@ -175,7 +168,7 @@ export default function FuelDataPage() {
                     <SelectValue placeholder="All Business Units" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Business Units</SelectItem>
+                    <SelectItem value="all">All Business Units</SelectItem>
                     {businessUnits?.map(unit => (
                       <SelectItem key={unit.id} value={unit.id}>
                         {unit.name}
@@ -192,7 +185,7 @@ export default function FuelDataPage() {
                     <SelectValue placeholder="All Fuel Types" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Fuel Types</SelectItem>
+                    <SelectItem value="all">All Fuel Types</SelectItem>
                     <SelectItem value="diesel">Diesel</SelectItem>
                     <SelectItem value="gasoline">Gasoline</SelectItem>
                   </SelectContent>
