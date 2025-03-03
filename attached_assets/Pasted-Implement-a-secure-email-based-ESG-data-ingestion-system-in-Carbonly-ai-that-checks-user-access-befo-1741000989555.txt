@@ -1,0 +1,84 @@
+Implement a secure email-based ESG data ingestion system in Carbonly.ai that checks user access before processing. If the sender has permission, AI extracts and categorizes the ESG data (Fuel, Electricity, Travel, Waste, etc.), applies JV allocations, and logs the transaction source as ‘Email Integration.’ If the sender does not have access, the email is ignored and logged in the audit trail. Users should be able to filter ESG transactions by ‘Email Integration’ and view a full audit log of processed or rejected emails."
+
+🔹 Feature Breakdown
+✅ 🔑 Access Control Before Processing
+
+Each Project has authorized users assigned
+If sender is not on the Project's access list, ignore email & log in audit
+If sender is authorized, process normally
+✅ 📧 Unique Email Address for Each Project
+
+Auto-generated project-specific email (e.g., project123@carbonly.ai)
+Users forward ESG data files for processing
+✅ 📂 AI-Powered File Detection & Categorization
+
+AI extracts email subject & attachment data
+Detects ESG category (Fuel, Electricity, Water, Travel, etc.)
+Applies pre-configured Emission Factors & JV allocation
+Stores source type as ‘Email Integration’
+✅ 🚀 Secure Processing Workflow
+1️⃣ User forwards email with ESG data attachment
+2️⃣ System checks if sender has access to the Project
+
+✅ If Yes → Process file & extract transactions
+❌ If No → Ignore & log attempt in audit trail
+3️⃣ Categorize data & apply JV allocation (if applicable)
+4️⃣ Move file to:
+✅ Processed Folder (If successful)
+❌ Error Folder (If extraction fails)
+5️⃣ Store processed transactions & display them in the ESG Dashboard
+✅ 🔍 ESG Transactions Table (Tracking Imports from Email)
+
+Field	Type	Description
+transaction_id	UUID	Primary Key
+project_id	UUID	FK → Projects
+source_type	Enum	(Email Integration, Manual, Auto Fetch, API Sync)
+file_name	String	Name of the processed file
+email_sender	String	Sender of the email
+date_received	DateTime	Timestamp of email receipt
+status	Enum	(Processed, Rejected, Error)
+✅ 📑 Audit Log (Tracking Processed & Rejected Emails)
+
+Field	Type	Description
+audit_id	UUID	Primary Key
+project_id	UUID	FK → Projects
+email_sender	String	Sender’s email address
+file_name	String	Name of the attached file
+action	Enum	(Processed, Rejected - No Access, Error)
+timestamp	DateTime	Log timestamp
+🔹 UI Enhancements (Email Processing Tab & Audit Logs)
+✅ New ‘Email Uploads’ Section in UI
+
+Page	Functionality
+Email Processing Log	Shows all emails received & status
+Manage Project Email	Display assigned email & option to regenerate
+View Processed Data	List of transactions imported from email
+Audit Trail Page	Shows rejected emails & unauthorized attempts
+✅ Filtering in ESG Transactions Table
+
+Filter by Source: Email Integration, Manual Entry, Auto Fetch
+Search by File Name or Email Sender
+Click on a transaction to view ‘Imported via Email Integration’
+🔹 API Endpoints for Secure Email Processing
+GET /api/projects/{project_id}/email → Retrieve project-specific email
+POST /api/email/process → Validate sender, process email & extract ESG data
+GET /api/email/logs → Fetch all processed emails & status
+GET /api/email/errors → Fetch rejected emails & unauthorized attempts
+✅ Access Control Logic in POST /api/email/process
+
+python
+Copy
+Edit
+if sender_email not in project_users:
+    log_audit_entry(sender_email, file_name, "Rejected - No Access")
+    return {"status": "error", "message": "Unauthorized sender"}
+else:
+    process_file(file)
+    log_audit_entry(sender_email, file_name, "Processed")
+    return {"status": "success", "message": "File processed successfully"}
+🎯 Expected Output from AI Agent
+1️⃣ Project-Specific Email Addresses for ESG data submission
+2️⃣ Access Control for Email Processing (Only authorized users can send data)
+3️⃣ AI-Powered ESG Data Extraction & Categorization
+4️⃣ Audit Log for Processed & Rejected Emails
+5️⃣ UI Enhancements for Tracking Email-Based Imports
