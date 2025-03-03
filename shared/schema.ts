@@ -22,26 +22,15 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export const invitations = pgTable("invitations", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
-  email: text("email").notNull(),
-  role: text("role").notNull(), // 'admin' or 'user'
-  token: text("token").notNull().unique(),
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-});
-
 export const businessUnits = pgTable("business_units", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
   name: text("name").notNull(),
-  label: text("label").notNull(), // 'Business Unit', 'Project', 'Division', 'Department', 'Custom'
+  label: text("label"), // Made optional: 'Business Unit', 'Project', 'Division', 'Department', 'Custom'
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Main emissions table for overview
 export const emissions = pgTable("emissions", {
   id: uuid("id").defaultRandom().primaryKey(),
   businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
@@ -53,26 +42,6 @@ export const emissions = pgTable("emissions", {
   details: jsonb("details"),
 });
 
-// Scope 1 detailed tables
-export const fuelCombustion = pgTable("fuel_combustion", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
-  fuelType: text("fuel_type").notNull(),
-  quantity: decimal("quantity").notNull(),
-  unit: text("unit").notNull(),
-  date: timestamp("date").defaultNow().notNull(),
-});
-
-export const industrialProcesses = pgTable("industrial_processes", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
-  processType: text("process_type").notNull(),
-  emissions: decimal("emissions").notNull(),
-  unit: text("unit").notNull(),
-  date: timestamp("date").defaultNow().notNull(),
-});
-
-// Transaction logging
 export const processingTransactions = pgTable("processing_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   fileName: text("file_name").notNull(),
@@ -82,7 +51,7 @@ export const processingTransactions = pgTable("processing_transactions", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// Schema for organization creation (registration)
+// Schema for registration
 export const insertOrganizationSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -92,8 +61,10 @@ export const insertOrganizationSchema = z.object({
 export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
   .pick({
     name: true,
-    label: true,
     description: true,
+  })
+  .extend({
+    label: z.string().optional(),
   });
 
 // Schema for emission data
@@ -104,15 +75,10 @@ export const insertEmissionSchema = createInsertSchema(emissions)
     emissionSource: true,
     amount: true,
     unit: true,
-    date: true,
     details: true,
-  });
-
-// Schema for user invitations
-export const insertInvitationSchema = createInsertSchema(invitations)
-  .pick({
-    email: true,
-    role: true,
+  })
+  .extend({
+    date: z.string(), // Accept string date that will be converted to Date
   });
 
 // Export types
@@ -121,9 +87,7 @@ export type User = typeof users.$inferSelect;
 export type BusinessUnit = typeof businessUnits.$inferSelect;
 export type Emission = typeof emissions.$inferSelect;
 export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
-export type Invitation = typeof invitations.$inferSelect;
 
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;
-export type InsertInvitation = z.infer<typeof insertInvitationSchema>;

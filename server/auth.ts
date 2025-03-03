@@ -6,7 +6,6 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser, insertOrganizationSchema } from "@shared/schema";
-import multer from "multer";
 
 declare global {
   namespace Express {
@@ -15,10 +14,6 @@ declare global {
 }
 
 const scryptAsync = promisify(scrypt);
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-});
 
 async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("hex");
@@ -101,7 +96,7 @@ export function setupAuth(app: Express) {
         logo: null,
         ssoEnabled: false,
         ssoSettings: null,
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       });
 
       // Create user
@@ -111,7 +106,7 @@ export function setupAuth(app: Express) {
         email: userData.email,
         password: await hashPassword(userData.password),
         role: "super_admin",
-        createdAt: new Date().toISOString(),
+        createdAt: new Date(),
       });
 
       req.login(user, (err) => {

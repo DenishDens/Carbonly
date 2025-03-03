@@ -5,9 +5,6 @@ import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import { extractEmissionData } from "./openai";
 import { insertBusinessUnitSchema } from "@shared/schema";
-import crypto from 'crypto';
-import {insertInvitationSchema} from "@shared/schema";
-
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -38,7 +35,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Emissions
   app.get("/api/business-units/:id/emissions", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const emissions = await storage.getEmissions(parseInt(req.params.id));
+    const emissions = await storage.getEmissions(req.params.id);
     res.json(emissions);
   });
 
@@ -52,6 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileName: req.file.originalname,
         detectedCategory: "pending",
         status: "pending",
+        errorType: null,
         createdAt: new Date(),
       });
 
@@ -74,7 +72,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json(emission);
       } catch (error) {
         // Update transaction with error
-        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         await storage.updateTransactionStatus(
           transaction.id,
           "failed",
@@ -146,56 +143,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const message = error instanceof Error ? error.message : "Unknown error occurred";
       res.status(400).json({ message });
     }
-  });
-
-
-  // User Invitations
-  app.post("/api/invitations", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (!['super_admin', 'admin'].includes(req.user.role)) {
-      return res.status(403).json({ message: "Only admins can invite users" });
-    }
-
-    try {
-      const data = insertInvitationSchema.parse(req.body);
-
-      // Generate a unique token
-      const token = crypto.randomBytes(32).toString('hex');
-      const expiresAt = new Date();
-      expiresAt.setDate(expiresAt.getDate() + 7); // 7 days expiry
-
-      const invitation = await storage.createInvitation({
-        ...data,
-        organizationId: req.user.organizationId,
-        token,
-        expiresAt: expiresAt.toISOString(),
-        createdAt: new Date().toISOString(),
-      });
-
-      // In production, send an email with the invitation link
-      // For now, just return the token
-      res.json({ 
-        ...invitation,
-        invitationLink: `/auth/join?token=${token}` 
-      });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error occurred";
-      res.status(400).json({ message });
-    }
-  });
-
-  app.get("/api/invitations/:token", async (req, res) => {
-    const invitation = await storage.getInvitationByToken(req.params.token);
-    if (!invitation) {
-      return res.status(404).json({ message: "Invalid or expired invitation" });
-    }
-
-    if (new Date(invitation.expiresAt) < new Date()) {
-      await storage.deleteInvitation(invitation.id);
-      return res.status(400).json({ message: "Invitation has expired" });
-    }
-
-    res.json(invitation);
   });
 
   const httpServer = createServer(app);
