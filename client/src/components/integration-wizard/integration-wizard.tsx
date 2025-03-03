@@ -12,18 +12,10 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { SiGoogledrive } from "react-icons/si";
-import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2 } from "lucide-react";
+import { SiGoogledrive, SiXero, SiMyob } from "react-icons/si";
+import { Building2, Zap, Cloud, Network, FolderOpen, RefreshCw, Trash2, Mail } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProjectEmailDisplay } from "@/components/project-email-display";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 
 const ELECTRICITY_PROVIDERS = [
   {
@@ -354,7 +346,25 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
 
   const renderAccountingTab = () => (
     <div className="grid gap-4 md:grid-cols-2">
-      {/*Removed Xero and MYOB cards per instructions*/}
+      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "xero" })}>
+        <CardContent className="p-6 flex items-center gap-4">
+          <SiXero className="h-8 w-8" />
+          <div>
+            <h3 className="font-semibold">Xero</h3>
+            <p className="text-sm text-muted-foreground">Connect Xero accounting</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="cursor-pointer hover:border-primary" onClick={() => setConfig({ ...config, provider: "myob" })}>
+        <CardContent className="p-6 flex items-center gap-4">
+          <SiMyob className="h-8 w-8" />
+          <div>
+            <h3 className="font-semibold">MYOB</h3>
+            <p className="text-sm text-muted-foreground">Connect MYOB accounting</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 
@@ -558,6 +568,21 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
     );
   };
 
+  const renderEmailTab = () => (
+    <div className="space-y-6">
+      {businessUnit?.projectEmail ? (
+        <ProjectEmailDisplay 
+          email={businessUnit.projectEmail}
+          description="Forward your bills and data files to this email address. Our AI will automatically process and categorize them."
+        />
+      ) : (
+        <div className="text-center py-8 text-muted-foreground">
+          Project email address is not configured. Please contact support.
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <Card>
       <CardHeader>
@@ -567,19 +592,13 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {businessUnit?.projectEmail && (
-          <ProjectEmailDisplay 
-            email={businessUnit.projectEmail}
-            description="Forward your bills and data files to this email address. Our AI will automatically process and categorize them."
-          />
-        )}
-
         <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="storage">Storage</TabsTrigger>
             <TabsTrigger value="accounting">Accounting</TabsTrigger>
             <TabsTrigger value="electricity">Electricity</TabsTrigger>
             <TabsTrigger value="custom">Custom</TabsTrigger>
+            <TabsTrigger value="email">Email</TabsTrigger>
           </TabsList>
           <TabsContent value="storage">
             {renderStorageTab()}
@@ -592,6 +611,9 @@ export function IntegrationWizard({ businessUnitId, onComplete }: WizardProps) {
           </TabsContent>
           <TabsContent value="custom">
             {renderCustomTab()}
+          </TabsContent>
+          <TabsContent value="email">
+            {renderEmailTab()}
           </TabsContent>
         </Tabs>
 

@@ -36,6 +36,7 @@ export const businessUnits = pgTable("business_units", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
   name: text("name").notNull(),
+  projectCode: text("project_code").unique(), // Add project code field
   label: text("label"), // Made optional: 'Business Unit', 'Project', 'Division', 'Department', 'Custom'
   description: text("description"),
   location: text("location"), // For tracking by state/region
@@ -154,6 +155,7 @@ export const insertTeamSchema = createInsertSchema(teams)
 export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
   .pick({
     name: true,
+    projectCode: true,
     description: true,
     label: true,
     location: true,
@@ -169,6 +171,10 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
     projectEmail: true,
   })
   .extend({
+    projectCode: z.string()
+      .min(2, "Project code must be at least 2 characters")
+      .max(10, "Project code cannot exceed 10 characters")
+      .regex(/^[A-Z0-9-]+$/, "Project code must contain only uppercase letters, numbers, and hyphens"),
     label: z.string().optional(),
     metadata: z.record(z.unknown()).optional(),
     protocolSettings: z.object({
