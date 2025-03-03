@@ -21,13 +21,24 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Upload, Building2 } from "lucide-react";
 import type { BusinessUnit } from "@shared/schema";
-import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Assuming these are available
+import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
+const formSchema = z.object({
+  businessUnitId: z.string().min(1, "Please select a business unit"),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 export default function Dashboard() {
   const { toast } = useToast();
-  const [selectedUnit, setSelectedUnit] = useState<string>();
   const [file, setFile] = useState<File>();
+
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+  });
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
@@ -46,12 +57,13 @@ export default function Dashboard() {
 
   const uploadFile = useMutation({
     mutationFn: async () => {
-      if (!file || !selectedUnit) {
+      const businessUnitId = form.getValues("businessUnitId");
+      if (!file || !businessUnitId) {
         throw new Error("Please select a business unit and file");
       }
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("businessUnitId", selectedUnit);
+      formData.append("businessUnitId", businessUnitId);
       const res = await fetch("/api/emissions/upload", {
         method: "POST",
         body: formData,
@@ -86,30 +98,33 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                name="businessUnit"
-                render={() => (
-                  <FormItem>
-                    <FormLabel>Business Unit</FormLabel>
-                    <Select
-                      value={selectedUnit}
-                      onValueChange={setSelectedUnit}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select business unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {businessUnits?.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <Form {...form}>
+                <FormField
+                  control={form.control}
+                  name="businessUnitId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Business Unit</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select business unit" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {businessUnits?.map((unit) => (
+                            <SelectItem key={unit.id} value={unit.id}>
+                              {unit.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </Form>
               <div className="flex gap-2">
                 <Input
                   placeholder="Add new business unit"
@@ -138,14 +153,14 @@ export default function Dashboard() {
                   onChange={(e) => setFile(e.target.files?.[0])}
                   accept=".pdf,.csv,.xlsx"
                 />
-                {!selectedUnit && (
+                {!form.getValues("businessUnitId") && (
                   <p className="text-sm text-destructive">Please select a business unit first</p>
                 )}
               </div>
               <Button
                 className="w-full"
                 onClick={() => uploadFile.mutate()}
-                disabled={!file || !selectedUnit || uploadFile.isPending}
+                disabled={!file || !form.getValues("businessUnitId") || uploadFile.isPending}
               >
                 {uploadFile.isPending ? (
                   "Processing..."
