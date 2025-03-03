@@ -11,9 +11,16 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { MessageSquare, X, LineChart, ChevronUp } from "lucide-react";
+import { MessageSquare, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Line, Bar, Pie } from "react-chartjs-2";
+import { useAuth } from "@/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -50,10 +57,22 @@ interface Message {
   };
 }
 
+const SMART_PROMPTS = [
+  "What's our total fuel consumption by project this quarter?",
+  "Show me water usage by project in the last quarter",
+  "Based on current data, what will our fuel consumption be in the next 30 days?",
+  "Which projects have the highest emissions this month?",
+  "Compare energy usage between different projects",
+  "What are our top emission sources across all projects?",
+  "Show me emission trends for the past 6 months",
+];
+
 export function ChatInterface() {
+  const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [showPrompts, setShowPrompts] = useState(false);
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
@@ -75,6 +94,11 @@ export function ChatInterface() {
     chatMutation.mutate(input);
   };
 
+  const handlePromptSelect = (prompt: string) => {
+    setInput(prompt);
+    setShowPrompts(false);
+  };
+
   const renderChart = (chart: Message['chart']) => {
     if (!chart) return null;
 
@@ -93,11 +117,23 @@ export function ChatInterface() {
     );
   };
 
+  // Show greeting when chat is opened
+  const handleOpen = () => {
+    if (!isOpen && messages.length === 0) {
+      const greeting: Message = {
+        role: "assistant",
+        content: `Hi ${user?.firstName}! 👋 I'm your AI assistant. I can help you analyze your emission data and provide insights. Feel free to ask me anything or try one of the suggested questions below.`
+      };
+      setMessages([greeting]);
+    }
+    setIsOpen(true);
+  };
+
   return (
     <div className="fixed bottom-4 right-4 z-50">
       {!isOpen && (
         <Button
-          onClick={() => setIsOpen(true)}
+          onClick={handleOpen}
           className="rounded-full h-12 w-12 p-0"
         >
           <MessageSquare className="h-6 w-6" />
@@ -141,12 +177,31 @@ export function ChatInterface() {
             ))}
           </ScrollArea>
           <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your data..."
-              disabled={chatMutation.isPending}
-            />
+            <div className="flex-1 flex gap-2">
+              <Input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about your data..."
+                disabled={chatMutation.isPending}
+              />
+              <DropdownMenu open={showPrompts} onOpenChange={setShowPrompts}>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="icon">
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-[300px]">
+                  {SMART_PROMPTS.map((prompt) => (
+                    <DropdownMenuItem
+                      key={prompt}
+                      onClick={() => handlePromptSelect(prompt)}
+                    >
+                      {prompt}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
             <Button type="submit" disabled={chatMutation.isPending}>
               Send
             </Button>
