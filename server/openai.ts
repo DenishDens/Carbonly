@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { insertEmissionSchema } from "@shared/schema";
 import type { z } from "zod";
+import { storage } from "./storage";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -72,6 +73,28 @@ export async function getChatResponse(message: string, context: {
   organizationId: string;
   businessUnitId?: string;
 }): Promise<ChatResponse> {
+  // Fetch relevant data for analysis
+  const businessUnits = await storage.getBusinessUnits(context.organizationId);
+  const emissions = await Promise.all(
+    businessUnits.map(unit => storage.getEmissions(unit.id))
+  );
+  const flatEmissions = emissions.flat();
+
+  // Calculate some basic statistics
+  const totalEmissions = flatEmissions.reduce((sum, e) => sum + parseFloat(e.amount), 0);
+  const emissionsByScope = flatEmissions.reduce((acc, e) => {
+    acc[e.scope] = (acc[e.scope] || 0) + parseFloat(e.amount);
+    return acc;
+  }, {} as Record<string, number>);
+
+  const emissionsByCategory = flatEmissions.reduce((acc, e) => {
+    if (e.details && typeof e.details === 'object' && 'category' in e.details) {
+      const category = e.details.category as string;
+      acc[category] = (acc[category] || 0) + parseFloat(e.amount);
+    }
+    return acc;
+  }, {} as Record<string, number>);
+
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
@@ -79,6 +102,12 @@ export async function getChatResponse(message: string, context: {
         role: "system",
         content: `You are an AI assistant for Carbonly.ai, a carbon emission tracking platform.
 You help users understand their emission data and provide insights.
+You have access to the following data:
+
+Total Emissions: ${totalEmissions} tCO2e
+Emissions by Scope: ${JSON.stringify(emissionsByScope)}
+Emissions by Category: ${JSON.stringify(emissionsByCategory)}
+
 When users ask for visualizations, include chart data in your response using this format:
 {
   "message": "Your analysis text here",
@@ -97,7 +126,9 @@ If no chart is needed, simply return:
   "message": "Your response text here"
 }
 
-Focus on providing actionable insights and recommendations for reducing emissions.`,
+Focus on providing actionable insights and recommendations for reducing emissions.
+When comparing data, use percentages and trends to make insights more meaningful.
+If asked about predictions, use historical trends to make educated forecasts.`,
       },
       {
         role: "user",

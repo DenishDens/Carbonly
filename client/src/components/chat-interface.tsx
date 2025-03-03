@@ -13,6 +13,32 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { MessageSquare, X, LineChart, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Line, Bar, Pie } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface Message {
   role: "user" | "assistant";
@@ -20,6 +46,7 @@ interface Message {
   chart?: {
     type: string;
     data: any;
+    options?: any;
   };
 }
 
@@ -46,6 +73,24 @@ export function ChatInterface() {
     const userMessage: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
     chatMutation.mutate(input);
+  };
+
+  const renderChart = (chart: Message['chart']) => {
+    if (!chart) return null;
+
+    const ChartComponent = {
+      line: Line,
+      bar: Bar,
+      pie: Pie,
+    }[chart.type];
+
+    if (!ChartComponent) return null;
+
+    return (
+      <div className="mt-4 p-4 bg-background rounded-md h-[300px]">
+        <ChartComponent data={chart.data} options={chart.options} />
+      </div>
+    );
   };
 
   return (
@@ -91,11 +136,7 @@ export function ChatInterface() {
                 )}
               >
                 {message.content}
-                {message.chart && (
-                  <div className="mt-4 p-4 bg-background rounded-md">
-                    <LineChart className="h-32 w-full" />
-                  </div>
-                )}
+                {message.chart && renderChart(message.chart)}
               </div>
             ))}
           </ScrollArea>
