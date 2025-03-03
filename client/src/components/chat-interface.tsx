@@ -106,7 +106,7 @@ export function ChatInterface() {
 
       <Card
         className={cn(
-          "w-[400px] transition-all duration-200",
+          "w-[400px] transition-all duration-200 mb-12",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
         )}
       >
