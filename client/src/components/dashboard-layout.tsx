@@ -21,14 +21,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // Organization switching would be implemented here
-  const userOrganizations = user?.organizations || [];
-
-  const handleOrgSwitch = async (orgId: number) => {
-    // This will be implemented in the next iteration
-    console.log("Switching to org:", orgId);
-  };
-
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -71,24 +63,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {userOrganizations.length > 0 && (
-                    <>
-                      <DropdownMenuLabel>Organizations</DropdownMenuLabel>
-                      {userOrganizations.map((org) => (
-                        <DropdownMenuItem
-                          key={org.id}
-                          onClick={() => handleOrgSwitch(org.id)}
-                        >
-                          <Avatar className="h-5 w-5 mr-2">
-                            <AvatarImage src={org.logo} />
-                            <AvatarFallback>{org.name[0]}</AvatarFallback>
-                          </Avatar>
-                          {org.name}
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                    </>
-                  )}
                   <Link href="/profile">
                     <DropdownMenuItem>
                       <User className="h-4 w-4 mr-2" />
@@ -128,8 +102,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <ChatInterface />
       <Footer />
+
+      {/* Position the chat interface at the bottom right */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <ChatInterface />
+      </div>
     </div>
   );
 }

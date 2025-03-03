@@ -16,6 +16,7 @@ import AuditLogViewer from "@/pages/audit-logs";
 import CategoryProcessing from "@/pages/data-processing/[category]";
 import Teams from "@/pages/teams";
 import FuelData from "@/pages/fuel-data";
+import ElectricityData from "@/pages/electricity-data";
 
 function Router() {
   return (
@@ -27,6 +28,7 @@ function Router() {
       <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
       <ProtectedRoute path="/emissions" component={EmissionsData} />
       <ProtectedRoute path="/fuel-data" component={FuelData} />
+      <ProtectedRoute path="/electricity-data" component={ElectricityData} />
       <ProtectedRoute path="/users" component={UserManagement} />
       <ProtectedRoute path="/teams" component={Teams} />
       <ProtectedRoute path="/audit-logs" component={AuditLogViewer} />
