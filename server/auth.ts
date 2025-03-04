@@ -30,13 +30,7 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-async function sendVerificationEmail(email: string, token: string) {
-  // TODO: Implement actual email sending
-  // For now, just log the verification link
-  const verificationLink = `${process.env.APP_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
-  console.log('Verification link:', verificationLink);
-  console.log('Would send email to:', email);
-}
+//Removed sendVerificationEmail function
 
 export function setupAuth(app: Express) {
   // Initialize session middleware with explicit typing
@@ -51,7 +45,7 @@ export function setupAuth(app: Express) {
         connectionString: process.env.DATABASE_URL,
       },
       createTableIfMissing: true,
-      tableName: 'session' // Explicit table name
+      tableName: 'session'
     }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
@@ -78,10 +72,6 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "User not found" });
         }
 
-        if (!user.emailVerified) {
-          return done(null, false, { message: "Please verify your email first" });
-        }
-
         if (!user.password || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid password" });
         }
@@ -93,7 +83,6 @@ export function setupAuth(app: Express) {
     })
   );
 
-  // Explicit typing for session serialization
   passport.serializeUser((user: Express.User, done) => {
     done(null, user.id);
   });
@@ -121,29 +110,22 @@ export function setupAuth(app: Express) {
     try {
       console.log("Registration request body:", req.body);
 
-      // Create user without organization
+      // Create user with basic fields
       const hashedPassword = await hashPassword(req.body.password);
-      const verificationToken = randomUUID();
-
       const userData = {
         ...req.body,
         password: hashedPassword,
-        role: "user", // Default role for self-registration
-        verificationToken,
-        emailVerified: false,
+        role: "user",
         createdAt: new Date(),
       };
 
       console.log("Creating user with data:", userData);
       const user = await storage.createUser(userData);
 
-      // Send verification email
-      await sendVerificationEmail(user.email, verificationToken);
-
-      // Don't log in unverified users
-      res.status(201).json({ 
-        message: "Registration successful. Please check your email to verify your account.",
-        requiresVerification: true
+      // Log in the user immediately after registration
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(201).json(user);
       });
     } catch (error) {
       console.error("Registration error:", error);
@@ -165,67 +147,5 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
-  });
-
-  app.get("/api/verify-email", async (req, res) => {
-    try {
-      const { token } = req.query;
-
-      if (!token || typeof token !== 'string') {
-        return res.status(400).json({ message: "Invalid verification token" });
-      }
-
-      const user = await storage.getUserByVerificationToken(token);
-
-      if (!user) {
-        return res.status(400).json({ message: "Invalid or expired verification token" });
-      }
-
-      // Update user verification status
-      await storage.updateUser(user.id, {
-        emailVerified: true,
-        verificationToken: null
-      });
-
-      // Auto-login after verification
-      req.login(user, (err) => {
-        if (err) {
-          return res.status(500).json({ message: "Verification successful but failed to log in" });
-        }
-        res.json({ message: "Email verified successfully" });
-      });
-    } catch (error) {
-      console.error("Email verification error:", error);
-      res.status(500).json({ message: "Failed to verify email" });
-    }
-  });
-
-  app.post("/api/resend-verification", async (req, res) => {
-    try {
-      const { email } = req.body;
-
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
-
-      const user = await storage.getUserByEmail(email);
-
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      if (user.emailVerified) {
-        return res.status(400).json({ message: "Email is already verified" });
-      }
-
-      const verificationToken = randomUUID();
-      await storage.updateUser(user.id, { verificationToken });
-      await sendVerificationEmail(email, verificationToken);
-
-      res.json({ message: "Verification email sent" });
-    } catch (error) {
-      console.error("Resend verification error:", error);
-      res.status(500).json({ message: "Failed to resend verification email" });
-    }
   });
 }

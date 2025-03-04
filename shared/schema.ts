@@ -294,25 +294,22 @@ export const updateIncidentSchema = insertIncidentSchema
   .partial();
 
 
-// Update the user registration schema to include verification fields
+// Update the user registration schema to handle essential fields only
 export const insertUserSchema = createInsertSchema(users)
   .pick({
     firstName: true,
     lastName: true,
     email: true,
     password: true,
-    role: true,
   })
   .extend({
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    role: z.enum(["super_admin", "admin", "user"]).default("user"),
-    organizationId: z.string().uuid().optional(),
-    emailVerified: z.boolean().default(false),
-    verificationToken: z.string().optional(),
   });
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 // Add a new schema for updating user verification status
 export const updateUserVerificationSchema = z.object({
@@ -321,8 +318,6 @@ export const updateUserVerificationSchema = z.object({
 });
 
 export type UpdateUserVerification = z.infer<typeof updateUserVerificationSchema>;
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
