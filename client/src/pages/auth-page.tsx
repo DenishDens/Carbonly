@@ -233,7 +233,7 @@ function RegisterForm() {
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    console.log("Form submitted:", data); 
+    console.log("Form submitted:", data); // Keep this for debugging
     registerMutation.mutate({
       ...data,
       organizationId: crypto.randomUUID(),

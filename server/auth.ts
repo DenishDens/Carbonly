@@ -5,7 +5,7 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser, insertOrganizationSchema } from "@shared/schema";
+import { User as SelectUser, insertUserSchema } from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -46,9 +46,11 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
+    new LocalStrategy({
+      usernameField: 'email',
+      passwordField: 'password'
+    }, async (email, password, done) => {
       try {
-        const email = username;
         const user = await storage.getUserByEmail(email);
 
         if (!user) {
@@ -78,7 +80,8 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const userData = insertOrganizationSchema.parse(req.body);
+      console.log("Registration request body:", req.body);
+      const userData = insertUserSchema.parse(req.body);
 
       // Check if email is available
       const existingUser = await storage.getUserByEmail(userData.email);
@@ -102,7 +105,8 @@ export function setupAuth(app: Express) {
       // Create user
       const user = await storage.createUser({
         organizationId: organization.id,
-        name: userData.email.split('@')[0],
+        firstName: userData.firstName,
+        lastName: userData.lastName,
         email: userData.email,
         password: await hashPassword(userData.password),
         role: "super_admin",
@@ -114,6 +118,7 @@ export function setupAuth(app: Express) {
         res.status(201).json(user);
       });
     } catch (error) {
+      console.error("Registration error:", error);
       next(error);
     }
   });
