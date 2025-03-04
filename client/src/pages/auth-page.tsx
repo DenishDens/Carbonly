@@ -233,12 +233,15 @@ function RegisterForm() {
   });
 
   const onSubmit = form.handleSubmit((data) => {
+    console.log("Form submitted:", data); 
     registerMutation.mutate({
       ...data,
       organizationId: crypto.randomUUID(),
       role: "super_admin"
     });
   });
+
+  console.log("Form errors:", form.formState.errors);
 
   return (
     <Form {...form}>
