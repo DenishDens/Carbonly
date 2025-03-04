@@ -18,7 +18,7 @@ export interface IStorage {
   getUserByVerificationToken(token: string): Promise<User | undefined>;
   createUser(user: Omit<User, "id">): Promise<User>;
   updateUser(id: string, updates: Partial<User>): Promise<User>;
-  getUsersByOrganization(organizationId: string): Promise<User[]>;
+  getUsersByOrganization(organizationId?: string): Promise<User[]>;
 
   // Organization operations
   getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
@@ -26,7 +26,7 @@ export interface IStorage {
   createOrganization(org: Omit<Organization, "id">): Promise<Organization>;
   updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization>;
   updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization>;
-  
+
   // Team operations
   getTeams(organizationId: string): Promise<Team[]>;
   createTeam(team: Omit<Team, "id">): Promise<Team>;
@@ -74,40 +74,103 @@ export class DatabaseStorage implements IStorage {
     });
   }
 
-  // Updated and new user methods
+  // User methods with improved error handling and logging
   async getUserById(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
+    try {
+      console.log("Getting user by ID:", id);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.id, id));
+
+      console.log("User found:", user?.email || "not found");
+      return user;
+    } catch (error) {
+      console.error("Error getting user by ID:", error);
+      throw error;
+    }
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
+    try {
+      console.log("Getting user by email:", email);
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, email));
+
+      console.log("User found:", user?.email || "not found");
+      return user;
+    } catch (error) {
+      console.error("Error getting user by email:", error);
+      throw error;
+    }
   }
 
   async getUserByVerificationToken(token: string): Promise<User | undefined> {
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.verificationToken, token));
-    return user;
+    try {
+      console.log("Getting user by verification token");
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.verificationToken, token));
+
+      console.log("User found:", user?.email || "not found");
+      return user;
+    } catch (error) {
+      console.error("Error getting user by verification token:", error);
+      throw error;
+    }
   }
 
   async createUser(user: Omit<User, "id">): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
-    return newUser;
+    try {
+      console.log("Creating user:", user.email);
+      const [newUser] = await db
+        .insert(users)
+        .values(user)
+        .returning();
+
+      console.log("User created successfully:", newUser.email);
+      return newUser;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      throw error;
+    }
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User> {
-    const [updatedUser] = await db
-      .update(users)
-      .set(updates)
-      .where(eq(users.id, id))
-      .returning();
-    return updatedUser;
+    try {
+      console.log("Updating user:", id);
+      const [updatedUser] = await db
+        .update(users)
+        .set(updates)
+        .where(eq(users.id, id))
+        .returning();
+
+      console.log("User updated successfully:", updatedUser.email);
+      return updatedUser;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      throw error;
+    }
   }
 
-  // Organization operations
+  async getUsersByOrganization(organizationId?: string): Promise<User[]> {
+    try {
+      if (!organizationId) {
+        return db.select().from(users);
+      }
+      return db
+        .select()
+        .from(users)
+        .where(eq(users.organizationId, organizationId));
+    } catch (error) {
+      console.error("Error getting users by organization:", error);
+      throw error;
+    }
+  }
+
   async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
     const [org] = await db.select().from(organizations).where(eq(organizations.slug, slug));
     return org;
@@ -136,7 +199,6 @@ export class DatabaseStorage implements IStorage {
     return this.updateOrganization(id, { logo: logoUrl });
   }
 
-  // Team operations
   async getTeams(organizationId: string): Promise<Team[]> {
     return db.select().from(teams).where(eq(teams.organizationId, organizationId));
   }
@@ -175,7 +237,6 @@ export class DatabaseStorage implements IStorage {
     return updatedUnit;
   }
 
-  // Business unit operations
   async getBusinessUnits(organizationId: string): Promise<BusinessUnit[]> {
     return db.select().from(businessUnits).where(eq(businessUnits.organizationId, organizationId));
   }
@@ -202,7 +263,6 @@ export class DatabaseStorage implements IStorage {
     return finalUnit;
   }
 
-  // Emission operations
   async getEmissions(businessUnitId: string): Promise<Emission[]> {
     return db.select().from(emissions).where(eq(emissions.businessUnitId, businessUnitId));
   }
@@ -226,7 +286,6 @@ export class DatabaseStorage implements IStorage {
     return updatedEmission;
   }
 
-  // Transaction logging
   async createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction> {
     const [newTransaction] = await db.insert(processingTransactions).values(transaction).returning();
     return newTransaction;
@@ -241,7 +300,6 @@ export class DatabaseStorage implements IStorage {
     return updatedTransaction;
   }
 
-  // Audit logging implementation
   async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
     const [newLog] = await db.insert(auditLogs).values(log).returning();
     return newLog;
@@ -275,7 +333,6 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(auditLogs.createdAt));
   }
 
-  // Implement incident methods
   async getIncidents(organizationId: string): Promise<Incident[]> {
     // First get business units for the organization
     const units = await this.getBusinessUnits(organizationId);
