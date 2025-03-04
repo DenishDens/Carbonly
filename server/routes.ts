@@ -9,10 +9,6 @@ import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
 import {getStorageClient} from './storageClient'
 import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema"; //Import schema
-import { Router } from 'express';
-import { prisma } from './db';
-import { authenticateUser } from './auth';
-import materialLibraryRoutes from './routes/materialLibrary'; // Import the Material Library routes
 
 
 const upload = multer({
@@ -829,12 +825,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to sync files" });
     }
   });
-
-    // Register Material Library routes
-  const router = Router();
-  router.use('/materials', materialLibraryRoutes);
-  app.use('/api', router);
-
 
   const httpServer = createServer(app);
   return httpServer;

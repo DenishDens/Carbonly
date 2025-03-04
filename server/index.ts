@@ -1,10 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import materialLibraryRoutes from './routes/materialLibrary';
-import emissionsRoutes from './routes/emissions';
-import { db } from "./db";
-import { emissions } from "@shared/schema";
 
 const app = express();
 app.use(express.json());
@@ -13,6 +9,7 @@ app.use(express.urlencoded({ extended: false }));
 // Required environment variables
 const requiredEnvVars = [
   'DATABASE_URL',
+  'OPENAI_API_KEY',
   'SESSION_SECRET'
 ];
 
@@ -42,12 +39,15 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
+
       log(logLine);
     }
   });
+
   next();
 });
 
@@ -58,22 +58,9 @@ app.use((req, res, next) => {
     // Check environment variables first
     checkEnvironmentVariables();
 
-    // Test database connection using the emissions table since we know it exists
-    try {
-      await db.select().from(emissions).limit(1);
-      log("Database connection successful");
-    } catch (err) {
-      log("Database connection test failed:", err);
-      throw err;
-    }
-
     log("Registering routes...");
     const server = await registerRoutes(app);
     log("Routes registered successfully");
-
-    // Register API routes
-    app.use('/api/material-library', materialLibraryRoutes);
-    app.use('/api/emissions', emissionsRoutes);
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error details:', err);
@@ -98,14 +85,13 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    const port = 5000;
+    const port = 3000;
     server.listen({
       port,
       host: "0.0.0.0",
       reusePort: true,
     }, () => {
       log(`Server started successfully, serving on port ${port}`);
-      log(`Database URL: ${process.env.DATABASE_URL ? 'configured' : 'missing'}`);
     });
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);
