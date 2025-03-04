@@ -56,7 +56,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
     <nav
       className={cn(
         "flex items-center space-x-4",
-        isMobile ? "flex-col w-full space-x-0 space-y-1" : "flex-row",
+        isMobile ? "flex-col w-full space-x-0" : "flex-row",
         className
       )}
       {...props}
@@ -66,12 +66,12 @@ export function MainNav({ className, ...props }: MainNavProps) {
           key={item.href} 
           className={cn(
             "relative group w-full",
-            isMobile ? "border-b border-border/40 last:border-0" : ""
+            isMobile && "border-b border-border/20 last:border-0"
           )}
         >
           <div className={cn(
             "flex items-center justify-between",
-            isMobile ? "px-4 py-2" : "px-2"
+            isMobile ? "px-4 py-2.5" : "px-2"
           )}>
             <Link
               href={item.subItems ? "#" : item.href}
@@ -86,7 +86,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
               {item.name}
               {item.subItems && (
                 <ChevronDown className={cn(
-                  "h-4 w-4 transition-transform",
+                  "h-4 w-4 transition-transform duration-200",
                   openMenu === item.href && "transform rotate-180"
                 )} />
               )}
@@ -96,11 +96,12 @@ export function MainNav({ className, ...props }: MainNavProps) {
           {item.subItems && (
             <div 
               className={cn(
+                "overflow-hidden transition-all duration-200",
                 isMobile 
-                  ? "w-full bg-accent/30"
-                  : "absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-background border border-border",
+                  ? "w-full bg-accent/10"
+                  : "absolute left-0 mt-1 w-48 rounded-md shadow-lg bg-background border border-border",
                 isMobile
-                  ? openMenu === item.href ? "block" : "hidden"
+                  ? openMenu === item.href ? "max-h-40" : "max-h-0"
                   : "hidden group-hover:block"
               )}
             >
@@ -109,9 +110,9 @@ export function MainNav({ className, ...props }: MainNavProps) {
                   key={subItem.href}
                   href={subItem.href}
                   className={cn(
-                    "block px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors",
-                    location === subItem.href ? "bg-accent text-accent-foreground" : "",
-                    isMobile ? "pl-8" : ""
+                    "block px-4 py-2 text-sm text-foreground hover:bg-accent/50 transition-colors",
+                    location === subItem.href && "bg-accent/40 text-primary font-medium",
+                    isMobile && "pl-8"
                   )}
                 >
                   {subItem.name}
