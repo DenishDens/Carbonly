@@ -222,6 +222,7 @@ function LoginForm() {
 
 function RegisterForm() {
   const { registerMutation } = useAuth();
+  const { toast } = useToast();
   const form = useForm({
     resolver: zodResolver(insertUserSchema),
     defaultValues: {
@@ -233,15 +234,37 @@ function RegisterForm() {
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    console.log("Form submitted:", data); // Keep this for debugging
-    registerMutation.mutate({
-      ...data,
-      organizationId: crypto.randomUUID(),
-      role: "super_admin"
-    });
+    console.log("Form submitted with data:", data);
+    try {
+      registerMutation.mutate({
+        ...data,
+        organizationId: crypto.randomUUID(),
+        role: "super_admin"
+      }, {
+        onError: (error) => {
+          console.error("Registration error:", error);
+          toast({
+            title: "Registration failed",
+            description: error.message || "Could not create account",
+            variant: "destructive",
+          });
+        }
+      });
+    } catch (error) {
+      console.error("Form submission error:", error);
+      toast({
+        title: "Form Error",
+        description: "Please check your input and try again",
+        variant: "destructive",
+      });
+    }
   });
 
-  console.log("Form errors:", form.formState.errors);
+  console.log("Form state:", {
+    isSubmitting: form.formState.isSubmitting,
+    errors: form.formState.errors,
+    isDirty: form.formState.isDirty
+  });
 
   return (
     <Form {...form}>
@@ -313,9 +336,10 @@ function RegisterForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={registerMutation.isPending}
+          disabled={registerMutation.isPending || form.formState.isSubmitting}
+          onClick={() => console.log("Submit button clicked")}
         >
-          {registerMutation.isPending && (
+          {(registerMutation.isPending || form.formState.isSubmitting) && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
           Create Account
