@@ -56,7 +56,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
     <nav
       className={cn(
         "flex items-center space-x-4",
-        isMobile ? "flex-col w-full space-x-0 space-y-2" : "flex-row",
+        isMobile ? "flex-col w-full space-x-0 space-y-1" : "flex-row",
         className
       )}
       {...props}
@@ -66,16 +66,18 @@ export function MainNav({ className, ...props }: MainNavProps) {
           key={item.href} 
           className={cn(
             "relative group w-full",
-            isMobile ? "border-b border-border pb-2" : ""
+            isMobile ? "border-b border-border/40 last:border-0" : ""
           )}
         >
-          <div className="flex items-center justify-between">
+          <div className={cn(
+            "flex items-center justify-between",
+            isMobile ? "px-4 py-2" : "px-2"
+          )}>
             <Link
               href={item.subItems ? "#" : item.href}
               onClick={() => item.subItems && toggleMenu(item.href)}
               className={cn(
-                "text-sm font-medium transition-colors hover:text-primary flex items-center",
-                isMobile ? "w-full py-2 px-4" : "",
+                "text-sm font-medium transition-colors hover:text-primary flex items-center gap-2",
                 location === item.href
                   ? "text-primary font-semibold"
                   : "text-muted-foreground"
@@ -84,7 +86,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
               {item.name}
               {item.subItems && (
                 <ChevronDown className={cn(
-                  "ml-1 h-4 w-4 transition-transform",
+                  "h-4 w-4 transition-transform",
                   openMenu === item.href && "transform rotate-180"
                 )} />
               )}
@@ -95,7 +97,7 @@ export function MainNav({ className, ...props }: MainNavProps) {
             <div 
               className={cn(
                 isMobile 
-                  ? "w-full bg-accent/50 mt-1"
+                  ? "w-full bg-accent/30"
                   : "absolute left-0 mt-2 w-48 rounded-md shadow-lg bg-background border border-border",
                 isMobile
                   ? openMenu === item.href ? "block" : "hidden"
@@ -107,8 +109,8 @@ export function MainNav({ className, ...props }: MainNavProps) {
                   key={subItem.href}
                   href={subItem.href}
                   className={cn(
-                    "block px-4 py-2 text-sm text-foreground hover:bg-accent",
-                    location === subItem.href ? "bg-accent" : "",
+                    "block px-4 py-2 text-sm text-foreground hover:bg-accent transition-colors",
+                    location === subItem.href ? "bg-accent text-accent-foreground" : "",
                     isMobile ? "pl-8" : ""
                   )}
                 >
