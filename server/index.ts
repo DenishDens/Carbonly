@@ -91,13 +91,14 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    const port = 3000;
+    const port = 5000;
     server.listen({
       port,
       host: "0.0.0.0",
       reusePort: true,
     }, () => {
       log(`Server started successfully, serving on port ${port}`);
+      log(`Database URL: ${process.env.DATABASE_URL ? 'configured' : 'missing'}`);
     });
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);

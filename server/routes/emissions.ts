@@ -10,10 +10,7 @@ router.get("/scope-:scope", async (req, res) => {
   const scope = `Scope ${req.params.scope}`;
   try {
     const data = await db.select().from(emissions).where(eq(emissions.scope, scope));
-    res.json(data.map(emission => ({
-      ...emission,
-      sourceType: emission.details?.sourceType || "manual"
-    })));
+    res.json(data);
   } catch (error) {
     console.error("Error fetching emissions:", error);
     res.status(500).json({ error: "Failed to fetch emissions data" });

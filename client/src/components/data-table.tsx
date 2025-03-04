@@ -41,7 +41,7 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
   const filteredData = data.filter(item => {
     return (
       (!filters.businessUnit || item.businessUnitId.toLowerCase().includes(filters.businessUnit.toLowerCase())) &&
-      (!filters.sourceType || item.sourceType === filters.sourceType) &&
+      (!filters.sourceType || item.details?.sourceType === filters.sourceType) &&
       (!filters.emissionSource || item.emissionSource.toLowerCase().includes(filters.emissionSource.toLowerCase()))
     );
   });
@@ -113,12 +113,12 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
                   <TableCell>{row.businessUnitId}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {row.sourceType === "file" && <FileText className="h-4 w-4" />}
-                      {row.sourceType}
+                      {row.details?.sourceType === "file" && <FileText className="h-4 w-4" />}
+                      {row.details?.sourceType || "manual"}
                     </div>
                   </TableCell>
                   <TableCell>{row.emissionSource}</TableCell>
-                  <TableCell className="text-right">{row.amount.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">{Number(row.amount).toLocaleString()}</TableCell>
                   <TableCell>{row.unit}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
