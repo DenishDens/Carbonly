@@ -27,7 +27,7 @@ router.post("/", async (req, res) => {
       ...req.body,
       details: {
         ...req.body.details,
-        sourceType: req.body.sourceType
+        sourceType: req.body.sourceType || "manual"
       }
     }).returning();
     res.status(201).json(emission);
@@ -46,7 +46,7 @@ router.patch("/:id", async (req, res) => {
         ...req.body,
         details: {
           ...req.body.details,
-          sourceType: req.body.sourceType
+          sourceType: req.body.sourceType || "manual"
         }
       })
       .where(eq(emissions.id, req.params.id))

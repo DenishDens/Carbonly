@@ -326,4 +326,5 @@ export type EmissionDetails = {
   rawUnit?: "liters" | "gallons";
   notes?: string;
   category?: string;
+  sourceType?: "manual" | "file" | "integration";
 };
