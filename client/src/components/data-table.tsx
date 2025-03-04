@@ -19,20 +19,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Edit2, Trash2, Plus, FileText } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import type { Emission } from "@shared/schema";
 
 interface DataTableProps {
   scope: "1" | "2" | "3";
-  data: Array<{
-    id: string;
-    date: string;
-    businessUnit: string;
-    source: string;
+  data: Array<Emission & {
     sourceType: "manual" | "file" | "integration";
-    activityType: string;
-    value: number;
-    unit: string;
-    emissionsFactor: number;
-    co2e: number;
   }>;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -43,14 +35,14 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
   const [filters, setFilters] = useState({
     businessUnit: "",
     sourceType: "",
-    activityType: "",
+    emissionSource: "",
   });
 
   const filteredData = data.filter(item => {
     return (
-      (!filters.businessUnit || item.businessUnit.toLowerCase().includes(filters.businessUnit.toLowerCase())) &&
+      (!filters.businessUnit || item.businessUnitId.toLowerCase().includes(filters.businessUnit.toLowerCase())) &&
       (!filters.sourceType || item.sourceType === filters.sourceType) &&
-      (!filters.activityType || item.activityType.toLowerCase().includes(filters.activityType.toLowerCase()))
+      (!filters.emissionSource || item.emissionSource.toLowerCase().includes(filters.emissionSource.toLowerCase()))
     );
   });
 
@@ -92,11 +84,11 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Activity Type</Label>
+            <Label>Emission Source</Label>
             <Input
-              placeholder="Filter by activity type"
-              value={filters.activityType}
-              onChange={(e) => setFilters(prev => ({ ...prev, activityType: e.target.value }))}
+              placeholder="Filter by emission source"
+              value={filters.emissionSource}
+              onChange={(e) => setFilters(prev => ({ ...prev, emissionSource: e.target.value }))}
             />
           </div>
         </div>
@@ -108,11 +100,9 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
                 <TableHead>Date</TableHead>
                 <TableHead>Business Unit</TableHead>
                 <TableHead>Source</TableHead>
-                <TableHead>Activity Type</TableHead>
-                <TableHead className="text-right">Value</TableHead>
+                <TableHead>Emission Source</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
                 <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Emissions Factor</TableHead>
-                <TableHead className="text-right">CO₂e (tons)</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -120,18 +110,16 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
               {filteredData.map((row) => (
                 <TableRow key={row.id}>
                   <TableCell>{new Date(row.date).toLocaleDateString()}</TableCell>
-                  <TableCell>{row.businessUnit}</TableCell>
+                  <TableCell>{row.businessUnitId}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       {row.sourceType === "file" && <FileText className="h-4 w-4" />}
-                      {row.source}
+                      {row.sourceType}
                     </div>
                   </TableCell>
-                  <TableCell>{row.activityType}</TableCell>
-                  <TableCell className="text-right">{row.value.toLocaleString()}</TableCell>
+                  <TableCell>{row.emissionSource}</TableCell>
+                  <TableCell className="text-right">{row.amount.toLocaleString()}</TableCell>
                   <TableCell>{row.unit}</TableCell>
-                  <TableCell className="text-right">{row.emissionsFactor}</TableCell>
-                  <TableCell className="text-right">{row.co2e.toFixed(2)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" size="sm" onClick={() => onEdit(row.id)}>
@@ -146,7 +134,7 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
               ))}
               {filteredData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No data found. Add new entries or adjust your filters.
                   </TableCell>
                 </TableRow>

@@ -9,11 +9,11 @@ interface EmissionWithSource extends Emission {
   sourceType: "manual" | "file" | "integration";
 }
 
-export default function Scope1Page() {
+export default function Scope3Page() {
   const { toast } = useToast();
 
   const { data: emissionsData } = useQuery<EmissionWithSource[]>({
-    queryKey: ["/api/emissions/scope-1"],
+    queryKey: ["/api/emissions/scope-3"],
   });
 
   const deleteEmission = useMutation({
@@ -21,7 +21,7 @@ export default function Scope1Page() {
       await apiRequest("DELETE", `/api/emissions/${id}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/emissions/scope-1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/emissions/scope-3"] });
       toast({ title: "Entry deleted successfully" });
     },
   });
@@ -32,7 +32,7 @@ export default function Scope1Page() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/emissions/scope-1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/emissions/scope-3"] });
       toast({ title: "Entry updated successfully" });
     },
   });
@@ -41,12 +41,12 @@ export default function Scope1Page() {
     mutationFn: async (data: Omit<EmissionWithSource, "id">) => {
       const res = await apiRequest("POST", "/api/emissions", {
         ...data,
-        scope: "Scope 1",
+        scope: "Scope 3",
       });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/emissions/scope-1"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/emissions/scope-3"] });
       toast({ title: "Entry added successfully" });
     },
   });
@@ -54,7 +54,7 @@ export default function Scope1Page() {
   return (
     <DashboardLayout>
       <DataTable
-        scope="1"
+        scope="3"
         data={emissionsData || []}
         onEdit={(id) => {
           const emission = emissionsData?.find(e => e.id === id);
@@ -67,7 +67,7 @@ export default function Scope1Page() {
           sourceType: "manual",
           amount: "0",
           unit: "kg",
-          scope: "Scope 1",
+          scope: "Scope 3",
           emissionSource: "",
           businessUnitId: "",
           date: new Date(),
