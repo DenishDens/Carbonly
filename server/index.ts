@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import materialLibraryRoutes from './routes/materialLibrary'; // Added import for material library routes
 
 const app = express();
 app.use(express.json());
@@ -61,6 +62,9 @@ app.use((req, res, next) => {
     log("Registering routes...");
     const server = await registerRoutes(app);
     log("Routes registered successfully");
+
+    // Register material library routes
+    app.use('/api/material-library', materialLibraryRoutes);
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
       console.error('Error details:', err);

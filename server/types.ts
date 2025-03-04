@@ -1,4 +1,3 @@
-
 // Storage interfaces
 export interface StorageFile {
   id: string;
@@ -49,7 +48,7 @@ export interface Material {
 
 export interface MaterialMatch {
   sourceText: string;
-  matchedMaterial: Material | null;
+  matchedMaterial: Material;
   confidence: number;
   suggestedMatches?: Material[];
   requiresReview: boolean;
