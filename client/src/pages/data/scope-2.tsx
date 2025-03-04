@@ -65,13 +65,15 @@ export default function Scope2Page() {
         onDelete={(id) => deleteEmission.mutate(id)}
         onAdd={() => addEmission.mutate({
           sourceType: "manual",
-          amount: 0,
+          amount: "0",
           unit: "kWh",
           scope: "Scope 2",
           emissionSource: "",
           businessUnitId: "",
           date: new Date(),
-          details: {}
+          details: {
+            sourceType: "manual"
+          }
         })}
       />
     </DashboardLayout>

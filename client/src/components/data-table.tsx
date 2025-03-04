@@ -41,7 +41,7 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
   const filteredData = data.filter(item => {
     return (
       (!filters.businessUnit || item.businessUnitId.toLowerCase().includes(filters.businessUnit.toLowerCase())) &&
-      (!filters.sourceType || item.details.sourceType === filters.sourceType) &&
+      (!filters.sourceType || (item.details?.sourceType ?? "manual") === filters.sourceType) &&
       (!filters.emissionSource || item.emissionSource.toLowerCase().includes(filters.emissionSource.toLowerCase()))
     );
   });
@@ -113,8 +113,8 @@ export function DataTable({ scope, data, onEdit, onDelete, onAdd }: DataTablePro
                   <TableCell>{row.businessUnitId}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {row.details.sourceType === "file" && <FileText className="h-4 w-4" />}
-                      {row.details.sourceType}
+                      {(row.details?.sourceType ?? "manual") === "file" && <FileText className="h-4 w-4" />}
+                      {row.details?.sourceType ?? "manual"}
                     </div>
                   </TableCell>
                   <TableCell>{row.emissionSource}</TableCell>
