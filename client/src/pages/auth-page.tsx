@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertOrganizationSchema } from "@shared/schema";
+import { insertUserSchema } from "@shared/schema"; // Assuming this is the correct import
 import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"; // Assuming these components exist
+
 
 const ENVIRONMENTAL_FACTS = [
   {
@@ -214,8 +216,10 @@ function LoginForm() {
 function RegisterForm() {
   const { registerMutation } = useAuth();
   const form = useForm({
-    resolver: zodResolver(insertOrganizationSchema),
+    resolver: zodResolver(insertUserSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       email: "",
       password: "",
     },
@@ -227,26 +231,67 @@ function RegisterForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="name@company.com"
-          {...form.register("email")}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          {...form.register("password")}
-        />
-        <p className="text-sm text-muted-foreground">
-          At least 8 characters long
-        </p>
-      </div>
+      <FormField
+        control={form.control}
+        name="firstName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>First Name</FormLabel>
+            <Input
+              id="firstName"
+              placeholder="John"
+              {...field}
+            />
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="lastName"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Last Name</FormLabel>
+            <Input
+              id="lastName"
+              placeholder="Doe"
+              {...field}
+            />
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Email</FormLabel>
+            <Input
+              id="email"
+              type="email"
+              placeholder="name@company.com"
+              {...field}
+            />
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="password"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Password</FormLabel>
+            <Input
+              id="password"
+              type="password"
+              {...field}
+            />
+            <FormMessage />
+          </FormItem>
+        )}
+      />
       <Button
         type="submit"
         className="w-full"
