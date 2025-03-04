@@ -70,7 +70,7 @@ export default function Scope1Page() {
           scope: "Scope 1",
           emissionSource: "",
           businessUnitId: "",
-          date: new Date().toISOString(),
+          date: new Date(),
           details: {
             sourceType: "manual"
           }

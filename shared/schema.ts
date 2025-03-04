@@ -95,16 +95,12 @@ export const emissions = pgTable("emissions", {
   businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
   scope: text("scope").notNull(), // 'Scope 1', 'Scope 2', 'Scope 3'
   emissionSource: text("emission_source").notNull(),
-  amount: decimal("amount").notNull(),
+  amount: text("amount").notNull(), // Changed to text to match frontend
   unit: text("unit").notNull(), // 'kg', 'tCO2e'
   date: timestamp("date").defaultNow().notNull(),
-  details: jsonb("details").$type<{
-    fuelType?: "diesel" | "gasoline";
-    rawAmount?: string;
-    rawUnit?: "liters" | "gallons";
-    notes?: string;
-    category?: string;
-  }>(), // Explicitly type the details column
+  details: jsonb("details").$type<EmissionDetails>().default({
+    sourceType: "manual"
+  }),
 });
 
 export const processingTransactions = pgTable("processing_transactions", {
@@ -326,5 +322,5 @@ export type EmissionDetails = {
   rawUnit?: "liters" | "gallons";
   notes?: string;
   category?: string;
-  sourceType?: "manual" | "file" | "integration";
+  sourceType: "manual" | "file" | "integration";
 };

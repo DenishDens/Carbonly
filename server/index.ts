@@ -3,6 +3,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import materialLibraryRoutes from './routes/materialLibrary';
 import emissionsRoutes from './routes/emissions';
+import { db } from "./db";
+import { emissions } from "@shared/schema";
 
 const app = express();
 app.use(express.json());
@@ -11,7 +13,6 @@ app.use(express.urlencoded({ extended: false }));
 // Required environment variables
 const requiredEnvVars = [
   'DATABASE_URL',
-  'OPENAI_API_KEY',
   'SESSION_SECRET'
 ];
 
@@ -41,15 +42,12 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
       if (logLine.length > 80) {
         logLine = logLine.slice(0, 79) + "…";
       }
-
       log(logLine);
     }
   });
-
   next();
 });
 
@@ -59,6 +57,15 @@ app.use((req, res, next) => {
 
     // Check environment variables first
     checkEnvironmentVariables();
+
+    // Test database connection using the emissions table since we know it exists
+    try {
+      await db.select().from(emissions).limit(1);
+      log("Database connection successful");
+    } catch (err) {
+      log("Database connection test failed:", err);
+      throw err;
+    }
 
     log("Registering routes...");
     const server = await registerRoutes(app);
