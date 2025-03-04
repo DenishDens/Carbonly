@@ -21,6 +21,7 @@ import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import * as crypto from 'crypto';
+import * as z from 'zod';
 
 const ENVIRONMENTAL_FACTS = [
   {
@@ -233,42 +234,30 @@ function RegisterForm() {
     },
   });
 
-  const onSubmit = form.handleSubmit((data) => {
-    console.log("Form submitted with data:", data);
+  const onSubmit = async (data: z.infer<typeof insertUserSchema>) => {
     try {
-      registerMutation.mutate({
+      await registerMutation.mutateAsync({
         ...data,
         organizationId: crypto.randomUUID(),
         role: "super_admin"
-      }, {
-        onError: (error) => {
-          console.error("Registration error:", error);
-          toast({
-            title: "Registration failed",
-            description: error.message || "Could not create account",
-            variant: "destructive",
-          });
-        }
+      });
+      toast({
+        title: "Registration Successful",
+        description: "Your account has been created successfully.",
       });
     } catch (error) {
-      console.error("Form submission error:", error);
+      console.error("Registration error:", error);
       toast({
-        title: "Form Error",
-        description: "Please check your input and try again",
+        title: "Registration failed",
+        description: error instanceof Error ? error.message : "Could not create account",
         variant: "destructive",
       });
     }
-  });
-
-  console.log("Form state:", {
-    isSubmitting: form.formState.isSubmitting,
-    errors: form.formState.errors,
-    isDirty: form.formState.isDirty
-  });
+  };
 
   return (
     <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
@@ -336,10 +325,9 @@ function RegisterForm() {
         <Button
           type="submit"
           className="w-full"
-          disabled={registerMutation.isPending || form.formState.isSubmitting}
-          onClick={() => console.log("Submit button clicked")}
+          disabled={registerMutation.isPending}
         >
-          {(registerMutation.isPending || form.formState.isSubmitting) && (
+          {registerMutation.isPending && (
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
           )}
           Create Account

@@ -300,14 +300,23 @@ export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
 
 // Update the user registration schema
-export const insertUserSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  organizationId: z.string().uuid(),
-  role: z.enum(["super_admin", "admin", "user"]).default("user"),
-});
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    firstName: true,
+    lastName: true,
+    email: true,
+    password: true,
+    organizationId: true,
+    role: true,
+  })
+  .extend({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Invalid email address"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    organizationId: z.string().uuid(),
+    role: z.enum(["super_admin", "admin", "user"]).default("user"),
+  });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
