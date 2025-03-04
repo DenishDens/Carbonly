@@ -3,13 +3,13 @@ import { createServer, type Server } from "http";
 import multer from "multer";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import express from "express";
+import { extractEmissionData, getChatResponse } from "./openai";
 import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
-import {Strategy as SamlStrategy} from "passport-saml";
+import { Strategy as SamlStrategy } from "passport-saml";
 import {getStorageClient} from './storageClient'
-import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema";
-import {insertTeamSchema} from "@shared/schema";
+import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema"; //Import schema
+
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -24,11 +24,7 @@ interface FileUploadRequest extends Express.Request {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize middleware first
-  app.use(express.json());
-
-  // Setup authentication before defining routes
-  await setupAuth(app);
+  setupAuth(app);
 
   // Business Units endpoints
   app.get("/api/business-units", async (req, res) => {
@@ -560,6 +556,134 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add SSO routes here
+  app.post("/api/organization/sso", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "super_admin") {
+      return res.sendStatus(403);
+    }
+
+    try {
+      const { enabled, settings } = req.body;
+
+      const org = await storage.updateOrganization(req.user.organizationId, {
+        ssoEnabled: enabled,
+        ssoSettings: settings,
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "UPDATE",
+        entityType: "organization",
+        entityId: org.id,
+        changes: { ssoEnabled: enabled, ssoSettings: settings },
+      });
+
+      res.json(org);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error occurred";
+      res.status(400).json({ message });
+    }
+  });
+
+  // SSO login endpoint
+  app.post("/api/auth/sso", async (req, res) => {
+    try {
+      const { domain } = req.body;
+
+      // Extract organization slug from domain
+      const slug = domain.split('.')[0];
+      console.log("Attempting SSO login for organization:", slug);
+
+      // Find organization by domain
+      const org = await storage.getOrganizationBySlug(slug);
+      if (!org || !org.ssoEnabled) {
+        console.log("SSO not configured for organization:", slug);
+        return res.status(400).json({ message: "SSO not configured for this organization" });
+      }
+
+      const ssoConfig = org.ssoSettings;
+      if (!ssoConfig) {
+        console.log("SSO configuration not found for organization:", slug);
+        return res.status(400).json({ message: "SSO configuration not found" });
+      }
+
+      console.log("Configuring SSO strategy for organization:", slug);
+      const strategy = new SamlStrategy(
+        {
+          path: '/api/auth/sso/callback',
+          entryPoint: ssoConfig.entryPoint,
+          issuer: ssoConfig.issuer,
+          cert: ssoConfig.cert,
+        },
+        async (profile: any, done: any) => {
+          try {
+            console.log("Processing SSO profile:", profile.email);
+            let user = await storage.getUserByEmail(profile.email);
+
+            // If user exists and belongs to a different org, deny access
+            if (user && user.organizationId !== org.id) {
+              return done(null, false, { message: "Email belongs to a different organization" });
+            }
+
+            // Create new user if doesn't exist
+            if (!user) {
+              user = await storage.createUser({
+                email: profile.email,
+                firstName: profile.firstName,
+                lastName: profile.lastName,
+                organizationId: org.id,
+                role: 'user',
+                password: null, // SSO users don't need password
+                createdAt: new Date(),
+              });
+              console.log("Created new user for SSO:", user.email);
+            }
+
+            return done(null, user);
+          } catch (error) {
+            console.error("SSO user processing error:", error);
+            return done(error);
+          }
+        }
+      );
+
+      passport.use('saml', strategy);
+      passport.authenticate('saml')(req, res);
+    } catch (error) {
+      console.error("SSO authentication error:", error);
+      const message = error instanceof Error ? error.message : "SSO authentication failed";
+      res.status(400).json({ message });
+    }
+  });
+
+  app.post('/api/auth/sso/callback', passport.authenticate('saml'), (req, res) => {
+    console.log("SSO callback successful, redirecting to dashboard");
+    res.redirect('/');
+  });
+
+  // Update the login route in registerRoutes function
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Authentication failed" });
+      }
+
+      req.login(user, (err) => {
+        if (err) return next(err);
+
+        // If remember me is selected, set session to expire in 30 days
+        if (req.body.rememberMe) {
+          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        }
+
+        res.json(user);
+      });
+    })(req, res, next);
+  });
+
   // Add these new endpoints to the existing routes file
   app.get("/api/auth/onedrive/authorize", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -702,164 +826,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Add SSO routes here
-  app.post("/api/organization/sso", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== "super_admin") {
-      return res.sendStatus(403);
-    }
-
-    try {
-      const { enabled, settings } = req.body;
-
-      const org = await storage.updateOrganization(req.user.organizationId, {
-        ssoEnabled: enabled,
-        ssoSettings: settings,
-      });
-
-      // Create audit log
-      await storage.createAuditLog({
-        userId: req.user.id,
-        organizationId: req.user.organizationId,
-        actionType: "UPDATE",
-        entityType: "organization",
-        entityId: org.id,
-        changes: { ssoEnabled: enabled, ssoSettings: settings },
-      });
-
-      res.json(org);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown error occurred";
-      res.status(400).json({ message });
-    }
-  });
-
-  // SSO login endpoint
-  app.post("/api/auth/sso", async (req, res) => {
-    try {
-      const { domain } = req.body;
-
-      // Extract organization slug from domain
-      const slug = domain.split('.')[0];
-      console.log("Attempting SSO login for organization:", slug);
-
-      // Find organization by domain
-      const org = await storage.getOrganizationBySlug(slug);
-      if (!org || !org.ssoEnabled) {
-        console.log("SSO not configured for organization:", slug);
-        return res.status(400).json({ message: "SSO not configured for this organization" });
-      }
-
-      const ssoConfig = org.ssoSettings;
-      if (!ssoConfig) {
-        console.log("SSO configuration not found for organization:", slug);
-        return res.status(400).json({ message: "SSO configuration not found" });
-      }
-
-      console.log("Configuring SSO strategy for organization:", slug);
-      const strategy = new SamlStrategy(
-        {
-          path: '/api/auth/sso/callback',
-          entryPoint: ssoConfig.entryPoint,
-          issuer: ssoConfig.issuer,
-          cert: ssoConfig.cert,
-        },
-        async (profile: any, done: any) => {
-          try {
-            console.log("Processing SSO profile:", profile.email);
-            let user = await storage.getUserByEmail(profile.email);
-
-            // If user exists and belongs to a different org, deny access
-            if (user && user.organizationId !== org.id) {
-              return done(null, false, { message: "Email belongs to a different organization" });
-            }
-
-            // Create new user if doesn't exist
-            if (!user) {
-              user = await storage.createUser({
-                email: profile.email,
-                firstName: profile.firstName,
-                lastName: profile.lastName,
-                organizationId: org.id,
-                role: 'user',
-                password: null, // SSO users don't need password
-                createdAt: new Date(),
-              });
-              console.log("Created new user for SSO:", user.email);
-            }
-
-            return done(null, user);
-          } catch (error) {
-            console.error("SSO user processing error:", error);
-            return done(error);
-          }
-        }
-      );
-
-      passport.use('saml', strategy);
-      passport.authenticate('saml')(req, res);
-    } catch (error) {
-      console.error("SSO authentication error:", error);
-      const message = error instanceof Error ? error.message : "SSO authentication failed";
-      res.status(400).json({ message });
-    }
-  });
-
-  app.post('/api/auth/sso/callback', passport.authenticate('saml'), (req, res) => {
-    console.log("SSO callback successful, redirecting to dashboard");
-    res.redirect('/');
-  });
-
-  // Update the login route in registerRoutes function
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-
-      req.login(user, (err) => {
-        if (err) return next(err);
-
-        // If remember me is selected, set session to expire in 30 days
-        if (req.body.rememberMe) {
-          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-        }
-        res.json(user);
-      });
-    })(req, res, next);
-  });
-
   const httpServer = createServer(app);
   return httpServer;
 }
-
-const getOneDriveAuthUrl = (state: string, baseUrl: string): string => {
-  //Implementation for getting onedrive auth url goes here.  This is a placeholder.
-  return "onedrive-auth-url";
-}
-
-const handleOneDriveCallback = async (code: string, businessUnitId: string, baseUrl: string) => {
-  //Implementation for handling onedrive callback goes here. This is a placeholder
-  return {access_token: "onedrive-access-token"};
-}
-
-const getGoogleDriveAuthUrl = (state: string, baseUrl: string): string => {
-  //Implementation for getting Google drive auth url goes here.  This is a placeholder.
-  return "googledrive-auth-url";
-}
-
-const handleGoogleDriveCallback = async (code: string, businessUnitId: string, baseUrl: string) => {
-  //Implementation for handling Google drive callback goes here. This is a placeholder
-  return {access_token: "googledrive-access-token"};
-}
-
-// Placeholder function - needs actual implementation
-const extractEmissionData = async (fileContent: string) => {
-  //Implementation to extract emission data goes here. This is a placeholder.
-  return {scope: "Scope 1", emissionSource: "Source A", amount: 100, unit: "kg", date: "2024-03-08", category: "Energy", details: {rawAmount: "120", rawUnit: "lbs"}};
-};
-
-const getChatResponse = async (message: string, context: any) => {
-    //Implementation to get chat response goes here. This is a placeholder.
-    return {message: "This is a placeholder response from the chat API."};
-};

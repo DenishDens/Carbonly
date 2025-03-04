@@ -105,7 +105,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <Footer />
 
-      <ChatInterface />
+      {/* Position the chat interface at the bottom right */}
+      <div className="fixed bottom-3 right-3 z-50">
+        <ChatInterface />
+      </div>
     </div>
   );
 }

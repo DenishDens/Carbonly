@@ -1,34 +1,41 @@
 import { Pool } from "@neondatabase/serverless";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import { organizations, users, businessUnits, emissions } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission } from "@shared/schema";
+import createMemoryStore from "memorystore";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident } from "@shared/schema";
+import crypto from 'crypto';
 
-const PostgresSessionStore = connectPgSimple(session);
+const MemoryStore = createMemoryStore(session);
 
 export interface IStorage {
   sessionStore: session.Store;
 
-  // User operations
-  getUserById(id: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: Omit<User, "id">): Promise<User>;
-  updateUser(id: string, updates: Partial<User>): Promise<User>;
-  getUsersByOrganization(organizationId?: string): Promise<User[]>;
-
   // Organization operations
-  getOrganizationById(id: string): Promise<Organization | undefined>;
   getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
+  getOrganizationById(id: string): Promise<Organization | undefined>;
+  createOrganization(org: Omit<Organization, "id">): Promise<Organization>;
   updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization>;
   updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization>;
 
-  // Business Unit operations
+  // User operations
+  getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  createUser(user: Omit<User, "id">): Promise<User>;
+  getUsersByOrganization(organizationId: string): Promise<User[]>;
+
+  // Team operations
+  getTeams(organizationId: string): Promise<Team[]>;
+  createTeam(team: Omit<Team, "id">): Promise<Team>;
+  updateTeam(team: Team): Promise<Team>;
+  deleteTeam(id: string): Promise<void>;
+  getBusinessUnitTeam(businessUnitId: string): Promise<Team | undefined>;
+  updateBusinessUnitTeam(businessUnitId: string, teamId: string): Promise<BusinessUnit>;
+
+  // Business unit operations
   getBusinessUnits(organizationId: string): Promise<BusinessUnit[]>;
   createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit>;
-  getBusinessUnitTeam(businessUnitId: string): Promise<any>;
-  updateBusinessUnitTeam(businessUnitId: string, teamId: string): Promise<BusinessUnit>;
 
   // Emission operations
   getEmissions(businessUnitId: string): Promise<Emission[]>;
@@ -36,403 +43,284 @@ export interface IStorage {
   createEmission(emission: Omit<Emission, "id">): Promise<Emission>;
   updateEmission(emission: Emission): Promise<Emission>;
 
-  // Other operations
-  createAuditLog(log: any): Promise<any>;
-  getAuditLogs(organizationId: string, filters?: any): Promise<any[]>;
-  createTransaction(transaction: any): Promise<any>;
-  updateTransactionStatus(id: string, status: string, errorType?: string): Promise<any>;
-  getTeams(organizationId: string): Promise<any[]>;
-  createTeam(team: any): Promise<any>;
-  updateTeam(team: any): Promise<any>;
-  deleteTeam(id: string): Promise<void>;
-  getIncidents(organizationId: string): Promise<any[]>;
-  getIncidentById(id: string): Promise<any>;
-  createIncident(incident: any): Promise<any>;
-  updateIncident(incident: any): Promise<any>;
+  // Transaction logging
+  createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction>;
+  updateTransactionStatus(id: string, status: string, errorType?: string | null): Promise<ProcessingTransaction>;
+
+  // Audit logging
+  createAuditLog(log: InsertAuditLog): Promise<AuditLog>;
+  getAuditLogs(organizationId: string, filters?: {
+    entityType?: string;
+    entityId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<AuditLog[]>;
+
+  // Add new incident methods
+  getIncidents(organizationId: string): Promise<Incident[]>;
+  getIncidentById(id: string): Promise<Incident | undefined>;
+  createIncident(incident: Omit<Incident, "id">): Promise<Incident>;
+  updateIncident(incident: Incident): Promise<Incident>;
 }
 
 export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
 
   constructor() {
-    this.sessionStore = new PostgresSessionStore({
-      conObject: {
-        connectionString: process.env.DATABASE_URL,
-        ssl: false // Disable SSL for local development
-      },
-      createTableIfMissing: true,
-      tableName: 'session'
+    this.sessionStore = new MemoryStore({
+      checkPeriod: 86400000, // 24 hours
     });
   }
 
-  // User methods with improved error handling
-  async getUserById(id: string): Promise<User | undefined> {
-    try {
-      console.log("Getting user by ID:", id);
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.id, id));
-
-      console.log("User found:", user?.email || "not found");
-      return user;
-    } catch (error) {
-      console.error("Error getting user by ID:", error);
-      throw error;
-    }
-  }
-
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    try {
-      console.log("Getting user by email:", email);
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, email));
-
-      console.log("User found:", user?.email || "not found");
-      return user;
-    } catch (error) {
-      console.error("Error getting user by email:", error);
-      throw error;
-    }
-  }
-
-  async createUser(user: Omit<User, "id">): Promise<User> {
-    try {
-      console.log("Creating user:", user.email);
-      
-      // Set default values if not provided
-      const userData = {
-        ...user,
-        emailVerified: user.emailVerified !== undefined ? user.emailVerified : false,
-        role: user.role || "user",
-        createdAt: new Date()
-      };
-      
-      // Check if user exists
-      const existingUser = await this.getUserByEmail(user.email);
-      if (existingUser) {
-        throw new Error("User with this email already exists");
-      }
-      
-      // Create new user
-      const [newUser] = await db
-        .insert(users)
-        .values(userData)
-        .returning();
-
-      console.log("User created successfully:", newUser.email);
-      return newUser;
-    } catch (error) {
-      console.error("Error creating user:", error);
-      throw error;
-    }
-  }
-
-  async updateUser(id: string, updates: Partial<User>): Promise<User> {
-    try {
-      console.log("Updating user:", id);
-      const [updatedUser] = await db
-        .update(users)
-        .set(updates)
-        .where(eq(users.id, id))
-        .returning();
-
-      console.log("User updated successfully:", updatedUser.email);
-      return updatedUser;
-    } catch (error) {
-      console.error("Error updating user:", error);
-      throw error;
-    }
-  }
-  
-  async verifyUserEmail(token: string): Promise<User> {
-    try {
-      console.log("Verifying user email with token:", token);
-      // Find user by verification token
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.verificationToken, token));
-      
-      if (!user) {
-        throw new Error("Invalid verification token");
-      }
-      
-      // Update user as verified
-      const [updatedUser] = await db
-        .update(users)
-        .set({ 
-          emailVerified: true,
-          verificationToken: null 
-        })
-        .where(eq(users.id, user.id))
-        .returning();
-        
-      console.log("User email verified successfully:", updatedUser.email);
-      return updatedUser;
-    } catch (error) {
-      console.error("Error verifying user email:", error);
-      throw error;
-    }
-  }
-
-  async getUsersByOrganization(organizationId?: string): Promise<User[]> {
-    try {
-      if (!organizationId) {
-        return db.select().from(users);
-      }
-      return db
-        .select()
-        .from(users)
-        .where(eq(users.organizationId, organizationId));
-    } catch (error) {
-      console.error("Error getting users by organization:", error);
-      throw error;
-    }
-  }
-
-  // Organization methods
-  async getOrganizationById(id: string): Promise<Organization | undefined> {
-    try {
-      const [organization] = await db
-        .select()
-        .from(organizations)
-        .where(eq(organizations.id, id));
-      return organization;
-    } catch (error) {
-      console.error("Error getting organization by ID:", error);
-      throw error;
-    }
-  }
-
+  // Organization operations
   async getOrganizationBySlug(slug: string): Promise<Organization | undefined> {
-    try {
-      const [organization] = await db
-        .select()
-        .from(organizations)
-        .where(eq(organizations.slug, slug));
-      return organization;
-    } catch (error) {
-      console.error("Error getting organization by slug:", error);
-      throw error;
-    }
+    const [org] = await db.select().from(organizations).where(eq(organizations.slug, slug));
+    return org;
+  }
+
+  async getOrganizationById(id: string): Promise<Organization | undefined> {
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
+    return org;
+  }
+
+  async createOrganization(org: Omit<Organization, "id">): Promise<Organization> {
+    const [newOrg] = await db.insert(organizations).values(org).returning();
+    return newOrg;
   }
 
   async updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization> {
-    try {
-      const [updatedOrg] = await db
-        .update(organizations)
-        .set(updates)
-        .where(eq(organizations.id, id))
-        .returning();
-      return updatedOrg;
-    } catch (error) {
-      console.error("Error updating organization:", error);
-      throw error;
-    }
+    const [updatedOrg] = await db
+      .update(organizations)
+      .set(updates)
+      .where(eq(organizations.id, id))
+      .returning();
+    return updatedOrg;
   }
 
   async updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization> {
-    try {
-      const [updatedOrg] = await db
-        .update(organizations)
-        .set({ logoUrl })
-        .where(eq(organizations.id, id))
-        .returning();
-      return updatedOrg;
-    } catch (error) {
-      console.error("Error updating organization logo:", error);
-      throw error;
-    }
+    return this.updateOrganization(id, { logo: logoUrl });
   }
 
-  // Business Unit methods
-  async getBusinessUnits(organizationId: string): Promise<BusinessUnit[]> {
-    try {
-      return db
-        .select()
-        .from(businessUnits)
-        .where(eq(businessUnits.organizationId, organizationId));
-    } catch (error) {
-      console.error("Error getting business units:", error);
-      throw error;
-    }
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
-  async createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit> {
-    try {
-      const [newUnit] = await db
-        .insert(businessUnits)
-        .values(unit)
-        .returning();
-      return newUnit;
-    } catch (error) {
-      console.error("Error creating business unit:", error);
-      throw error;
-    }
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
   }
 
-  async getBusinessUnitTeam(businessUnitId: string): Promise<any> {
-    try {
-      const [unit] = await db
-        .select()
-        .from(businessUnits)
-        .where(eq(businessUnits.id, businessUnitId));
-      
-      if (!unit || !unit.teamId) {
-        return null;
-      }
-      
-      // This would need to be implemented with teams table
-      // For now returning a placeholder
-      return { id: unit.teamId, name: "Team" };
-    } catch (error) {
-      console.error("Error getting business unit team:", error);
-      throw error;
-    }
+  async createUser(user: Omit<User, "id">): Promise<User> {
+    // Ensure the required fields are present before creating the user
+    const [newUser] = await db.insert(users).values({
+      organizationId: user.organizationId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.password,
+      role: user.role,
+      createdAt: new Date(),
+    }).returning();
+    return newUser;
   }
 
-  async updateBusinessUnitTeam(businessUnitId: string, teamId: string): Promise<BusinessUnit> {
-    try {
-      const [updatedUnit] = await db
-        .update(businessUnits)
-        .set({ teamId })
-        .where(eq(businessUnits.id, businessUnitId))
-        .returning();
-      return updatedUnit;
-    } catch (error) {
-      console.error("Error updating business unit team:", error);
-      throw error;
-    }
+  async getUsersByOrganization(organizationId: string): Promise<User[]> {
+    return db.select().from(users).where(eq(users.organizationId, organizationId));
   }
 
-  // Emission methods
-  async getEmissions(businessUnitId: string): Promise<Emission[]> {
-    try {
-      return db
-        .select()
-        .from(emissions)
-        .where(eq(emissions.businessUnitId, businessUnitId));
-    } catch (error) {
-      console.error("Error getting emissions:", error);
-      throw error;
-    }
+  // Team operations
+  async getTeams(organizationId: string): Promise<Team[]> {
+    return db.select().from(teams).where(eq(teams.organizationId, organizationId));
   }
 
-  async getEmissionById(id: string): Promise<Emission | undefined> {
-    try {
-      const [emission] = await db
-        .select()
-        .from(emissions)
-        .where(eq(emissions.id, id));
-      return emission;
-    } catch (error) {
-      console.error("Error getting emission by ID:", error);
-      throw error;
-    }
+  async createTeam(team: Omit<Team, "id">): Promise<Team> {
+    const [newTeam] = await db.insert(teams).values(team).returning();
+    return newTeam;
   }
 
-  async createEmission(emission: Omit<Emission, "id">): Promise<Emission> {
-    try {
-      const [newEmission] = await db
-        .insert(emissions)
-        .values(emission)
-        .returning();
-      return newEmission;
-    } catch (error) {
-      console.error("Error creating emission:", error);
-      throw error;
-    }
-  }
-
-  async updateEmission(emission: Emission): Promise<Emission> {
-    try {
-      const [updatedEmission] = await db
-        .update(emissions)
-        .set(emission)
-        .where(eq(emissions.id, emission.id))
-        .returning();
-      return updatedEmission;
-    } catch (error) {
-      console.error("Error updating emission:", error);
-      throw error;
-    }
-  }
-
-  // Placeholder methods for other required operations
-  async createAuditLog(log: any): Promise<any> {
-    // Implement audit log creation
-    console.log("Creating audit log:", log);
-    return { id: "placeholder", ...log };
-  }
-
-  async getAuditLogs(organizationId: string, filters?: any): Promise<any[]> {
-    // Implement audit log fetching
-    console.log("Getting audit logs for organization:", organizationId);
-    return [];
-  }
-
-  async createTransaction(transaction: any): Promise<any> {
-    // Implement transaction creation
-    console.log("Creating transaction:", transaction);
-    return { id: "placeholder", ...transaction };
-  }
-
-  async updateTransactionStatus(id: string, status: string, errorType?: string): Promise<any> {
-    // Implement transaction status update
-    console.log("Updating transaction status:", id, status, errorType);
-    return { id, status, errorType };
-  }
-
-  async getTeams(organizationId: string): Promise<any[]> {
-    // Implement teams fetching
-    console.log("Getting teams for organization:", organizationId);
-    return [];
-  }
-
-  async createTeam(team: any): Promise<any> {
-    // Implement team creation
-    console.log("Creating team:", team);
-    return { id: "placeholder", ...team };
-  }
-
-  async updateTeam(team: any): Promise<any> {
-    // Implement team update
-    console.log("Updating team:", team);
-    return team;
+  async updateTeam(team: Team): Promise<Team> {
+    const [updatedTeam] = await db
+      .update(teams)
+      .set(team)
+      .where(eq(teams.id, team.id))
+      .returning();
+    return updatedTeam;
   }
 
   async deleteTeam(id: string): Promise<void> {
-    // Implement team deletion
-    console.log("Deleting team:", id);
+    await db.delete(teams).where(eq(teams.id, id));
   }
 
-  async getIncidents(organizationId: string): Promise<any[]> {
-    // Implement incidents fetching
-    console.log("Getting incidents for organization:", organizationId);
-    return [];
+  async getBusinessUnitTeam(businessUnitId: string): Promise<Team | undefined> {
+    const [unit] = await db.select().from(businessUnits).where(eq(businessUnits.id, businessUnitId));
+    if (!unit?.teamId) return undefined;
+    const [team] = await db.select().from(teams).where(eq(teams.id, unit.teamId));
+    return team;
   }
 
-  async getIncidentById(id: string): Promise<any> {
-    // Implement incident fetching by ID
-    console.log("Getting incident by ID:", id);
-    return { id };
+  async updateBusinessUnitTeam(businessUnitId: string, teamId: string): Promise<BusinessUnit> {
+    const [updatedUnit] = await db
+      .update(businessUnits)
+      .set({ teamId })
+      .where(eq(businessUnits.id, businessUnitId))
+      .returning();
+    return updatedUnit;
   }
 
-  async createIncident(incident: any): Promise<any> {
-    // Implement incident creation
-    console.log("Creating incident:", incident);
-    return { id: "placeholder", ...incident };
+  // Business unit operations
+  async getBusinessUnits(organizationId: string): Promise<BusinessUnit[]> {
+    return db.select().from(businessUnits).where(eq(businessUnits.organizationId, organizationId));
   }
 
-  async updateIncident(incident: any): Promise<any> {
-    // Implement incident update
-    console.log("Updating incident:", incident);
+  async createBusinessUnit(unit: Omit<BusinessUnit, "id">): Promise<BusinessUnit> {
+    // Generate project email
+    const tempId = crypto.randomUUID(); // Temporary ID for email generation
+    const projectEmail = generateProjectEmail(tempId, unit.organizationId);
+
+    const [newUnit] = await db.insert(businessUnits).values({
+      ...unit,
+      projectEmail,
+      createdAt: new Date(),
+    }).returning();
+
+    // Update with the actual ID
+    const updatedProjectEmail = generateProjectEmail(newUnit.id, unit.organizationId);
+    const [finalUnit] = await db
+      .update(businessUnits)
+      .set({ projectEmail: updatedProjectEmail })
+      .where(eq(businessUnits.id, newUnit.id))
+      .returning();
+
+    return finalUnit;
+  }
+
+  // Emission operations
+  async getEmissions(businessUnitId: string): Promise<Emission[]> {
+    return db.select().from(emissions).where(eq(emissions.businessUnitId, businessUnitId));
+  }
+
+  async getEmissionById(id: string): Promise<Emission | undefined> {
+    const [emission] = await db.select().from(emissions).where(eq(emissions.id, id));
+    return emission;
+  }
+
+  async createEmission(emission: Omit<Emission, "id">): Promise<Emission> {
+    const [newEmission] = await db.insert(emissions).values(emission).returning();
+    return newEmission;
+  }
+
+  async updateEmission(emission: Emission): Promise<Emission> {
+    const [updatedEmission] = await db
+      .update(emissions)
+      .set(emission)
+      .where(eq(emissions.id, emission.id))
+      .returning();
+    return updatedEmission;
+  }
+
+  // Transaction logging
+  async createTransaction(transaction: Omit<ProcessingTransaction, "id">): Promise<ProcessingTransaction> {
+    const [newTransaction] = await db.insert(processingTransactions).values(transaction).returning();
+    return newTransaction;
+  }
+
+  async updateTransactionStatus(id: string, status: string, errorType: string | null = null): Promise<ProcessingTransaction> {
+    const [updatedTransaction] = await db
+      .update(processingTransactions)
+      .set({ status, errorType })
+      .where(eq(processingTransactions.id, id))
+      .returning();
+    return updatedTransaction;
+  }
+
+  // Audit logging implementation
+  async createAuditLog(log: InsertAuditLog): Promise<AuditLog> {
+    const [newLog] = await db.insert(auditLogs).values(log).returning();
+    return newLog;
+  }
+
+  async getAuditLogs(organizationId: string, filters?: {
+    entityType?: string;
+    entityId?: string;
+    startDate?: Date;
+    endDate?: Date;
+  }): Promise<AuditLog[]> {
+    let conditions = [eq(auditLogs.organizationId, organizationId)];
+
+    if (filters?.entityType) {
+      conditions.push(eq(auditLogs.entityType, filters.entityType));
+    }
+    if (filters?.entityId) {
+      conditions.push(eq(auditLogs.entityId, filters.entityId));
+    }
+    if (filters?.startDate) {
+      conditions.push(eq(auditLogs.createdAt, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(eq(auditLogs.createdAt, filters.endDate));
+    }
+
+    return db
+      .select()
+      .from(auditLogs)
+      .where(and(...conditions))
+      .orderBy(desc(auditLogs.createdAt));
+  }
+
+  // Implement incident methods
+  async getIncidents(organizationId: string): Promise<Incident[]> {
+    // First get business units for the organization
+    const units = await this.getBusinessUnits(organizationId);
+    const unitIds = units.map(unit => unit.id);
+
+    // Then get incidents for those business units
+    return db
+      .select()
+      .from(incidents)
+      .where(
+        and(
+          ...unitIds.map(id => eq(incidents.businessUnitId, id))
+        )
+      )
+      .orderBy(desc(incidents.createdAt));
+  }
+
+  async getIncidentById(id: string): Promise<Incident | undefined> {
+    const [incident] = await db
+      .select()
+      .from(incidents)
+      .where(eq(incidents.id, id));
     return incident;
   }
+
+  async createIncident(incident: Omit<Incident, "id">): Promise<Incident> {
+    const [newIncident] = await db
+      .insert(incidents)
+      .values(incident)
+      .returning();
+    return newIncident;
+  }
+
+  async updateIncident(incident: Incident): Promise<Incident> {
+    const [updatedIncident] = await db
+      .update(incidents)
+      .set(incident)
+      .where(eq(incidents.id, incident.id))
+      .returning();
+    return updatedIncident;
+  }
 }
+
+//Helper function - needs implementation based on your requirements.
+const generateProjectEmail = (id: string, organizationId: string): string => {
+  // Generate a consistent, encrypted-looking project email
+  const projectId = id.slice(0, 8); // Take first 8 chars of UUID
+  const orgId = organizationId.slice(0, 4); // Take first 4 chars of org UUID
+  return `project-${projectId}-${orgId}@carbontrack.io`; // Use a consistent domain
+}
+
 
 // Export a single instance
 export const storage = new DatabaseStorage();

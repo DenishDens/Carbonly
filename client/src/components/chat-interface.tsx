@@ -21,6 +21,31 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 interface Message {
   role: "user" | "assistant";
@@ -33,11 +58,13 @@ interface Message {
 }
 
 const SMART_PROMPTS = [
-  "Analyze my carbon emissions trend",
-  "Show emissions by source",
-  "Compare this month vs last month",
-  "Identify unusual patterns",
-  "Suggest reduction strategies",
+  "What's our total fuel consumption by project this quarter?",
+  "Show me water usage by project in the last quarter",
+  "Based on current data, what will our fuel consumption be in the next 30 days?",
+  "Which projects have the highest emissions this month?",
+  "Compare energy usage between different projects",
+  "What are our top emission sources across all projects?",
+  "Show me emission trends for the past 6 months",
 ];
 
 export function ChatInterface() {
@@ -47,21 +74,23 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [showPrompts, setShowPrompts] = useState(false);
 
-  const handleOpen = () => setIsOpen(true);
+  // Get user's accessible business units
+  const { data: accessibleUnits } = useQuery({
+    queryKey: ["/api/business-units/accessible"],
+    enabled: !!user,
+  });
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const res = await apiRequest(
-        "POST",
-        "/api/chat",
-        { message, organizationId: user?.organizationId }
-      );
+      const res = await apiRequest("POST", "/api/chat", { 
+        message,
+        accessibleUnits: accessibleUnits?.map(unit => unit.id) || [],
+      });
       return res.json();
     },
     onSuccess: (response) => {
-      setMessages(prev => [...prev, 
-        { role: "assistant", content: response.message, chart: response.chart }
-      ]);
+      setMessages((prev) => [...prev, response]);
+      setInput("");
     },
   });
 
@@ -69,9 +98,9 @@ export function ChatInterface() {
     e.preventDefault();
     if (!input.trim()) return;
 
-    setMessages(prev => [...prev, { role: "user", content: input }]);
+    const userMessage: Message = { role: "user", content: input };
+    setMessages((prev) => [...prev, userMessage]);
     chatMutation.mutate(input);
-    setInput("");
   };
 
   const handlePromptSelect = (prompt: string) => {
@@ -79,7 +108,9 @@ export function ChatInterface() {
     setShowPrompts(false);
   };
 
-  const renderChart = (chart: { type: string; data: any; options?: any }) => {
+  const renderChart = (chart: Message['chart']) => {
+    if (!chart) return null;
+
     const ChartComponent = {
       line: Line,
       bar: Bar,
@@ -89,24 +120,31 @@ export function ChatInterface() {
     if (!ChartComponent) return null;
 
     return (
-      <div className="mt-4 h-[200px]">
-        <ChartComponent
-          data={chart.data}
-          options={{
-            maintainAspectRatio: false,
-            ...chart.options,
-          }}
-        />
+      <div className="mt-4 p-4 bg-background rounded-md h-[300px]">
+        <ChartComponent data={chart.data} options={chart.options} />
       </div>
     );
   };
 
+  // Show greeting when chat is opened
+  const handleOpen = () => {
+    if (!isOpen && messages.length === 0) {
+      const unitCount = accessibleUnits?.length || 0;
+      const greeting: Message = {
+        role: "assistant",
+        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help analyze data from your ${unitCount} accessible business unit${unitCount !== 1 ? 's' : ''}. Feel free to ask me anything or try one of the suggested questions below.`
+      };
+      setMessages([greeting]);
+    }
+    setIsOpen(true);
+  };
+
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 z-50">
       {!isOpen && (
         <Button
           onClick={handleOpen}
-          className="rounded-full h-12 w-12 p-0 shadow-lg hover:shadow-xl transition-shadow"
+          className="rounded-full h-12 w-12 p-0"
         >
           <MessageSquare className="h-6 w-6" />
         </Button>
@@ -114,7 +152,7 @@ export function ChatInterface() {
 
       <Card
         className={cn(
-          "w-[400px] absolute bottom-0 right-0 shadow-xl transition-all duration-200",
+          "w-[400px] transition-all duration-200",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
         )}
       >

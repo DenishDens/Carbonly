@@ -14,14 +14,12 @@ export const organizations = pgTable("organizations", {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  organizationId: uuid("organization_id").references(() => organizations.id),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
   password: text("password"), // Optional for SSO users
   role: text("role").notNull(), // 'super_admin', 'admin', 'user'
-  emailVerified: boolean("email_verified").default(false),
-  verificationToken: text("verification_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -294,36 +292,24 @@ export const updateIncidentSchema = insertIncidentSchema
   .partial();
 
 
-// Update the user registration schema to handle essential fields only
-export const insertUserSchema = createInsertSchema(users)
-  .pick({
-    firstName: true,
-    lastName: true,
-    email: true,
-    password: true,
-  })
-  .extend({
-    firstName: z.string().min(1, "First name is required"),
-    lastName: z.string().min(1, "Last name is required"),
-    email: z.string().email("Invalid email address"),
-    password: z.string().min(8, "Password must be at least 8 characters"),
-  });
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
-// Add a new schema for updating user verification status
-export const updateUserVerificationSchema = z.object({
-  emailVerified: z.boolean(),
-  verificationToken: z.string().nullable(),
-});
-
-export type UpdateUserVerification = z.infer<typeof updateUserVerificationSchema>;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
+
+// Update the user registration schema
+export const insertUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  organizationId: z.string().uuid(),
+  role: z.enum(["super_admin", "admin", "user"]).default("user"),
+});
+
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export interface FuelData {
   businessUnitId: string;

@@ -6,161 +6,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema } from "@shared/schema";
+import { insertOrganizationSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import * as z from 'zod';
 
-function RegisterForm() {
-  const { registerMutation } = useAuth();
-  const { toast } = useToast();
-  const [submitting, setSubmitting] = useState(false);
-  const form = useForm({
-    resolver: zodResolver(
-      insertUserSchema.omit({ 
-        organizationId: true, 
-        role: true,
-        createdAt: true,
-        emailVerified: true,
-        verificationToken: true,
-      })
-    ),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = async (formData: any) => {
-    try {
-      setSubmitting(true);
-      console.log("Form submitted with data:", formData);
-      const result = await registerMutation.mutateAsync({
-        ...formData,
-        role: "user", // Default role for self-registration
-      });
-
-      console.log("Registration successful:", result);
-      toast({
-        title: "Registration Successful",
-        description: "Please check your email for verification link.",
-      });
-
-      // Clear the form after successful registration
-      form.reset();
-    } catch (error) {
-      console.error("Registration error:", error);
-      toast({
-        title: "Registration failed",
-        description: error instanceof Error ? error.message : "Could not create account",
-        variant: "destructive",
-      });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <Form {...form}>
-      <form 
-        onSubmit={form.handleSubmit(onSubmit)} 
-        className="space-y-4"
-        noValidate
-      >
-        <div className="grid grid-cols-2 gap-4">
-          <FormField
-            control={form.control}
-            name="firstName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>First Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="lastName"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Last Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input
-                  type="email"
-                  placeholder="name@company.com"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  {...field}
-                />
-              </FormControl>
-              <p className="text-sm text-muted-foreground">
-                At least 8 characters long
-              </p>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={submitting || registerMutation.isPending}
-        >
-          {(submitting || registerMutation.isPending) && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          Create Account
-        </Button>
-        <p className="text-sm text-center text-muted-foreground">
-          By signing up, you agree to our Terms of Service and Privacy Policy
-        </p>
-      </form>
-    </Form>
-  );
-}
+const ENVIRONMENTAL_FACTS = [
+  {
+    title: "Did You Know?",
+    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
+    image: "🌳",
+  },
+  {
+    title: "Green Energy Impact",
+    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
+    image: "💨",
+  },
+  {
+    title: "Ocean Facts",
+    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
+    image: "🌊",
+  },
+];
 
 function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
@@ -342,6 +211,56 @@ function LoginForm() {
   );
 }
 
+function RegisterForm() {
+  const { registerMutation } = useAuth();
+  const form = useForm({
+    resolver: zodResolver(insertOrganizationSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    registerMutation.mutate(data);
+  });
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="name@company.com"
+          {...form.register("email")}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          {...form.register("password")}
+        />
+        <p className="text-sm text-muted-foreground">
+          At least 8 characters long
+        </p>
+      </div>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={registerMutation.isPending}
+      >
+        {registerMutation.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        Create Account
+      </Button>
+    </form>
+  );
+}
+
 function Footer() {
   return (
     <footer className="bg-gray-800 text-white p-4 text-center">
@@ -350,24 +269,6 @@ function Footer() {
   );
 }
 
-
-const ENVIRONMENTAL_FACTS = [
-  {
-    title: "Did You Know?",
-    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
-    image: "🌳",
-  },
-  {
-    title: "Green Energy Impact",
-    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
-    image: "💨",
-  },
-  {
-    title: "Ocean Facts",
-    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
-    image: "🌊",
-  },
-];
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
