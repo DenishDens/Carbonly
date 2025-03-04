@@ -14,31 +14,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Footer } from "@/components/footer";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [, setLocation] = useLocation();
-
-  // If no user is authenticated, redirect to auth page
-  if (!user) {
-    setLocation("/auth");
-    return null;
-  }
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center">
           <div className="flex items-center md:mr-4">
-            <a href="/" className="mr-4 md:mr-6 flex items-center gap-2">
+            <Link href="/" className="mr-4 md:mr-6 flex items-center gap-2">
               <Leaf className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Carbonly.ai
               </h1>
-            </a>
+            </Link>
             <div className="hidden md:flex">
               <MainNav />
             </div>

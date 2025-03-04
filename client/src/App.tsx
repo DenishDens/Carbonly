@@ -9,19 +9,20 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import Dashboard from "@/pages/dashboard";
 
+function ProtectedDashboard() {
+  return (
+    <DashboardLayout>
+      <Dashboard />
+    </DashboardLayout>
+  );
+}
 
 function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <Route path="/">
-        <DashboardLayout>
-          <Switch>
-            <ProtectedRoute path="/" component={Dashboard} />
-            <Route component={NotFound} />
-          </Switch>
-        </DashboardLayout>
-      </Route>
+      <ProtectedRoute path="/" component={ProtectedDashboard} />
+      <Route component={NotFound} />
     </Switch>
   );
 }
