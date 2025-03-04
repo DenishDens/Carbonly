@@ -73,6 +73,7 @@ export default function BusinessUnits() {
     status: "active",
     managerId: "",
     teamId: "",
+    projectCode:"",
     protocolSettings: {
       version: "org",
       emissionFactors: {
@@ -116,6 +117,7 @@ export default function BusinessUnits() {
         status: "active",
         managerId: "none",
         teamId: "none",
+        projectCode:"",
         protocolSettings: {
           version: "org",
           emissionFactors: {
@@ -176,6 +178,16 @@ export default function BusinessUnits() {
             value={data.name}
             onChange={(e) => onChange({ ...data, name: e.target.value })}
             placeholder="Enter business unit name"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="projectCode">Project Number / Unit Code</Label>
+          <Input
+            id="projectCode"
+            value={data.projectCode}
+            onChange={(e) => onChange({ ...data, projectCode: e.target.value })}
+            placeholder="e.g., PRJ-001"
           />
         </div>
 
@@ -241,7 +253,9 @@ export default function BusinessUnits() {
               <SelectItem value="none">No Manager</SelectItem>
               {users?.map((user) => (
                 <SelectItem key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName} ({user.email})
+                  {user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName} (${user.email})`
+                    : user.email}
                 </SelectItem>
               ))}
             </SelectContent>
