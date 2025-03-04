@@ -7,7 +7,6 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
 import connectPgSimple from "connect-pg-simple";
-import { randomUUID } from "crypto";
 
 declare global {
   namespace Express {
@@ -92,35 +91,18 @@ export function setupAuth(app: Express) {
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log("Registration request body:", req.body);
-      const userData = insertUserSchema.parse(req.body);
 
-      // Check if email is available
-      const existingUser = await storage.getUserByEmail(userData.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "Email is already registered" });
-      }
-
-      // Generate a temporary unique slug
-      const tempSlug = `org-${Date.now()}`;
-
-      // Create organization
-      const organization = await storage.createOrganization({
-        id: randomUUID(),
-        name: userData.email.split('@')[0], // Use email username as org name temporarily
-        slug: tempSlug,
-        logo: null,
-        ssoEnabled: false,
-        ssoSettings: null,
-        createdAt: new Date(),
-      });
-
-      // Create user
-      const user = await storage.createUser({
-        ...userData,
-        organizationId: organization.id,
+      // Create user without organization
+      const hashedPassword = await hashPassword(req.body.password);
+      const userData = {
+        ...req.body,
+        password: hashedPassword,
         role: "super_admin",
         createdAt: new Date(),
-      });
+      };
+
+      console.log("Creating user with data:", userData);
+      const user = await storage.createUser(userData);
 
       req.login(user, (err) => {
         if (err) return next(err);

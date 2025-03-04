@@ -14,7 +14,7 @@ export const organizations = pgTable("organizations", {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  organizationId: uuid("organization_id").references(() => organizations.id), // Remove .notNull()
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
@@ -306,7 +306,6 @@ export const insertUserSchema = createInsertSchema(users)
     lastName: true,
     email: true,
     password: true,
-    organizationId: true,
     role: true,
   })
   .extend({
@@ -314,8 +313,8 @@ export const insertUserSchema = createInsertSchema(users)
     lastName: z.string().min(1, "Last name is required"),
     email: z.string().email("Invalid email address"),
     password: z.string().min(8, "Password must be at least 8 characters"),
-    organizationId: z.string().uuid(),
     role: z.enum(["super_admin", "admin", "user"]).default("user"),
+    organizationId: z.string().uuid().optional(),
   });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
