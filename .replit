@@ -15,7 +15,7 @@ localPort = 3000
 externalPort = 80
 
 [workflows]
-runButton = "Project"
+runButton = "Start application"
 
 [[workflows.workflow]]
 name = "Project"
@@ -38,5 +38,5 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm run dev"
+args = "bash -c 'mkdir -p ~/.pg && if [ ! -d ~/.pg/base ]; then initdb -D ~/.pg; fi && pg_ctl -D ~/.pg -o \"-c unix_socket_directories=/run/postgresql\" start || true && npx prisma db push && npx prisma generate && npm run dev'"
 waitForPort = 3000
