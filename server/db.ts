@@ -13,8 +13,7 @@ if (!process.env.DATABASE_URL) {
 
 // Create connection pool
 export const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
-  ssl: false // Disable SSL for local development
+  connectionString: process.env.DATABASE_URL
 });
 
 // Initialize Drizzle with schema
