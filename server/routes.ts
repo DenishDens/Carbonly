@@ -38,8 +38,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userData = {
         ...req.body,
         organizationId,
+        role: "super_admin",
         createdAt: new Date(),
-        role: "super_admin"
       };
 
       console.log("Processing user data:", userData);

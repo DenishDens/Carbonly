@@ -20,7 +20,6 @@ import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import * as crypto from 'crypto';
 import * as z from 'zod';
 
 const ENVIRONMENTAL_FACTS = [
@@ -225,7 +224,13 @@ function RegisterForm() {
   const { registerMutation } = useAuth();
   const { toast } = useToast();
   const form = useForm({
-    resolver: zodResolver(insertUserSchema.omit({ organizationId: true, role: true, createdAt: true })),
+    resolver: zodResolver(
+      insertUserSchema.omit({ 
+        organizationId: true, 
+        role: true, 
+        createdAt: true 
+      })
+    ),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -239,13 +244,10 @@ function RegisterForm() {
       console.log("Form submitted with data:", formData);
       const result = await registerMutation.mutateAsync({
         ...formData,
-        organizationId: crypto.randomUUID(),
         role: "super_admin",
-        createdAt: new Date()
       });
 
       console.log("Registration successful:", result);
-
       toast({
         title: "Registration Successful",
         description: "Your account has been created successfully.",
