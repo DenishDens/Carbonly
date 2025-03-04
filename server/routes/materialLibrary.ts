@@ -4,6 +4,7 @@ import { authenticateUser } from '../auth';
 
 const router = Router();
 const materialLibraryService = new MaterialLibraryService();
+const materialLibraryService = new MaterialLibraryService();
 
 // Get all materials with optional filtering
 router.get('/', authenticateUser, async (req, res) => {
