@@ -5,7 +5,7 @@ import { ChatInterface } from "@/components/chat-interface";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Menu, Leaf, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,12 +14,19 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Footer } from "@/components/footer";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [, setLocation] = useLocation();
+
+  // If no user is authenticated, redirect to auth page
+  if (!user) {
+    setLocation("/auth");
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -59,8 +66,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">{user?.firstName} {user?.lastName}</p>
-                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                      <p className="text-sm font-medium leading-none">
+                        {user?.firstName} {user?.lastName}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {user?.email}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -93,7 +104,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {showMobileMenu && (
           <div className="border-b md:hidden">
             <div className="container py-3">
-              <MainNav className="flex flex-col space-y-2" />
+              <MainNav />
             </div>
           </div>
         )}
@@ -105,7 +116,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <Footer />
 
-      {/* Position the chat interface at the bottom right */}
       <div className="fixed bottom-3 right-3 z-50">
         <ChatInterface />
       </div>
