@@ -63,133 +63,8 @@ interface MaterialMatch {
 interface StorageClient {
   listFiles(path: string): Promise<StorageFile[]>;
   syncFiles(path: string): Promise<{ synced: number; errors: number }>;
-}
-
-class OneDriveStorageClient implements StorageClient {
-  private client: OneDriveClient;
-
-  constructor(credentials: any) {
-    // Initialize OneDrive client with credentials
-    this.client = OneDriveClient.init({
-      authProvider: (done) => {
-        done(null, credentials.accessToken);
-      },
-    });
-  }
-
-  async listFiles(path: string): Promise<StorageFile[]> {
-    try {
-      const response = await this.client
-        .api(`/me/drive/root:${path}:/children`)
-        .get();
-
-      return response.value.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        path: `${path}/${item.name}`,
-        type: item.folder ? "folder" : "file",
-        lastModified: item.lastModifiedDateTime,
-      }));
-    } catch (error) {
-      console.error("OneDrive list files error:", error);
-      return [];
-    }
-  }
-
-  async syncFiles(path: string): Promise<{ synced: number; errors: number }> {
-    try {
-      const files = await this.listFiles(path);
-      // Here you would implement the actual sync logic
-      // For now, we just return the count of files found
-      return { synced: files.length, errors: 0 };
-    } catch (error) {
-      console.error("OneDrive sync error:", error);
-      return { synced: 0, errors: 1 };
-    }
-  }
-}
-
-class GoogleDriveStorageClient implements StorageClient {
-  private client: Storage;
-
-  constructor(credentials: any) {
-    this.client = new Storage({
-      credentials: credentials,
-    });
-  }
-
-  async listFiles(path: string): Promise<StorageFile[]> {
-    try {
-      const [files] = await this.client.bucket(path).getFiles();
-      return files.map((file) => ({
-        id: file.id || file.name,
-        name: file.name,
-        path: `${path}/${file.name}`,
-        type: file.name.endsWith('/') ? "folder" : "file",
-        lastModified: file.metadata.updated || new Date().toISOString(),
-      }));
-    } catch (error) {
-      console.error("Google Drive list files error:", error);
-      return [];
-    }
-  }
-
-  async syncFiles(path: string): Promise<{ synced: number; errors: number }> {
-    try {
-      const files = await this.listFiles(path);
-      // Here you would implement the actual sync logic
-      return { synced: files.length, errors: 0 };
-    } catch (error) {
-      console.error("Google Drive sync error:", error);
-      return { synced: 0, errors: 1 };
-    }
-  }
-}
-
-class SharePointStorageClient implements StorageClient {
-  private client: any;
-
-  constructor(credentials: any) {
-    const sp = spfi().using(SPFx(credentials));
-    this.client = sp;
-  }
-
-  async listFiles(path: string): Promise<StorageFile[]> {
-    try {
-      const items = await this.client.web
-        .getFolderByServerRelativePath(path)
-        .files();
-
-      return items.map((item: any) => ({
-        id: item.UniqueId,
-        name: item.Name,
-        path: `${path}/${item.Name}`,
-        type: "file",
-        lastModified: item.TimeLastModified,
-      }));
-    } catch (error) {
-      console.error("SharePoint list files error:", error);
-      return [];
-    }
-  }
-
-  async syncFiles(path: string): Promise<{ synced: number; errors: number }> {
-    try {
-      const files = await this.listFiles(path);
-      // Here you would implement the actual sync logic
-      return { synced: files.length, errors: 0 };
-    } catch (error) {
-      console.error("SharePoint sync error:", error);
-      return { synced: 0, errors: 1 };
-    }
-  }
-}
-
-interface AIProcessingResult {
-  processedData: ProcessedData[];
-  materialMatches: MaterialMatch[];
-  unrecognizedMaterials: string[];
-  requiresReview: boolean;
+  downloadFile?(fileId: string): Promise<StorageFile>;
+  processFile?(file: StorageFile): Promise<AIProcessingResult>;
 }
 
 // Base AI data processing capabilities
@@ -200,12 +75,11 @@ interface AIDataProcessor {
   processFile(file: StorageFile): Promise<AIProcessingResult>;
 }
 
-// Extend StorageClient interface to include AI processing
-interface StorageClient {
-  listFiles(path: string): Promise<StorageFile[]>;
-  syncFiles(path: string): Promise<{ synced: number; errors: number }>;
-  downloadFile?(fileId: string): Promise<StorageFile>;
-  processFile?(file: StorageFile): Promise<AIProcessingResult>;
+interface AIProcessingResult {
+  processedData: ProcessedData[];
+  materialMatches: MaterialMatch[];
+  unrecognizedMaterials: string[];
+  requiresReview: boolean;
 }
 
 // AI Data Processing implementation
@@ -237,7 +111,7 @@ class AIDataProcessingService implements AIDataProcessor {
       2023-06-15,Operations,Diesel,500,liters,750.00
       2023-06-15,Operations,Electricity,2000,kWh,400.00`;
     }
-    
+
     // Default to returning content as string
     return file.content.toString();
   }
@@ -245,9 +119,9 @@ class AIDataProcessingService implements AIDataProcessor {
   async classifyEmissions(text: string): Promise<ProcessedData[]> {
     // Mock AI classification logic
     console.log("Classifying emissions data from text");
-    
+
     const results: ProcessedData[] = [];
-    
+
     // Simple keyword-based classification for demonstration
     if (text.toLowerCase().includes("diesel") || text.toLowerCase().includes("fuel")) {
       results.push({
@@ -267,7 +141,7 @@ class AIDataProcessingService implements AIDataProcessor {
         notes: "AI classified as Scope 1 diesel fuel consumption"
       });
     }
-    
+
     if (text.toLowerCase().includes("electricity") || text.toLowerCase().includes("kwh")) {
       results.push({
         date: new Date().toISOString().split('T')[0],
@@ -286,14 +160,14 @@ class AIDataProcessingService implements AIDataProcessor {
         notes: "AI classified as Scope 2 electricity consumption"
       });
     }
-    
+
     return results;
   }
 
   async matchMaterials(items: string[]): Promise<MaterialMatch[]> {
     // Mock material matching logic
     console.log("Matching materials from text");
-    
+
     return items.map(item => {
       // Simple string matching for demonstration
       const matchedMaterial = this.materialLibrary.find(
@@ -302,9 +176,9 @@ class AIDataProcessingService implements AIDataProcessor {
           material.code.toLowerCase() === item.toLowerCase() ||
           (material.description && material.description.toLowerCase().includes(item.toLowerCase()))
       );
-      
+
       const confidence = matchedMaterial ? 0.9 : 0.3;
-      
+
       return {
         sourceText: item,
         matchedMaterial,
@@ -324,24 +198,24 @@ class AIDataProcessingService implements AIDataProcessor {
     try {
       // Extract text from the file
       const extractedText = await this.extractText(file);
-      
+
       // Classify emissions from the text
       const processedData = await this.classifyEmissions(extractedText);
-      
+
       // Extract potential material names (simplified approach)
       const potentialMaterials = extractedText
         .split(/[\n,]/)
         .map(line => line.trim())
         .filter(line => line.length > 3 && !line.match(/^[0-9.]+$/));
-      
+
       // Match materials
       const materialMatches = await this.matchMaterials(potentialMaterials);
-      
+
       // Identify unrecognized materials
       const unrecognizedMaterials = materialMatches
         .filter(match => match.requiresReview)
         .map(match => match.sourceText);
-      
+
       return {
         processedData,
         materialMatches,
@@ -360,7 +234,6 @@ class AIDataProcessingService implements AIDataProcessor {
   }
 }
 
-// Add AI processing capabilities to storage clients
 class OneDriveStorageClient implements StorageClient {
   private client: OneDriveClient;
   private aiProcessor: AIDataProcessor;
@@ -413,11 +286,11 @@ class OneDriveStorageClient implements StorageClient {
       const response = await this.client
         .api(`/me/drive/items/${fileId}/content`)
         .get();
-      
+
       const fileInfo = await this.client
         .api(`/me/drive/items/${fileId}`)
         .get();
-      
+
       return {
         id: fileInfo.id,
         name: fileInfo.name,
@@ -488,7 +361,7 @@ class GoogleDriveStorageClient implements StorageClient {
       const file = this.client.bucket(fileId.split('/')[0]).file(fileId.split('/').slice(1).join('/'));
       const [fileContent] = await file.download();
       const [metadata] = await file.getMetadata();
-      
+
       return {
         id: fileId,
         name: file.name,
@@ -561,12 +434,12 @@ class SharePointStorageClient implements StorageClient {
       const file = await this.client.web
         .getFileById(fileId)
         .getBuffer();
-      
+
       const fileInfo = await this.client.web
         .getFileById(fileId)
         .select("Name,ServerRelativeUrl,Length,TimeLastModified,UniqueId")
         .get();
-      
+
       return {
         id: fileInfo.UniqueId,
         name: fileInfo.Name,
