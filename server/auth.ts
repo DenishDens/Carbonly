@@ -46,24 +46,29 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(async (username, password, done) => {
-      try {
-        const email = username;
-        const user = await storage.getUserByEmail(email);
+    new LocalStrategy(
+      {
+        usernameField: "email",
+        passwordField: "password",
+      },
+      async (email, password, done) => {
+        try {
+          const user = await storage.getUserByEmail(email);
 
-        if (!user) {
-          return done(null, false, { message: "User not found" });
+          if (!user) {
+            return done(null, false, { message: "User not found" });
+          }
+
+          if (user.password && !(await comparePasswords(password, user.password))) {
+            return done(null, false, { message: "Invalid password" });
+          }
+
+          return done(null, user);
+        } catch (err) {
+          return done(err);
         }
-
-        if (user.password && !(await comparePasswords(password, user.password))) {
-          return done(null, false, { message: "Invalid password" });
-        }
-
-        return done(null, user);
-      } catch (err) {
-        return done(err);
       }
-    }),
+    )
   );
 
   passport.serializeUser((user, done) => done(null, user.id));
@@ -78,35 +83,27 @@ export function setupAuth(app: Express) {
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      const userData = insertOrganizationSchema.parse(req.body);
+      const { name, email, password, firstName, lastName } = req.body;
 
       // Check if email is available
-      const existingUser = await storage.getUserByEmail(userData.email);
+      const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
         return res.status(400).json({ message: "Email is already registered" });
       }
 
-      // Generate a temporary unique slug
-      const tempSlug = `org-${Date.now()}`;
-
       // Create organization
       const organization = await storage.createOrganization({
-        name: userData.email.split('@')[0], // Use email username as org name temporarily
-        slug: tempSlug,
-        logo: null,
-        ssoEnabled: false,
-        ssoSettings: null,
-        createdAt: new Date(),
+        name: name || email.split('@')[0], // Use provided name or email username as org name
       });
 
       // Create user
       const user = await storage.createUser({
         organizationId: organization.id,
-        name: userData.email.split('@')[0],
-        email: userData.email,
-        password: await hashPassword(userData.password),
-        role: "super_admin",
-        createdAt: new Date(),
+        firstName,
+        lastName,
+        email,
+        password: await hashPassword(password),
+        role: "admin", // First user is admin
       });
 
       req.login(user, (err) => {
