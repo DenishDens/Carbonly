@@ -22,7 +22,23 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// ... keep other imports and interfaces ...
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  chart?: {
+    type: string;
+    data: any;
+    options?: any;
+  };
+}
+
+const SMART_PROMPTS = [
+  "Analyze my carbon emissions trend",
+  "Show emissions by source",
+  "Compare this month vs last month",
+  "Identify unusual patterns",
+  "Suggest reduction strategies",
+];
 
 export function ChatInterface() {
   const { user } = useAuth();
@@ -31,7 +47,59 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [showPrompts, setShowPrompts] = useState(false);
 
-  // ... keep existing hooks and handlers ...
+  const handleOpen = () => setIsOpen(true);
+
+  const chatMutation = useMutation({
+    mutationFn: async (message: string) => {
+      const res = await apiRequest(
+        "POST",
+        "/api/chat",
+        { message, organizationId: user?.organizationId }
+      );
+      return res.json();
+    },
+    onSuccess: (response) => {
+      setMessages(prev => [...prev, 
+        { role: "assistant", content: response.message, chart: response.chart }
+      ]);
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    setMessages(prev => [...prev, { role: "user", content: input }]);
+    chatMutation.mutate(input);
+    setInput("");
+  };
+
+  const handlePromptSelect = (prompt: string) => {
+    setInput(prompt);
+    setShowPrompts(false);
+  };
+
+  const renderChart = (chart: { type: string; data: any; options?: any }) => {
+    const ChartComponent = {
+      line: Line,
+      bar: Bar,
+      pie: Pie,
+    }[chart.type];
+
+    if (!ChartComponent) return null;
+
+    return (
+      <div className="mt-4 h-[200px]">
+        <ChartComponent
+          data={chart.data}
+          options={{
+            maintainAspectRatio: false,
+            ...chart.options,
+          }}
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="fixed bottom-6 right-6 z-50">
