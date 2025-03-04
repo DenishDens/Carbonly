@@ -4,13 +4,12 @@ import multer from "multer";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
 import express from "express";
-import { insertUserSchema } from "@shared/schema";
-import * as crypto from 'crypto';
+import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
 import {Strategy as SamlStrategy} from "passport-saml";
 import {getStorageClient} from './storageClient'
-import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema"; //Import schema
-import {insertBusinessUnitSchema, insertTeamSchema} from "@shared/schema";
+import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema";
+import {insertTeamSchema} from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -25,67 +24,11 @@ interface FileUploadRequest extends Express.Request {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize middleware first
   app.use(express.json());
 
-  // Registration endpoint
-  app.post("/api/register", async (req, res) => {
-    try {
-      console.log("Registration request received:", req.body);
-
-      // Generate organization ID first
-      const organizationId = crypto.randomUUID();
-
-      // Create organization first
-      const organization = await storage.createOrganization({
-        id: organizationId,
-        name: `${req.body.firstName}'s Organization`,
-        createdAt: new Date(),
-      });
-
-      console.log("Organization created:", organization);
-
-      const userData = {
-        ...req.body,
-        organizationId: organization.id,
-        role: "super_admin",
-        createdAt: new Date(),
-      };
-
-      console.log("Processing user data:", userData);
-
-      // Validate the data
-      const validatedData = insertUserSchema.parse(userData);
-      console.log("Validated user data:", validatedData);
-
-      // Check if email exists
-      const existingUser = await storage.getUserByEmail(validatedData.email);
-      if (existingUser) {
-        console.log("Email already exists:", validatedData.email);
-        return res.status(400).json({ message: "Email already registered" });
-      }
-
-      // Create user
-      console.log("Creating user with data:", validatedData);
-      const user = await storage.createUser(validatedData);
-      console.log("User created successfully:", user);
-
-      // Log the user in automatically
-      req.login(user, (err) => {
-        if (err) {
-          console.error("Login error after registration:", err);
-          return res.status(500).json({ message: "Registration successful but failed to log in" });
-        }
-        console.log("User logged in successfully after registration");
-        res.status(201).json(user);
-      });
-
-    } catch (error) {
-      console.error("Registration error:", error);
-      res.status(400).json({ 
-        message: error instanceof Error ? error.message : "Registration failed" 
-      });
-    }
-  });
+  // Setup authentication before defining routes
+  await setupAuth(app);
 
   // Business Units endpoints
   app.get("/api/business-units", async (req, res) => {
@@ -881,13 +824,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (req.body.rememberMe) {
           req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
         }
-
         res.json(user);
       });
     })(req, res, next);
   });
 
-  setupAuth(app);
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -911,3 +852,14 @@ const handleGoogleDriveCallback = async (code: string, businessUnitId: string, b
   //Implementation for handling Google drive callback goes here. This is a placeholder
   return {access_token: "googledrive-access-token"};
 }
+
+// Placeholder function - needs actual implementation
+const extractEmissionData = async (fileContent: string) => {
+  //Implementation to extract emission data goes here. This is a placeholder.
+  return {scope: "Scope 1", emissionSource: "Source A", amount: 100, unit: "kg", date: "2024-03-08", category: "Energy", details: {rawAmount: "120", rawUnit: "lbs"}};
+};
+
+const getChatResponse = async (message: string, context: any) => {
+    //Implementation to get chat response goes here. This is a placeholder.
+    return {message: "This is a placeholder response from the chat API."};
+};

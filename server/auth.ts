@@ -6,6 +6,8 @@ import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
+import connectPgSimple from "connect-pg-simple";
+import { randomUUID } from "crypto";
 
 declare global {
   namespace Express {
@@ -29,14 +31,23 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // Initialize session middleware
+  const PostgresSessionStore = connectPgSimple(session);
+
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "carbonly-dev-secret",
+    secret: process.env.SESSION_SECRET || 'keyboard cat',
     resave: false,
     saveUninitialized: false,
-    store: storage.sessionStore,
+    store: new PostgresSessionStore({
+      conObject: {
+        connectionString: process.env.DATABASE_URL,
+      },
+      createTableIfMissing: true,
+    }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   };
 
@@ -94,6 +105,7 @@ export function setupAuth(app: Express) {
 
       // Create organization
       const organization = await storage.createOrganization({
+        id: randomUUID(),
         name: userData.email.split('@')[0], // Use email username as org name temporarily
         slug: tempSlug,
         logo: null,
@@ -104,11 +116,8 @@ export function setupAuth(app: Express) {
 
       // Create user
       const user = await storage.createUser({
+        ...userData,
         organizationId: organization.id,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        email: userData.email,
-        password: await hashPassword(userData.password),
         role: "super_admin",
         createdAt: new Date(),
       });
