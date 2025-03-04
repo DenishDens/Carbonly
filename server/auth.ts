@@ -30,9 +30,9 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Initialize session middleware
   const PostgresSessionStore = connectPgSimple(session);
 
+  // Configure session middleware
   const sessionSettings: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'keyboard cat',
     resave: false,
@@ -40,6 +40,7 @@ export function setupAuth(app: Express) {
     store: new PostgresSessionStore({
       conObject: {
         connectionString: process.env.DATABASE_URL,
+        ssl: false // Disable SSL for local development
       },
       createTableIfMissing: true,
       tableName: 'session'
@@ -57,31 +58,34 @@ export function setupAuth(app: Express) {
 
   // Configure Passport authentication
   passport.use(
-    new LocalStrategy({
-      usernameField: 'username',
-      passwordField: 'password'
-    }, async (username, password, done) => {
-      try {
-        console.log("Attempting login for username:", username);
-        const user = await storage.getUserByEmail(username);
+    new LocalStrategy(
+      {
+        usernameField: 'email',
+        passwordField: 'password'
+      }, 
+      async (email, password, done) => {
+        try {
+          console.log("Attempting login for email:", email);
+          const user = await storage.getUserByEmail(email);
 
-        if (!user) {
-          console.log("Login failed: User not found");
-          return done(null, false, { message: "Invalid credentials" });
+          if (!user) {
+            console.log("Login failed: User not found");
+            return done(null, false, { message: "Invalid credentials" });
+          }
+
+          if (!user.password || !(await comparePasswords(password, user.password))) {
+            console.log("Login failed: Invalid password");
+            return done(null, false, { message: "Invalid credentials" });
+          }
+
+          console.log("Login successful for user:", user.email);
+          return done(null, user);
+        } catch (err) {
+          console.error("Login error:", err);
+          return done(err);
         }
-
-        if (!user.password || !(await comparePasswords(password, user.password))) {
-          console.log("Login failed: Invalid password");
-          return done(null, false, { message: "Invalid credentials" });
-        }
-
-        console.log("Login successful for user:", user.email);
-        return done(null, user);
-      } catch (err) {
-        console.error("Login error:", err);
-        return done(err);
       }
-    })
+    )
   );
 
   passport.serializeUser((user: Express.User, done) => {
@@ -139,7 +143,7 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
-    console.log("Login attempt received for:", req.body.username);
+    console.log("Login attempt received for:", req.body.email);
     passport.authenticate("local", (err, user, info) => {
       if (err) {
         console.error("Login error:", err);
