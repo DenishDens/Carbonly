@@ -4,7 +4,7 @@ import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident, UpdateUserVerification } from "@shared/schema";
 import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
@@ -12,19 +12,21 @@ const MemoryStore = createMemoryStore(session);
 export interface IStorage {
   sessionStore: session.Store;
 
+  // User operations
+  getUserById(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByVerificationToken(token: string): Promise<User | undefined>;
+  createUser(user: Omit<User, "id">): Promise<User>;
+  updateUser(id: string, updates: Partial<User>): Promise<User>;
+  getUsersByOrganization(organizationId: string): Promise<User[]>;
+
   // Organization operations
   getOrganizationBySlug(slug: string): Promise<Organization | undefined>;
   getOrganizationById(id: string): Promise<Organization | undefined>;
   createOrganization(org: Omit<Organization, "id">): Promise<Organization>;
   updateOrganization(id: string, updates: Partial<Organization>): Promise<Organization>;
   updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization>;
-
-  // User operations
-  getUser(id: string): Promise<User | undefined>;
-  getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(user: Omit<User, "id">): Promise<User>;
-  getUsersByOrganization(organizationId: string): Promise<User[]>;
-
+  
   // Team operations
   getTeams(organizationId: string): Promise<Team[]>;
   createTeam(team: Omit<Team, "id">): Promise<Team>;
@@ -56,7 +58,7 @@ export interface IStorage {
     endDate?: Date;
   }): Promise<AuditLog[]>;
 
-  // Add new incident methods
+  // Incident operations
   getIncidents(organizationId: string): Promise<Incident[]>;
   getIncidentById(id: string): Promise<Incident | undefined>;
   createIncident(incident: Omit<Incident, "id">): Promise<Incident>;
@@ -70,6 +72,39 @@ export class DatabaseStorage implements IStorage {
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000, // 24 hours
     });
+  }
+
+  // Updated and new user methods
+  async getUserById(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async getUserByVerificationToken(token: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.verificationToken, token));
+    return user;
+  }
+
+  async createUser(user: Omit<User, "id">): Promise<User> {
+    const [newUser] = await db.insert(users).values(user).returning();
+    return newUser;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
   }
 
   // Organization operations
@@ -99,35 +134,6 @@ export class DatabaseStorage implements IStorage {
 
   async updateOrganizationLogo(id: string, logoUrl: string): Promise<Organization> {
     return this.updateOrganization(id, { logo: logoUrl });
-  }
-
-  // User operations
-  async getUser(id: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user;
-  }
-
-  async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
-    return user;
-  }
-
-  async createUser(user: Omit<User, "id">): Promise<User> {
-    // Ensure the required fields are present before creating the user
-    const [newUser] = await db.insert(users).values({
-      organizationId: user.organizationId,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      password: user.password,
-      role: user.role,
-      createdAt: new Date(),
-    }).returning();
-    return newUser;
-  }
-
-  async getUsersByOrganization(organizationId: string): Promise<User[]> {
-    return db.select().from(users).where(eq(users.organizationId, organizationId));
   }
 
   // Team operations
@@ -320,7 +326,6 @@ const generateProjectEmail = (id: string, organizationId: string): string => {
   const orgId = organizationId.slice(0, 4); // Take first 4 chars of org UUID
   return `project-${projectId}-${orgId}@carbontrack.io`; // Use a consistent domain
 }
-
 
 // Export a single instance
 export const storage = new DatabaseStorage();

@@ -39,7 +39,7 @@ async function sendVerificationEmail(email: string, token: string) {
 }
 
 export function setupAuth(app: Express) {
-  // Initialize session middleware
+  // Initialize session middleware with explicit typing
   const PostgresSessionStore = connectPgSimple(session);
 
   const sessionSettings: session.SessionOptions = {
@@ -51,6 +51,7 @@ export function setupAuth(app: Express) {
         connectionString: process.env.DATABASE_URL,
       },
       createTableIfMissing: true,
+      tableName: 'session' // Explicit table name
     }),
     cookie: {
       secure: process.env.NODE_ENV === "production",
@@ -64,6 +65,7 @@ export function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
+  // Configure Passport authentication
   passport.use(
     new LocalStrategy({
       usernameField: 'email',
@@ -80,7 +82,7 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "Please verify your email first" });
         }
 
-        if (user.password && !(await comparePasswords(password, user.password))) {
+        if (!user.password || !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid password" });
         }
 
@@ -88,19 +90,27 @@ export function setupAuth(app: Express) {
       } catch (err) {
         return done(err);
       }
-    }),
+    })
   );
 
-  passport.serializeUser((user, done) => done(null, user.id));
+  // Explicit typing for session serialization
+  passport.serializeUser((user: Express.User, done) => {
+    done(null, user.id);
+  });
+
   passport.deserializeUser(async (id: string, done) => {
     try {
-      const user = await storage.getUser(id);
+      const user = await storage.getUserById(id);
+      if (!user) {
+        return done(new Error('User not found'), null);
+      }
       done(null, user);
     } catch (err) {
       done(err);
     }
   });
 
+  // Registration endpoint
   app.post("/api/register", async (req, res, next) => {
     try {
       console.log("Registration request body:", req.body);
@@ -135,6 +145,22 @@ export function setupAuth(app: Express) {
     }
   });
 
+  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    res.status(200).json(req.user);
+  });
+
+  app.post("/api/logout", (req, res, next) => {
+    req.logout((err) => {
+      if (err) return next(err);
+      res.sendStatus(200);
+    });
+  });
+
+  app.get("/api/user", (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    res.json(req.user);
+  });
+
   app.get("/api/verify-email", async (req, res) => {
     try {
       const { token } = req.query;
@@ -166,22 +192,6 @@ export function setupAuth(app: Express) {
       console.error("Email verification error:", error);
       res.status(500).json({ message: "Failed to verify email" });
     }
-  });
-
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
-  });
-
-  app.post("/api/logout", (req, res, next) => {
-    req.logout((err) => {
-      if (err) return next(err);
-      res.sendStatus(200);
-    });
-  });
-
-  app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    res.json(req.user);
   });
 
   app.post("/api/resend-verification", async (req, res) => {
