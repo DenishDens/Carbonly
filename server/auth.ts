@@ -7,7 +7,6 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
 import connectPgSimple from "connect-pg-simple";
-import { randomUUID } from "crypto";
 
 declare global {
   namespace Express {
@@ -30,10 +29,8 @@ async function comparePasswords(supplied: string, stored: string) {
   return timingSafeEqual(hashedBuf, suppliedBuf);
 }
 
-//Removed sendVerificationEmail function
-
 export function setupAuth(app: Express) {
-  // Initialize session middleware with explicit typing
+  // Initialize session middleware
   const PostgresSessionStore = connectPgSimple(session);
 
   const sessionSettings: session.SessionOptions = {
@@ -48,13 +45,12 @@ export function setupAuth(app: Express) {
       tableName: 'session'
     }),
     cookie: {
-      secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+      secure: false, // Set to false for development
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   };
 
-  app.set("trust proxy", 1);
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
@@ -62,28 +58,34 @@ export function setupAuth(app: Express) {
   // Configure Passport authentication
   passport.use(
     new LocalStrategy({
-      usernameField: 'email',
+      usernameField: 'username',
       passwordField: 'password'
-    }, async (email, password, done) => {
+    }, async (username, password, done) => {
       try {
-        const user = await storage.getUserByEmail(email);
+        console.log("Attempting login for username:", username);
+        const user = await storage.getUserByEmail(username);
 
         if (!user) {
-          return done(null, false, { message: "User not found" });
+          console.log("Login failed: User not found");
+          return done(null, false, { message: "Invalid credentials" });
         }
 
         if (!user.password || !(await comparePasswords(password, user.password))) {
-          return done(null, false, { message: "Invalid password" });
+          console.log("Login failed: Invalid password");
+          return done(null, false, { message: "Invalid credentials" });
         }
 
+        console.log("Login successful for user:", user.email);
         return done(null, user);
       } catch (err) {
+        console.error("Login error:", err);
         return done(err);
       }
     })
   );
 
   passport.serializeUser((user: Express.User, done) => {
+    console.log("Serializing user:", user.id);
     done(null, user.id);
   });
 
@@ -94,13 +96,13 @@ export function setupAuth(app: Express) {
 
       if (!user) {
         console.log("User not found for ID:", id);
-        return done(new Error('User not found'), null);
+        return done(null, false);
       }
 
-      console.log("User found:", user.email);
+      console.log("User deserialized successfully:", user.email);
       done(null, user);
     } catch (err) {
-      console.error("Error deserializing user:", err);
+      console.error("Deserialization error:", err);
       done(err);
     }
   });
@@ -108,10 +110,9 @@ export function setupAuth(app: Express) {
   // Registration endpoint
   app.post("/api/register", async (req, res, next) => {
     try {
-      console.log("Registration request body:", req.body);
-
-      // Create user with basic fields
+      console.log("Registration request received:", req.body);
       const hashedPassword = await hashPassword(req.body.password);
+
       const userData = {
         ...req.body,
         password: hashedPassword,
@@ -119,12 +120,16 @@ export function setupAuth(app: Express) {
         createdAt: new Date(),
       };
 
-      console.log("Creating user with data:", userData);
+      console.log("Creating user with data:", { ...userData, password: '[REDACTED]' });
       const user = await storage.createUser(userData);
+      console.log("User created successfully:", user.id);
 
-      // Log in the user immediately after registration
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error("Login error after registration:", err);
+          return next(err);
+        }
+        console.log("User logged in after registration:", user.id);
         res.status(201).json(user);
       });
     } catch (error) {
@@ -133,19 +138,47 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    res.status(200).json(req.user);
+  app.post("/api/login", (req, res, next) => {
+    console.log("Login attempt received for:", req.body.username);
+    passport.authenticate("local", (err, user, info) => {
+      if (err) {
+        console.error("Login error:", err);
+        return next(err);
+      }
+      if (!user) {
+        console.log("Login failed:", info?.message);
+        return res.status(401).json({ message: info?.message || "Login failed" });
+      }
+      req.login(user, (err) => {
+        if (err) {
+          console.error("Session creation error:", err);
+          return next(err);
+        }
+        console.log("Login successful for user:", user.id);
+        res.json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
+    const userId = req.user?.id;
+    console.log("Logout request received for user:", userId);
     req.logout((err) => {
-      if (err) return next(err);
+      if (err) {
+        console.error("Logout error:", err);
+        return next(err);
+      }
+      console.log("Logout successful for user:", userId);
       res.sendStatus(200);
     });
   });
 
   app.get("/api/user", (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.isAuthenticated()) {
+      console.log("Unauthorized access attempt to /api/user");
+      return res.sendStatus(401);
+    }
+    console.log("Current user data requested:", req.user?.id);
     res.json(req.user);
   });
 }
