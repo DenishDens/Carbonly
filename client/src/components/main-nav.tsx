@@ -23,20 +23,17 @@ export function MainNav({ className, ...props }: MainNavProps) {
       href: "/business-units",
     },
     {
+      name: "Data",
+      href: "/data",
+      subItems: [
+        { name: "Scope 1 Emissions", href: "/data/scope-1" },
+        { name: "Scope 2 Emissions", href: "/data/scope-2" },
+        { name: "Scope 3 Emissions", href: "/data/scope-3" }
+      ]
+    },
+    {
       name: "Incidents",
       href: "/incidents",
-    },
-    {
-      name: "File Processing",
-      href: "/file-processing",
-    },
-    {
-      name: "Data",
-      href: "/data-processing",
-      subItems: [
-        { name: "Energy", href: "/data-processing/energy" },
-        { name: "Fuel", href: "/data-processing/fuel" }
-      ]
     },
     {
       name: "Reports",
