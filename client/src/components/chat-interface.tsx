@@ -21,31 +21,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// ... keep other imports and ChartJS registration ...
 
 interface Message {
   role: "user" | "assistant";
@@ -82,7 +59,7 @@ export function ChatInterface() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const res = await apiRequest("POST", "/api/chat", { 
+      const res = await apiRequest("POST", "/api/chat", {
         message,
         accessibleUnits: accessibleUnits?.map(unit => unit.id) || [],
       });
@@ -152,7 +129,7 @@ export function ChatInterface() {
 
       <Card
         className={cn(
-          "w-[400px] transition-all duration-200",
+          "w-[400px] transition-all duration-200 absolute bottom-0 right-0",
           isOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4 pointer-events-none"
         )}
       >
