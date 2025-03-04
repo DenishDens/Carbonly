@@ -3,6 +3,10 @@ import express, { type Request, Response, NextFunction } from "express";
 // Force production mode to avoid Vite middleware
 process.env.NODE_ENV = "production";
 
+console.log('Starting Express server initialization...');
+console.log('Current NODE_ENV:', process.env.NODE_ENV);
+console.log('Current PORT env:', process.env.PORT);
+
 const app = express();
 app.use(express.json());
 
@@ -31,12 +35,9 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status).json({ message });
 });
 
-// Start server
-const port = 5000;
-console.log('Starting server initialization...');
-
-const server = app.listen(port, "0.0.0.0", () => {
-  console.log(`Server started successfully on http://0.0.0.0:${port}`);
+// Force port 5000 specifically for the workflow
+const server = app.listen(5000, "0.0.0.0", () => {
+  console.log(`Server started successfully on http://0.0.0.0:5000`);
 });
 
 // Handle server errors
