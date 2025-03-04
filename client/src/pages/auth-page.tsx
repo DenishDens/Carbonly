@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,23 +14,99 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
-const ENVIRONMENTAL_FACTS = [
-  {
-    title: "Did You Know?",
-    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
-    image: "🌳",
-  },
-  {
-    title: "Green Energy Impact",
-    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
-    image: "💨",
-  },
-  {
-    title: "Ocean Facts",
-    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
-    image: "🌊",
-  },
-];
+function RegisterForm() {
+  const { registerMutation } = useAuth();
+  const form = useForm<Omit<InsertUser, "organizationId" | "role">>({
+    resolver: zodResolver(
+      insertUserSchema.omit({ organizationId: true, role: true })
+    ),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    console.log("Form data:", data); // Debug log
+    registerMutation.mutate(data);
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={onSubmit} className="space-y-4">
+        <FormField
+          control={form.control}
+          name="firstName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>First Name</FormLabel>
+              <FormControl>
+                <Input placeholder="John" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="lastName"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Last Name</FormLabel>
+              <FormControl>
+                <Input placeholder="Doe" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="email"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Email</FormLabel>
+              <FormControl>
+                <Input type="email" placeholder="name@company.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="password"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Password</FormLabel>
+              <FormControl>
+                <Input type="password" placeholder="••••••••" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={registerMutation.isPending}
+        >
+          {registerMutation.isPending ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            "Create Account"
+          )}
+        </Button>
+      </form>
+    </Form>
+  );
+}
 
 function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
@@ -212,98 +288,6 @@ function LoginForm() {
   );
 }
 
-function RegisterForm() {
-  const { registerMutation } = useAuth();
-  const form = useForm<InsertUser>({
-    resolver: zodResolver(insertUserSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      organizationId: "", 
-      role: "user",
-    },
-  });
-
-  const onSubmit = form.handleSubmit((data) => {
-    registerMutation.mutate(data);
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="lastName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Last Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="name@company.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={registerMutation.isPending}
-        >
-          {registerMutation.isPending && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          )}
-          Create Account
-        </Button>
-      </form>
-    </Form>
-  );
-}
-
 function Footer() {
   return (
     <footer className="bg-gray-800 text-white p-4 text-center">
@@ -312,6 +296,24 @@ function Footer() {
   );
 }
 
+
+const ENVIRONMENTAL_FACTS = [
+  {
+    title: "Did You Know?",
+    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
+    image: "🌳",
+  },
+  {
+    title: "Green Energy Impact",
+    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
+    image: "💨",
+  },
+  {
+    title: "Ocean Facts",
+    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
+    image: "🌊",
+  },
+];
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();

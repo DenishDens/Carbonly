@@ -14,7 +14,7 @@ type AuthContextType = {
   error: Error | null;
   loginMutation: UseMutationResult<SelectUser, Error, LoginCredentials>;
   logoutMutation: UseMutationResult<void, Error, void>;
-  registerMutation: UseMutationResult<SelectUser, Error, Omit<InsertUser, "organizationId">>;
+  registerMutation: UseMutationResult<SelectUser, Error, Omit<InsertUser, "organizationId" | "role">>;
 };
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -48,12 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   });
 
   const registerMutation = useMutation({
-    mutationFn: async (credentials: Omit<InsertUser, "organizationId">) => {
+    mutationFn: async (credentials: Omit<InsertUser, "organizationId" | "role">) => {
+      console.log("Registration data:", credentials); // Debug log
       const res = await apiRequest("POST", "/api/register", credentials);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Registration failed");
+      }
       return await res.json();
     },
     onSuccess: (user: SelectUser) => {
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created.",
+      });
     },
     onError: (error: Error) => {
       toast({
