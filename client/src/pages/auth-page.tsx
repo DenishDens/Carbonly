@@ -225,7 +225,7 @@ function RegisterForm() {
   const { registerMutation } = useAuth();
   const { toast } = useToast();
   const form = useForm({
-    resolver: zodResolver(insertUserSchema),
+    resolver: zodResolver(insertUserSchema.omit({ organizationId: true, role: true, createdAt: true })),
     defaultValues: {
       firstName: "",
       lastName: "",
@@ -234,13 +234,18 @@ function RegisterForm() {
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof insertUserSchema>) => {
+  const onSubmit = async (formData: any) => {
     try {
-      await registerMutation.mutateAsync({
-        ...data,
+      console.log("Form submitted with data:", formData);
+      const result = await registerMutation.mutateAsync({
+        ...formData,
         organizationId: crypto.randomUUID(),
-        role: "super_admin"
+        role: "super_admin",
+        createdAt: new Date()
       });
+
+      console.log("Registration successful:", result);
+
       toast({
         title: "Registration Successful",
         description: "Your account has been created successfully.",
@@ -257,7 +262,11 @@ function RegisterForm() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form 
+        onSubmit={form.handleSubmit(onSubmit)} 
+        className="space-y-4"
+        noValidate
+      >
         <div className="grid grid-cols-2 gap-4">
           <FormField
             control={form.control}
