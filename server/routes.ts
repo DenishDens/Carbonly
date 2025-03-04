@@ -35,9 +35,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate organization ID first
       const organizationId = crypto.randomUUID();
 
+      // Create organization first
+      const organization = await storage.createOrganization({
+        id: organizationId,
+        name: `${req.body.firstName}'s Organization`,
+        createdAt: new Date(),
+      });
+
+      console.log("Organization created:", organization);
+
       const userData = {
         ...req.body,
-        organizationId,
+        organizationId: organization.id,
         role: "super_admin",
         createdAt: new Date(),
       };
