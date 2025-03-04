@@ -7,6 +7,7 @@ import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser, insertUserSchema } from "@shared/schema";
 import connectPgSimple from "connect-pg-simple";
+import { randomUUID } from "crypto";
 
 declare global {
   namespace Express {
@@ -27,6 +28,14 @@ async function comparePasswords(supplied: string, stored: string) {
   const hashedBuf = Buffer.from(hashed, "hex");
   const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
   return timingSafeEqual(hashedBuf, suppliedBuf);
+}
+
+async function sendVerificationEmail(email: string, token: string) {
+  // TODO: Implement actual email sending
+  // For now, just log the verification link
+  const verificationLink = `${process.env.APP_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
+  console.log('Verification link:', verificationLink);
+  console.log('Would send email to:', email);
 }
 
 export function setupAuth(app: Express) {
@@ -67,6 +76,10 @@ export function setupAuth(app: Express) {
           return done(null, false, { message: "User not found" });
         }
 
+        if (!user.emailVerified) {
+          return done(null, false, { message: "Please verify your email first" });
+        }
+
         if (user.password && !(await comparePasswords(password, user.password))) {
           return done(null, false, { message: "Invalid password" });
         }
@@ -94,23 +107,64 @@ export function setupAuth(app: Express) {
 
       // Create user without organization
       const hashedPassword = await hashPassword(req.body.password);
+      const verificationToken = randomUUID();
+
       const userData = {
         ...req.body,
         password: hashedPassword,
-        role: "super_admin",
+        role: "user", // Default role for self-registration
+        verificationToken,
+        emailVerified: false,
         createdAt: new Date(),
       };
 
       console.log("Creating user with data:", userData);
       const user = await storage.createUser(userData);
 
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(201).json(user);
+      // Send verification email
+      await sendVerificationEmail(user.email, verificationToken);
+
+      // Don't log in unverified users
+      res.status(201).json({ 
+        message: "Registration successful. Please check your email to verify your account.",
+        requiresVerification: true
       });
     } catch (error) {
       console.error("Registration error:", error);
       next(error);
+    }
+  });
+
+  app.get("/api/verify-email", async (req, res) => {
+    try {
+      const { token } = req.query;
+
+      if (!token || typeof token !== 'string') {
+        return res.status(400).json({ message: "Invalid verification token" });
+      }
+
+      const user = await storage.getUserByVerificationToken(token);
+
+      if (!user) {
+        return res.status(400).json({ message: "Invalid or expired verification token" });
+      }
+
+      // Update user verification status
+      await storage.updateUser(user.id, {
+        emailVerified: true,
+        verificationToken: null
+      });
+
+      // Auto-login after verification
+      req.login(user, (err) => {
+        if (err) {
+          return res.status(500).json({ message: "Verification successful but failed to log in" });
+        }
+        res.json({ message: "Email verified successfully" });
+      });
+    } catch (error) {
+      console.error("Email verification error:", error);
+      res.status(500).json({ message: "Failed to verify email" });
     }
   });
 
@@ -128,5 +182,34 @@ export function setupAuth(app: Express) {
   app.get("/api/user", (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
+  });
+
+  app.post("/api/resend-verification", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.emailVerified) {
+        return res.status(400).json({ message: "Email is already verified" });
+      }
+
+      const verificationToken = randomUUID();
+      await storage.updateUser(user.id, { verificationToken });
+      await sendVerificationEmail(email, verificationToken);
+
+      res.json({ message: "Verification email sent" });
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({ message: "Failed to resend verification email" });
+    }
   });
 }

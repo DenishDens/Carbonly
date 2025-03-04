@@ -14,12 +14,14 @@ export const organizations = pgTable("organizations", {
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
-  organizationId: uuid("organization_id").references(() => organizations.id), // Remove .notNull()
+  organizationId: uuid("organization_id").references(() => organizations.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
   password: text("password"), // Optional for SSO users
   role: text("role").notNull(), // 'super_admin', 'admin', 'user'
+  emailVerified: boolean("email_verified").default(false),
+  verificationToken: text("verification_token"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -292,14 +294,7 @@ export const updateIncidentSchema = insertIncidentSchema
   .partial();
 
 
-export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
-export type InsertTeam = z.infer<typeof insertTeamSchema>;
-export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
-export type InsertEmission = z.infer<typeof insertEmissionSchema>;
-export type InsertIncident = z.infer<typeof insertIncidentSchema>;
-export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
-
-// Update the user registration schema
+// Update the user registration schema to include verification fields
 export const insertUserSchema = createInsertSchema(users)
   .pick({
     firstName: true,
@@ -315,9 +310,25 @@ export const insertUserSchema = createInsertSchema(users)
     password: z.string().min(8, "Password must be at least 8 characters"),
     role: z.enum(["super_admin", "admin", "user"]).default("user"),
     organizationId: z.string().uuid().optional(),
+    emailVerified: z.boolean().default(false),
+    verificationToken: z.string().optional(),
   });
 
+// Add a new schema for updating user verification status
+export const updateUserVerificationSchema = z.object({
+  emailVerified: z.boolean(),
+  verificationToken: z.string().nullable(),
+});
+
+export type UpdateUserVerification = z.infer<typeof updateUserVerificationSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
+export type InsertEmission = z.infer<typeof insertEmissionSchema>;
+export type InsertIncident = z.infer<typeof insertIncidentSchema>;
+export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
 
 export interface FuelData {
   businessUnitId: string;
