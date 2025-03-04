@@ -113,7 +113,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(user: Omit<User, "id">): Promise<User> {
-    const [newUser] = await db.insert(users).values(user).returning();
+    // Ensure the required fields are present before creating the user
+    const [newUser] = await db.insert(users).values({
+      organizationId: user.organizationId,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: user.password,
+      role: user.role,
+      createdAt: new Date(),
+    }).returning();
     return newUser;
   }
 
