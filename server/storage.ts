@@ -101,14 +101,25 @@ export class DatabaseStorage implements IStorage {
   async createUser(user: Omit<User, "id">): Promise<User> {
     try {
       console.log("Creating user:", user.email);
+      
+      // Set default values if not provided
+      const userData = {
+        ...user,
+        emailVerified: user.emailVerified !== undefined ? user.emailVerified : false,
+        role: user.role || "user",
+        createdAt: new Date()
+      };
+      
+      // Check if user exists
+      const existingUser = await this.getUserByEmail(user.email);
+      if (existingUser) {
+        throw new Error("User with this email already exists");
+      }
+      
+      // Create new user
       const [newUser] = await db
         .insert(users)
-        .values({
-          ...user,
-          emailVerified: false,
-          role: "user",
-          createdAt: new Date()
-        })
+        .values(userData)
         .returning();
 
       console.log("User created successfully:", newUser.email);
@@ -132,6 +143,37 @@ export class DatabaseStorage implements IStorage {
       return updatedUser;
     } catch (error) {
       console.error("Error updating user:", error);
+      throw error;
+    }
+  }
+  
+  async verifyUserEmail(token: string): Promise<User> {
+    try {
+      console.log("Verifying user email with token:", token);
+      // Find user by verification token
+      const [user] = await db
+        .select()
+        .from(users)
+        .where(eq(users.verificationToken, token));
+      
+      if (!user) {
+        throw new Error("Invalid verification token");
+      }
+      
+      // Update user as verified
+      const [updatedUser] = await db
+        .update(users)
+        .set({ 
+          emailVerified: true,
+          verificationToken: null 
+        })
+        .where(eq(users.id, user.id))
+        .returning();
+        
+      console.log("User email verified successfully:", updatedUser.email);
+      return updatedUser;
+    } catch (error) {
+      console.error("Error verifying user email:", error);
       throw error;
     }
   }
