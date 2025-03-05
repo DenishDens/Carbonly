@@ -187,7 +187,7 @@ export async function getUomSuggestion(materialName: string) {
                lowerName.includes('solid') || lowerName.includes('mixed'))) {
       return "tons_metric";
     }
-    
+
     try {
       const response = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
@@ -220,7 +220,7 @@ export async function getUomSuggestion(materialName: string) {
           return uom;
         }
       }
-      
+
       console.log(`No valid UOM found in response "${content}", using default`);
       return "liters";
     } catch (openaiError) {
@@ -240,7 +240,7 @@ export async function getEmissionFactorSuggestion(materialName: string, uom: str
         materialName.toLowerCase().includes("bio diesel")) {
       return "2.18"; // Standard biodiesel emission factor (kgCO2e/liter)
     }
-    
+
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
