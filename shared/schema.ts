@@ -237,6 +237,8 @@ export const insertBusinessUnitSchema = createInsertSchema(businessUnits)
     }).optional(),
   });
 
+export const updateBusinessUnitSchema = insertBusinessUnitSchema.partial();
+
 export const insertEmissionSchema = createInsertSchema(emissions)
   .pick({
     businessUnitId: true,
@@ -283,13 +285,13 @@ export const updateIncidentSchema = insertIncidentSchema
   })
   .partial();
 
-
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
+export type UpdateBusinessUnit = z.infer<typeof updateBusinessUnitSchema>;
 
 export interface FuelData {
   businessUnitId: string;
