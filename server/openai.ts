@@ -282,10 +282,6 @@ export async function getEmissionFactorSuggestion(materialName: string, uom: str
     }
   } catch (error) {
     console.error("Error getting emission factor suggestion:", error);
-    return "1.0"; // Default fallback on error
-  }
-  } catch (error) {
-    console.error("Error getting emission factor suggestion:", error);
     throw new Error("Failed to get emission factor suggestion");
   }
 }
