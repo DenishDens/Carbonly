@@ -23,7 +23,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center">
           <div className="flex items-center md:mr-4">
             <a href="/" className="mr-4 md:mr-6 flex items-center gap-2">
@@ -106,7 +106,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <Footer />
 
-      <div className="fixed bottom-4 right-4 z-50">
+      {/* Increase z-index and adjust positioning */}
+      <div className="fixed bottom-6 right-6 z-[100]">
         <ChatInterface />
       </div>
     </div>
