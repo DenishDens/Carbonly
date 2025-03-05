@@ -172,22 +172,16 @@ export default function OrganizationSettings() {
     enabled: user?.role === "super_admin" || user?.role === "admin",
   });
 
-  // Load existing incident types when component mounts
-  useEffect(() => {
-    if (existingIncidentTypes?.length) {
-      setIncidentTypes(
-        existingIncidentTypes.map(type => ({
-          name: type.name,
-          description: type.description || "",
-          active: type.active || false,
-        }))
-      );
-    }
-  }, [existingIncidentTypes]);
-
   const manageIncidentTypesMutation = useMutation({
     mutationFn: async (types: typeof incidentTypes) => {
-      const res = await apiRequest("POST", "/api/incident-types", { types });
+      // Filter out empty types before sending
+      const validTypes = types.filter(type => type.name.trim() !== "");
+
+      if (validTypes.length === 0) {
+        throw new Error("At least one incident type with a name is required");
+      }
+
+      const res = await apiRequest("POST", "/api/incident-types", { types: validTypes });
       if (!res.ok) {
         throw new Error("Failed to update incident types");
       }
@@ -195,7 +189,7 @@ export default function OrganizationSettings() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
-      toast({ title: "Incident types updated" });
+      toast({ title: "Incident types updated successfully" });
     },
     onError: (error: Error) => {
       toast({
@@ -205,6 +199,35 @@ export default function OrganizationSettings() {
       });
     },
   });
+
+  // Make sure we initialize with at least one empty type if none exist
+  useEffect(() => {
+    if (existingIncidentTypes?.length === 0) {
+      setIncidentTypes([{ name: "", description: "", active: true }]);
+    } else if (existingIncidentTypes?.length) {
+      setIncidentTypes(
+        existingIncidentTypes.map(type => ({
+          name: type.name || "",
+          description: type.description || "",
+          active: type.active || true,
+        }))
+      );
+    }
+  }, [existingIncidentTypes]);
+
+  // Add validation before submission
+  const handleSaveIncidentTypes = () => {
+    const validTypes = incidentTypes.filter(type => type.name.trim() !== "");
+    if (validTypes.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "At least one incident type with a name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    manageIncidentTypesMutation.mutate(validTypes);
+  };
 
   // Update the access check logic
   if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
@@ -633,7 +656,7 @@ export default function OrganizationSettings() {
                           }}
                         />
                       </div>
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-2">
                         <Switch
                           checked={type.active}
                           onCheckedChange={(checked) => {
@@ -642,17 +665,19 @@ export default function OrganizationSettings() {
                             setIncidentTypes(newTypes);
                           }}
                         />
-                        <span className="ml-2">Active</span>
+                        <span className="text-sm">Active</span>
+                        {incidentTypes.length > 1 && (
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                              setIncidentTypes(types => types.filter((_, i) => i !== index));
+                            }}
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={() => {
-                          setIncidentTypes(types => types.filter((_, i) => i !== index));
-                        }}
-                      >
-                        <AlertTriangle className="h-4 w-4" />
-                      </Button>
                     </div>
                   ))}
                   <Button
@@ -670,7 +695,7 @@ export default function OrganizationSettings() {
                 </div>
 
                 <Button
-                  onClick={() => manageIncidentTypesMutation.mutate(incidentTypes)}
+                  onClick={handleSaveIncidentTypes}
                   disabled={manageIncidentTypesMutation.isPending}
                 >
                   <Save className="h-4 w-4 mr-2" />
