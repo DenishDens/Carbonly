@@ -66,7 +66,17 @@ const PROTOCOLS = [
   { id: "2022", label: "GHG Protocol 2022" },
 ];
 
-const UnitForm = ({ data, onSubmit }: { data?: BusinessUnit; onSubmit: (data: any) => void }) => {
+const UnitForm = ({ 
+  data, 
+  onSubmit,
+  users,
+  teams 
+}: { 
+  data?: BusinessUnit; 
+  onSubmit: (data: any) => void;
+  users: User[];
+  teams: Team[];
+}) => {
   const form = useForm({
     resolver: zodResolver(data ? updateBusinessUnitSchema : insertBusinessUnitSchema),
     defaultValues: data || {
@@ -577,7 +587,11 @@ export default function BusinessUnits() {
                   Create a new business unit to track emissions
                 </DialogDescription>
               </DialogHeader>
-              <UnitForm onSubmit={createBusinessUnit.mutate} />
+              <UnitForm 
+                onSubmit={createBusinessUnit.mutate} 
+                users={users || []} 
+                teams={teams || []}
+              />
               <DialogFooter>
               </DialogFooter>
             </DialogContent>
@@ -661,7 +675,12 @@ export default function BusinessUnits() {
                   Update the business unit details
                 </DialogDescription>
               </DialogHeader>
-              <UnitForm data={editingUnit} onSubmit={(data) => updateBusinessUnit.mutate({...editingUnit, ...data})}/>
+              <UnitForm 
+                data={editingUnit} 
+                onSubmit={(data) => updateBusinessUnit.mutate({...editingUnit, ...data})}
+                users={users || []}
+                teams={teams || []}
+              />
               <DialogFooter>
               </DialogFooter>
             </DialogContent>
