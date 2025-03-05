@@ -340,6 +340,16 @@ export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
 export type UpdateBusinessUnit = z.infer<typeof updateBusinessUnitSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
 
+// Add these lines after the existing incident schema
+export const updateIncidentStatusSchema = z.object({
+  id: z.string().uuid(),
+  status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
+  resolutionDetails: z.string().optional(),
+  resolvedAt: z.date().optional(),
+});
+
+export type UpdateIncidentStatus = z.infer<typeof updateIncidentStatusSchema>;
+
 export interface FuelData {
   businessUnitId: string;
   fuelType: "diesel" | "gasoline";

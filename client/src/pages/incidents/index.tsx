@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import type { Incident, BusinessUnit } from "@shared/schema";
 import { DashboardLayout } from "@/components/dashboard-layout";
+import { useAuth } from "@/hooks/use-auth";
+import { useLocation } from "wouter";
 import {
   Table,
   TableBody,
@@ -22,13 +24,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertTriangle,
   CircleDot,
@@ -39,6 +34,7 @@ import {
   ChevronDown,
   ChevronUp,
   Search,
+  Edit,
 } from "lucide-react";
 import {
   Collapsible,
@@ -52,6 +48,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 export default function IncidentsPage() {
+  const { user } = useAuth();
+  const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [showNewIncident, setShowNewIncident] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -63,10 +61,9 @@ export default function IncidentsPage() {
   });
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
 
-  // Update the data fetching logic
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
-    refetchInterval: 5000, // Refresh every 5 seconds
+    refetchInterval: 5000, 
     retry: 3,
     onError: (error) => {
       console.error("Error fetching incidents:", error);
@@ -86,18 +83,14 @@ export default function IncidentsPage() {
     }
   });
 
-  // Add debug logging
   console.log("Incidents data:", incidents);
   console.log("Business units data:", businessUnits);
 
-  // Filter and search logic
   const filteredIncidents = incidents?.filter(incident => {
-    // Apply filters
     if (filters.type !== 'all' && incident.type !== filters.type) return false;
     if (filters.severity !== 'all' && incident.severity !== filters.severity) return false;
     if (filters.status !== 'all' && incident.status !== filters.status) return false;
 
-    // Apply text search across all fields
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
       const businessUnitName = businessUnits?.find(u => u.id === incident.businessUnitId)?.name || '';
@@ -162,6 +155,7 @@ export default function IncidentsPage() {
   }
 
   const activeFiltersCount = Object.values(filters).filter(v => v !== 'all').length;
+  const canEdit = user?.role === "admin" || user?.role === "business_unit_manager";
 
   return (
     <DashboardLayout>
@@ -285,7 +279,7 @@ export default function IncidentsPage() {
                   <TableHead>Severity</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Reported On</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -301,7 +295,7 @@ export default function IncidentsPage() {
                         )?.name || 'Unknown'}
                       </TableCell>
                       <TableCell className="capitalize">
-                        {incident.type.replace("_", " ")}
+                        {incident.type.replace(/_/g, " ")}
                       </TableCell>
                       <TableCell>
                         <span className={getSeverityColor(incident.severity)}>
@@ -312,14 +306,25 @@ export default function IncidentsPage() {
                         <div className="flex items-center gap-2">
                           {getStatusIcon(incident.status)}
                           <span className="capitalize">
-                            {incident.status.replace("_", " ")}
+                            {incident.status.replace(/_/g, " ")}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell>
                         {formatDate(incident.createdAt)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-right space-x-2">
+                        {canEdit && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLocation(`/incidents/${incident.id}/edit`)}
+                            className="bg-background hover:bg-muted"
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </Button>
+                        )}
                         {incident.status !== 'resolved' && (
                           <Dialog>
                             <DialogTrigger asChild>
