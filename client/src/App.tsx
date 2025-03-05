@@ -29,17 +29,6 @@ const navItems = [
   { title: "Reports", href: "/reports", icon: <BarChart className="h-4 w-4" /> },
 ];
 
-function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar items={navItems} />
-      <main className="flex-1 container py-6">
-        {children}
-      </main>
-    </div>
-  );
-}
-
 function Router() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
@@ -50,40 +39,34 @@ function Router() {
     }
   }, [isAuthenticated, setLocation]);
 
-  if (!isAuthenticated && window.location.pathname !== '/auth') {
-    return null;
+  if (!isAuthenticated) {
+    return <Route path="/auth" component={AuthPage} />;
   }
 
   return (
-    <Switch>
-      <Route path="/auth" component={AuthPage} />
-      {isAuthenticated && (
-        <Route path="*">
-          {() => (
-            <AuthenticatedLayout>
-              <Switch>
-                <Route path="/" component={Dashboard} />
-                <Route path="/business-units" component={BusinessUnits} />
-                <Route path="/incidents" component={Incidents} />
-                <Route path="/incidents/:id/edit">
-                  {(params) => <EditIncident id={params.id} />}
-                </Route>
-                <Route path="/file-processing" component={FileProcessing} />
-                <Route path="/data-processing/:category" component={CategoryProcessing} />
-                <Route path="/data-processing/energy" component={ElectricityData} />
-                <Route path="/emissions" component={EmissionsData} />
-                <Route path="/users" component={UserManagement} />
-                <Route path="/teams" component={Teams} />
-                <Route path="/audit-logs" component={AuditLogViewer} />
-                <Route path="/settings" component={OrganizationSettings} />
-                <Route path="/profile" component={ProfilePage} />
-                <Route component={NotFound} />
-              </Switch>
-            </AuthenticatedLayout>
-          )}
-        </Route>
-      )}
-    </Switch>
+    <div className="flex flex-col min-h-screen">
+      <Navbar items={navItems} />
+      <main className="flex-1 container py-6">
+        <Switch>
+          <Route path="/" component={Dashboard} />
+          <Route path="/business-units" component={BusinessUnits} />
+          <Route path="/incidents" component={Incidents} />
+          <Route path="/incidents/:id/edit">
+            {(params) => <EditIncident id={params.id} />}
+          </Route>
+          <Route path="/file-processing" component={FileProcessing} />
+          <Route path="/data-processing/:category" component={CategoryProcessing} />
+          <Route path="/data-processing/energy" component={ElectricityData} />
+          <Route path="/emissions" component={EmissionsData} />
+          <Route path="/users" component={UserManagement} />
+          <Route path="/teams" component={Teams} />
+          <Route path="/audit-logs" component={AuditLogViewer} />
+          <Route path="/settings" component={OrganizationSettings} />
+          <Route path="/profile" component={ProfilePage} />
+          <Route component={NotFound} />
+        </Switch>
+      </main>
+    </div>
   );
 }
 
