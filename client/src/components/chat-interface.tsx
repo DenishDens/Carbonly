@@ -75,8 +75,8 @@ export function ChatInterface() {
   const [showPrompts, setShowPrompts] = useState(false);
 
   // Get user's accessible business units
-  const { data: accessibleUnits } = useQuery({
-    queryKey: ["/api/business-units/accessible"],
+  const { data: businessUnits } = useQuery({
+    queryKey: ["/api/business-units"],
     enabled: !!user,
   });
 
@@ -84,7 +84,10 @@ export function ChatInterface() {
     mutationFn: async (message: string) => {
       const res = await apiRequest("POST", "/api/chat", {
         message,
-        accessibleUnits: accessibleUnits?.map(unit => unit.id) || [],
+        businessUnits: businessUnits?.map(unit => ({
+          id: unit.id,
+          name: unit.name
+        })) || []
       });
       return res.json();
     },
@@ -129,10 +132,10 @@ export function ChatInterface() {
   // Show greeting when chat is opened
   const handleOpen = () => {
     if (!isOpen && messages.length === 0) {
-      const unitCount = accessibleUnits?.length || 0;
+      const unitCount = businessUnits?.length || 0;
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help analyze incident and emissions data from your ${unitCount} accessible business unit${unitCount !== 1 ? 's' : ''}. Feel free to ask me anything about your environmental data or try one of the suggested questions below.`
+        content: `Hi ${user?.firstName || 'there'}! 👋 I'm your AI assistant. I can help analyze incident and emissions data from your ${unitCount} business unit${unitCount !== 1 ? 's' : ''} (${businessUnits?.map(u => u.name).join(', ')}). Feel free to ask me anything about your environmental data or try one of the suggested questions below.`
       };
       setMessages([greeting]);
     }

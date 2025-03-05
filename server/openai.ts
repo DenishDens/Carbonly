@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import { insertEmissionSchema } from "@shared/schema";
 import type { z } from "zod";
 import { storage } from "./storage";
+import type { BusinessUnit, Incident } from "@shared/schema";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -80,103 +81,42 @@ Categorize the data appropriately based on the source:
   }
 }
 
-interface ChatResponse {
-  message: string;
-  chart?: {
-    type: string;
-    data: any;
-    options?: any;
-  };
-}
-
 export async function getChatResponse(message: string, context: {
   organizationId: string;
   businessUnitId?: string;
 }): Promise<ChatResponse> {
   try {
-    // Fetch relevant data for analysis
+    // Fetch all business units for context
     const businessUnits = await storage.getBusinessUnits(context.organizationId);
-    const emissions = await Promise.all(
-      businessUnits.map(unit => storage.getEmissions(unit.id))
-    );
-    const flatEmissions = emissions.flat();
+    const incidents = await storage.getIncidents(context.organizationId);
 
-    // Calculate fuel usage by type (considering rawAmount if available)
-    const fuelUsageByType = flatEmissions.reduce((acc, e) => {
-      if (e.details?.category === 'fuel' && e.details?.fuelType) {
-        const amount = parseFloat(e.details.rawAmount || e.amount);
-        const unit = e.details.rawUnit || e.unit;
-        const fuelType = e.details.fuelType.toLowerCase();
+    // Calculate incident statistics
+    const incidentStats = calculateIncidentStats(incidents);
+    const businessUnitStats = calculateBusinessUnitStats(businessUnits, incidents);
 
-        if (!acc[fuelType]) {
-          acc[fuelType] = { amount: 0, unit };
-        }
-        acc[fuelType].amount += amount;
-      }
-      return acc;
-    }, {} as Record<string, { amount: number; unit: string }>);
-
-    // Calculate emissions by scope
-    const emissionsByScope = flatEmissions.reduce((acc, e) => {
-      const amount = parseFloat(e.details?.rawAmount || e.amount);
-      acc[e.scope] = (acc[e.scope] || 0) + amount;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Calculate emissions by category
-    const emissionsByCategory = flatEmissions.reduce((acc, e) => {
-      if (e.details?.category) {
-        const amount = parseFloat(e.details.rawAmount || e.amount);
-        const category = e.details.category;
-        acc[category] = (acc[category] || 0) + amount;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    console.log("Calculated fuel usage by type:", fuelUsageByType);
-    console.log("Calculated emissions by scope:", emissionsByScope);
-    console.log("Calculated emissions by category:", emissionsByCategory);
+    console.log("Chat context - Business units:", businessUnits.length);
+    console.log("Chat context - Incidents:", incidents.length);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are an AI assistant for Carbonly.ai, a carbon emission tracking platform.
-You help users understand their emission data and provide insights.
+          content: `You are an AI assistant for a carbon emission tracking platform.
+You help users understand their emission data and incidents across their business units.
 
-Important terms and equivalences:
-- "Business Unit" and "Project" mean the same thing in our system
-- When users ask about "projects", treat it the same as queries about business units
-- Use these terms interchangeably in your responses to match the user's preferred terminology
+Current Context:
+- User has access to ${businessUnits.length} business units
+- There are ${incidents.length} total incidents
+- Incident Status: ${JSON.stringify(incidentStats)}
+- Business Units: ${JSON.stringify(businessUnitStats)}
 
-You have access to the following data:
-
-Fuel Usage by Type: ${JSON.stringify(fuelUsageByType)}
-Emissions by Scope: ${JSON.stringify(emissionsByScope)}
-Emissions by Category: ${JSON.stringify(emissionsByCategory)}
-
-Respond with a JSON object following this format:
-{
-  "message": "Your response text here",
-  "chart": {  // Optional, include only if visualization is needed
-    "type": "line|bar|pie",
-    "data": {
-      "labels": [...],
-      "datasets": [...]
-    },
-    "options": {...}  // Optional chart.js options
-  }
-}
-
-Focus on providing actionable insights and recommendations for reducing emissions.
-When comparing data, use percentages and trends to make insights more meaningful.
-If asked about predictions, use historical trends to make educated forecasts.
-If asked about projects or business units, treat them as the same concept and provide data accordingly.`,
+Focus on providing actionable insights and highlighting important trends in the data.
+When discussing incidents or data, only reference the business units the user has access to.`,
         },
         {
           role: "user",
-          content: `Please analyze this request and provide insights as JSON: ${message}`,
+          content: message,
         },
       ],
       response_format: { type: "json_object" },
@@ -192,6 +132,44 @@ If asked about projects or business units, treat them as the same concept and pr
     console.error("Error getting chat response:", error);
     throw new Error(`Failed to process chat message: ${error.message}`);
   }
+}
+
+function calculateIncidentStats(incidents: Incident[]) {
+  const stats = {
+    open: 0,
+    in_progress: 0,
+    resolved: 0,
+    by_severity: {
+      critical: 0,
+      high: 0,
+      medium: 0,
+      low: 0
+    }
+  };
+
+  incidents.forEach(incident => {
+    stats[incident.status]++;
+    stats.by_severity[incident.severity]++;
+  });
+
+  return stats;
+}
+
+function calculateBusinessUnitStats(businessUnits: BusinessUnit[], incidents: Incident[]) {
+  return businessUnits.map(unit => ({
+    name: unit.name,
+    location: unit.location,
+    incidents: incidents.filter(i => i.businessUnitId === unit.id).length
+  }));
+}
+
+export interface ChatResponse {
+  message: string;
+  chart?: {
+    type: string;
+    data: any;
+    options?: any;
+  };
 }
 
 export { openai };

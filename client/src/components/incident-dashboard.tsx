@@ -95,22 +95,32 @@ export function IncidentDashboard() {
 
       {/* Incidents List */}
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Recent Incidents</h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold">Recent Incidents</h2>
+        </div>
         <div className="grid gap-4">
           {incidents?.map((incident) => (
-            <Card key={incident.id}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div>
-                  <CardTitle className="text-lg font-medium">{incident.title}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{incident.location}</p>
+            <Card key={incident.id} className="relative">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg font-medium">
+                      {incident.title}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {incident.location}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="absolute top-4 right-4"
+                    onClick={() => setLocation(`/incidents/${incident.id}`)}
+                  >
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
                 </div>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => setLocation(`/incidents/${incident.id}`)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2">
