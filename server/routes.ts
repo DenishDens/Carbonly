@@ -509,7 +509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const duplicate = existingMaterials.find(
         (m) => m.materialCode.toLowerCase() === materialCode.toLowerCase()
       );
-      
+
       if (duplicate) {
         return res.status(400).json({ 
           message: "Material code already exists. Please use a unique code." 
@@ -554,7 +554,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Add endpoint to update existing material
   app.patch("/api/materials/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -566,14 +566,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the existing material
       const materials = await storage.getMaterials(req.user.organizationId);
       const material = materials.find(m => m.id === id);
-      
+
       if (!material) {
         return res.status(404).json({ message: "Material not found" });
       }
 
       // Validate input
       const { materialCode, name, category, uom, emissionFactor, source } = req.body;
-      
+
       if (materialCode) {
         // Validate material code format
         if (!/^[A-Z0-9-]{2,10}$/.test(materialCode)) {
@@ -581,13 +581,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
             message: "Invalid material code. Must be 2-10 characters, uppercase letters, numbers, and hyphens only." 
           });
         }
-        
+
         // Check for duplicate material code (if changed)
         if (materialCode !== material.materialCode) {
           const duplicate = materials.find(
             (m) => m.id !== id && m.materialCode.toLowerCase() === materialCode.toLowerCase()
           );
-          
+
           if (duplicate) {
             return res.status(400).json({ 
               message: "Material code already exists. Please use a unique code." 
@@ -595,7 +595,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
-      
+
       // Convert emissionFactor to decimal if provided
       let emissionFactorDecimal = material.emissionFactor;
       if (emissionFactor) {
@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
-  
+
   // Add endpoint to delete material
   app.delete("/api/materials/:id", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -651,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get the existing material
       const materials = await storage.getMaterials(req.user.organizationId);
       const material = materials.find(m => m.id === id);
-      
+
       if (!material) {
         return res.status(404).json({ message: "Material not found" });
       }
@@ -711,7 +711,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to get emission factor suggestion" });
     }
   });
-  
+
   // Add UOM suggestion endpoint with enhanced prompt for biodiesel and other materials
   app.get("/api/materials/suggest-uom", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -725,7 +725,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Pre-analyze common materials for faster response
       const materialName = (name as string).toLowerCase();
       let suggestedUom = "";
-      
+
       // Fast-path for common materials without calling AI
       if (materialName.includes('diesel') || materialName.includes('fuel') || 
           materialName.includes('gasoline') || materialName.includes('petrol') || 
@@ -757,7 +757,7 @@ Common UOMs for materials include:
 - kwh, mwh (for energy)
 - square_meters, square_feet (for area)
 - person_days (for labor)
-        
+
 Respond with a valid JSON object in this format: {"message": "uom_value_only"}, where uom_value_only is one of the common UOMs listed above.`,
         { organizationId: req.user.organizationId }
       );
@@ -765,7 +765,7 @@ Respond with a valid JSON object in this format: {"message": "uom_value_only"}, 
       // Extract the UOM from the response
       suggestedUom = response.message.trim();
       console.log(`AI suggested UOM for ${name}: ${suggestedUom}`);
-      
+
       res.json({ uom: suggestedUom });
     } catch (error) {
       console.error("Error getting UOM suggestion:", error);
@@ -1206,6 +1206,36 @@ Respond with a valid JSON object in this format: {"message": "uom_value_only"}, 
     } catch (error) {
       console.error("Error syncing files:", error);
       res.status(500).json({ message: "Failed to sync files" });
+    }
+  });
+
+  app.post("/api/suggestions/uom", async (req, res) => {
+    try {
+      const { materialName } = req.body;
+      if (!materialName) {
+        return res.status(400).json({ error: "Material name is required" });
+      }
+
+      const suggestion = await getUomSuggestion(materialName);
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("Error in UOM suggestion endpoint:", error);
+      res.status(500).json({ error: "Failed to get UOM suggestion" });
+    }
+  });
+
+  app.post("/api/suggestions/emission-factor", async (req, res) => {
+    try {
+      const { name, uom } = req.body;
+      if (!name || !uom) {
+        return res.status(400).json({ error: "Material name and UOM are required" });
+      }
+
+      const suggestion = await getEmissionFactorSuggestion(name, uom);
+      res.json({ suggestion });
+    } catch (error) {
+      console.error("Error in emission factor suggestion endpoint:", error);
+      res.status(500).json({ error: "Failed to get emission factor suggestion" });
     }
   });
 

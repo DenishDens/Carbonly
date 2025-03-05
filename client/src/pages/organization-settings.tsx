@@ -87,7 +87,7 @@ export default function OrganizationSettings() {
   const [newMaterial, setNewMaterial] = useState<Omit<Material, "id" | "createdAt" | "lastUpdated" | "approvalStatus">>({
     materialCode: "",
     name: "",
-    category: "Fuel",
+    category: "",
     uom: "",
     emissionFactor: "0.0",
     source: "Default",
@@ -1124,7 +1124,7 @@ export default function OrganizationSettings() {
                         onValueChange={(value) => setNewMaterial({ ...newMaterial, category: value })}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder="Select Category" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="Fuel">Fuel</SelectItem>

@@ -171,4 +171,87 @@ export interface ChatResponse {
   };
 }
 
+export async function getUomSuggestion(materialName: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that provides accurate unit of measure suggestions for materials."
+        },
+        {
+          role: "user",
+          content: `Suggest an appropriate unit of measure (UOM) for "${materialName}". 
+          Respond with a single unit from this list: liters, gallons, cubic_meters, cubic_feet, kilograms, tons_metric, tons_us, pounds, kilowatt_hours, megawatt_hours, therms, btus.
+          Respond with just the unit name and nothing else - no explanations, no HTML, no quotes.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 50,
+    });
+
+    const content = response.choices[0].message.content?.trim() || "";
+    // Clean the response to ensure it's just the UOM
+    const validUOMs = ["liters", "gallons", "cubic_meters", "cubic_feet", "kilograms", 
+                      "tons_metric", "tons_us", "pounds", "kilowatt_hours", 
+                      "megawatt_hours", "therms", "btus"];
+
+    // Extract just the UOM if it's in the valid list
+    for (const uom of validUOMs) {
+      if (content.includes(uom)) {
+        return uom;
+      }
+    }
+
+    // Default if no valid UOM found
+    return "liters";
+  } catch (error) {
+    console.error("Error getting UOM suggestion:", error);
+    throw new Error("Failed to get UOM suggestion");
+  }
+}
+
+export async function getEmissionFactorSuggestion(materialName: string, uom: string) {
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful assistant that provides accurate emission factor estimations."
+        },
+        {
+          role: "user",
+          content: `Provide a realistic emission factor (in kgCO2e per unit) for the material "${materialName}" with unit of measure "${uom}".
+          Respond with only a single decimal number representing kgCO2e per unit (e.g., 2.53 for 2.53 kgCO2e per liter of diesel). 
+          For common materials, provide values within these ranges:
+          - Diesel fuel: 2.5-3.2 kgCO2e/liter
+          - Gasoline: 2.2-2.5 kgCO2e/liter
+          - Natural gas: 0.18-0.2 kgCO2e/kWh
+          - Electricity (country average): 0.1-0.5 kgCO2e/kWh
+          - Coal: 2-3 kgCO2e/kg
+          Respond with just the number and nothing else - no explanations, no HTML, no text.`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 50,
+    });
+
+    const content = response.choices[0].message.content?.trim() || "";
+
+    // Extract just the number from the response
+    const match = content.match(/\d+(\.\d+)?/);
+    if (match) {
+      return match[0];
+    }
+
+    // Default if no valid number found
+    return "1.0";
+  } catch (error) {
+    console.error("Error getting emission factor suggestion:", error);
+    throw new Error("Failed to get emission factor suggestion");
+  }
+}
+
 export { openai };
