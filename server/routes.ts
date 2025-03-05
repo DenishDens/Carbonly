@@ -713,6 +713,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Add UOM suggestion endpoint with enhanced prompt for biodiesel and other materials
+  // Add UOM suggestion function
+  async function getUomSuggestion(materialName: string): Promise<string> {
+    // Common materials and their typical units of measure
+    const materialUomMap: Record<string, string> = {
+      "diesel": "liters",
+      "biodiesel": "liters", 
+      "bio diesel": "liters",
+      "gasoline": "liters",
+      "petrol": "liters",
+      "electricity": "kwh",
+      "natural gas": "m³",
+      "coal": "kg",
+      "waste": "kg",
+      "paper": "kg",
+      "water": "m³",
+      "steel": "kg",
+      "aluminum": "kg",
+      "concrete": "kg"
+    };
+
+    // Convert to lowercase for case-insensitive matching
+    const nameLower = materialName.toLowerCase();
+    
+    // Check for exact matches first
+    if (materialUomMap[nameLower]) {
+      return materialUomMap[nameLower];
+    }
+    
+    // Check for partial matches
+    for (const [key, value] of Object.entries(materialUomMap)) {
+      if (nameLower.includes(key)) {
+        return value;
+      }
+    }
+    
+    // Default UOM if no match found
+    return "liters";
+  }
+
   app.get("/api/materials/suggest-uom", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 

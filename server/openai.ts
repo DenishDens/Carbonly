@@ -235,6 +235,12 @@ export async function getUomSuggestion(materialName: string) {
 
 export async function getEmissionFactorSuggestion(materialName: string, uom: string) {
   try {
+    // For biodiesel specifically, provide a valid emission factor without using OpenAI
+    if (materialName.toLowerCase().includes("biodiesel") || 
+        materialName.toLowerCase().includes("bio diesel")) {
+      return "2.18"; // Standard biodiesel emission factor (kgCO2e/liter)
+    }
+    
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
@@ -248,6 +254,7 @@ export async function getEmissionFactorSuggestion(materialName: string, uom: str
           Respond with only a single decimal number representing kgCO2e per unit (e.g., 2.53 for 2.53 kgCO2e per liter of diesel). 
           For common materials, provide values within these ranges:
           - Diesel fuel: 2.5-3.2 kgCO2e/liter
+          - Biodiesel: 2.1-2.3 kgCO2e/liter
           - Gasoline: 2.2-2.5 kgCO2e/liter
           - Natural gas: 0.18-0.2 kgCO2e/kWh
           - Electricity (country average): 0.1-0.5 kgCO2e/kWh
@@ -265,6 +272,14 @@ export async function getEmissionFactorSuggestion(materialName: string, uom: str
     const match = content.match(/\d+(\.\d+)?/);
     if (match) {
       return match[0];
+    } else {
+      // Fallback values based on material type
+      if (materialName.toLowerCase().includes("diesel")) return "2.68";
+      if (materialName.toLowerCase().includes("gasoline")) return "2.31";
+      if (materialName.toLowerCase().includes("electricity")) return "0.42";
+      if (materialName.toLowerCase().includes("natural gas")) return "0.18";
+      return "1.0"; // Default fallback
+    }ch[0];
     }
 
     // Default if no valid number found
