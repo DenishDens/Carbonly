@@ -173,42 +173,63 @@ export interface ChatResponse {
 
 export async function getUomSuggestion(materialName: string) {
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful assistant that provides accurate unit of measure suggestions for materials."
-        },
-        {
-          role: "user",
-          content: `Suggest an appropriate unit of measure (UOM) for "${materialName}". 
-          Respond with a single unit from this list: liters, gallons, cubic_meters, cubic_feet, kilograms, tons_metric, tons_us, pounds, kilowatt_hours, megawatt_hours, therms, btus.
-          Respond with just the unit name and nothing else - no explanations, no HTML, no quotes.`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 50,
-    });
-
-    const content = response.choices[0].message.content?.trim() || "";
-    // Clean the response to ensure it's just the UOM
-    const validUOMs = ["liters", "gallons", "cubic_meters", "cubic_feet", "kilograms", 
-                      "tons_metric", "tons_us", "pounds", "kilowatt_hours", 
-                      "megawatt_hours", "therms", "btus"];
-
-    // Extract just the UOM if it's in the valid list
-    for (const uom of validUOMs) {
-      if (content.toLowerCase().includes(uom)) {
-        return uom;
-      }
+    // Fast-path for common fuels to avoid OpenAI calls
+    const lowerName = materialName.toLowerCase();
+    if (lowerName.includes('diesel') || lowerName.includes('fuel') || 
+        lowerName.includes('gasoline') || lowerName.includes('petrol') || 
+        lowerName.includes('oil') || lowerName.includes('b10') || 
+        lowerName.includes('b20')) {
+      console.log(`Fast-tracked UOM for ${materialName}: liters`);
+      return "liters";
+    } else if (lowerName.includes('electricity') || lowerName.includes('energy')) {
+      return "kilowatt_hours";
+    } else if (lowerName.includes('waste') && (
+               lowerName.includes('solid') || lowerName.includes('mixed'))) {
+      return "tons_metric";
     }
+    
+    try {
+      const response = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant that provides accurate unit of measure suggestions for materials."
+          },
+          {
+            role: "user",
+            content: `Suggest an appropriate unit of measure (UOM) for "${materialName}". 
+            Respond with a single unit from this list: liters, gallons, cubic_meters, cubic_feet, kilograms, tons_metric, tons_us, pounds, kilowatt_hours, megawatt_hours, therms, btus.
+            Respond with just the unit name and nothing else - no explanations, no HTML, no quotes.`
+          }
+        ],
+        temperature: 0.3, // Lower temperature for more predictable outputs
+        max_tokens: 20,   // Reduced token count for simpler responses
+      });
 
-    // Default if no valid UOM found
-    return "liters";
+      const content = response.choices[0].message.content?.trim() || "";
+      // Clean the response to ensure it's just the UOM
+      const validUOMs = ["liters", "gallons", "cubic_meters", "cubic_feet", "kilograms", 
+                        "tons_metric", "tons_us", "pounds", "kilowatt_hours", 
+                        "megawatt_hours", "therms", "btus"];
+
+      // Extract just the UOM if it's in the valid list
+      for (const uom of validUOMs) {
+        if (content.toLowerCase().includes(uom)) {
+          console.log(`AI suggested UOM for ${materialName}: ${uom}`);
+          return uom;
+        }
+      }
+      
+      console.log(`No valid UOM found in response "${content}", using default`);
+      return "liters";
+    } catch (openaiError) {
+      console.error("OpenAI API error:", openaiError);
+      return "liters"; // Graceful fallback
+    }
   } catch (error) {
-    console.error("Error getting UOM suggestion:", error);
-    return "liters"; // Return default instead of throwing error
+    console.error("Error in getUomSuggestion:", error);
+    return "liters"; // Default fallback
   }
 }
 

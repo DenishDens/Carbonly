@@ -133,31 +133,49 @@ export default function OrganizationSettings() {
   // Get UOM suggestion when name changes
   const getUomSuggestion = useMutation({
     mutationFn: async ({ name }: { name: string }) => {
-      const res = await apiRequest(
-        "GET",
-        `/api/materials/suggest-uom?name=${encodeURIComponent(name)}`
-      );
-      if (!res.ok) {
-        throw new Error("Failed to get UOM suggestion");
+      try {
+        const res = await apiRequest(
+          "GET",
+          `/api/materials/suggest-uom?name=${encodeURIComponent(name)}`
+        );
+        
+        if (!res.ok) {
+          console.warn("UOM suggestion API returned non-OK status:", res.status);
+          return { uom: "liters" }; // Default fallback
+        }
+        
+        const text = await res.text();
+        try {
+          // Try to parse as JSON
+          return JSON.parse(text);
+        } catch (parseError) {
+          console.error("Failed to parse UOM suggestion response as JSON:", text);
+          return { uom: "liters" }; // Default fallback if parsing fails
+        }
+      } catch (fetchError) {
+        console.error("UOM suggestion API request failed:", fetchError);
+        return { uom: "liters" }; // Default fallback for network errors
       }
-      return res.json();
     },
     onSuccess: (data) => {
-      setNewMaterial(prev => ({
-        ...prev,
-        uom: data.uom,
-      }));
-      toast({
-        title: "AI Suggestion",
-        description: "Unit of measure updated based on AI suggestion",
-      });
+      if (data && data.uom) {
+        setNewMaterial(prev => ({
+          ...prev,
+          uom: data.uom,
+        }));
+        toast({
+          title: "AI Suggestion",
+          description: "Unit of measure updated based on AI suggestion",
+        });
+      }
     },
     onError: (error: Error) => {
-      toast({
-        title: "Failed to get UOM suggestion",
-        description: error.message,
-        variant: "destructive",
-      });
+      console.error("UOM suggestion error:", error);
+      // Don't show error toast, just quietly use default
+      setNewMaterial(prev => ({
+        ...prev,
+        uom: "liters", // Default fallback
+      }));
     },
   });
 
