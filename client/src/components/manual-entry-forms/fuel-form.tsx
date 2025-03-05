@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -83,14 +83,16 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
   const materialId = form.watch("materialId");
   const paidBySubcontractor = form.watch("paidBySubcontractor");
 
-  // Find selected material and calculate emissions
-  useState(() => {
-    if (!amount || !materialId) return;
+  // Calculate emissions whenever amount or material changes
+  useEffect(() => {
+    if (!amount || !materialId || !materials) return;
 
-    const material = materials?.find(m => m.id === materialId);
+    const material = materials.find(m => m.id === materialId);
     if (!material) return;
 
     const value = parseFloat(amount);
+    if (isNaN(value)) return;
+
     const emissions = value * parseFloat(material.emissionFactor);
     setCalculatedEmissions(emissions.toFixed(2));
   }, [amount, materialId, materials]);
@@ -133,9 +135,14 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
       return res.json();
     },
     onSuccess: () => {
-      form.reset();
+      if (!initialData) {
+        form.reset();
+      }
       queryClient.invalidateQueries({ queryKey: ["/api/emissions"] });
-      toast({ title: initialData ? "Fuel data updated successfully" : "Fuel data saved successfully" });
+      toast({ 
+        title: initialData ? "Fuel data updated successfully" : "Fuel data saved successfully",
+        variant: "default" 
+      });
       onSuccess?.();
     },
     onError: (error) => {
