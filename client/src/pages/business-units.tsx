@@ -73,6 +73,7 @@ export default function BusinessUnits() {
     status: "active",
     managerId: "",
     teamId: "",
+    projectCode: "", // Added projectCode
     protocolSettings: {
       version: "org",
       emissionFactors: {
@@ -116,6 +117,7 @@ export default function BusinessUnits() {
         status: "active",
         managerId: "none",
         teamId: "none",
+        projectCode: "", // Added projectCode
         protocolSettings: {
           version: "org",
           emissionFactors: {
@@ -177,6 +179,20 @@ export default function BusinessUnits() {
             onChange={(e) => onChange({ ...data, name: e.target.value })}
             placeholder="Enter business unit name"
           />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="projectCode">Project Code</Label>
+          <Input
+            id="projectCode"
+            value={data.projectCode}
+            onChange={(e) => onChange({ ...data, projectCode: e.target.value.toUpperCase() })}
+            placeholder="e.g., PRJ-001"
+            className="uppercase"
+          />
+          <p className="text-sm text-muted-foreground">
+            Use uppercase letters, numbers, and hyphens only (e.g., PRJ-001)
+          </p>
         </div>
 
         <div className="space-y-2">

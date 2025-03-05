@@ -56,15 +56,7 @@ export const businessUnits = pgTable("business_units", {
       diesel: string;
       gasoline: string;
     };
-  }>().default({
-    version: "org",
-    emissionFactors: {
-      electricity: "",
-      naturalGas: "",
-      diesel: "",
-      gasoline: "",
-    },
-  }),
+  }>(),
   integrations: jsonb("integrations").$type<{
     storage?: {
       onedrive?: { status: "connected" | "disconnected"; path: string };
@@ -86,7 +78,7 @@ export const businessUnits = pgTable("business_units", {
       baseUrl: string;
       apiToken: string;
     }>;
-  }>().default({}),
+  }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

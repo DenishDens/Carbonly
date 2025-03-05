@@ -150,7 +150,8 @@ export default function Teams() {
         {/* Move Dialog outside of flex container and make it fixed */}
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
-            <Button className="fixed bottom-6 right-6 shadow-lg">
+            {/* Updated Button */}
+            <Button className="fixed bottom-8 right-8 z-50 shadow-lg">
               <Users className="h-4 w-4 mr-2" />
               Add Team
             </Button>
