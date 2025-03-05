@@ -3,7 +3,14 @@ import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
 import * as schema from "@shared/schema";
 
-neonConfig.webSocketConstructor = ws;
+// Set WebSocket constructor based on environment
+if (process.env.NODE_ENV === 'production') {
+  // In production, we need to use the ws module directly
+  neonConfig.webSocketConstructor = require('ws');
+} else {
+  // In development, use the imported ws
+  neonConfig.webSocketConstructor = ws;
+}
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -14,7 +21,7 @@ if (!process.env.DATABASE_URL) {
 // Configure the pool with proper SSL settings
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production",
+  ssl: process.env.NODE_ENV === "production" ? true : false,
 });
 
 // Initialize Drizzle with the schema
