@@ -504,6 +504,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Check for duplicate material code
+      const existingMaterials = await storage.getMaterials(req.user.organizationId);
+      const duplicate = existingMaterials.find(
+        (m) => m.materialCode.toLowerCase() === materialCode.toLowerCase()
+      );
+      
+      if (duplicate) {
+        return res.status(400).json({ 
+          message: "Material code already exists. Please use a unique code." 
+        });
+      }
+
       // Convert emissionFactor to decimal
       const emissionFactorDecimal = parseFloat(emissionFactor);
       if (isNaN(emissionFactorDecimal)) {

@@ -359,14 +359,50 @@ export default function OrganizationSettings() {
       if (!material.name.trim()) {
         throw new Error("Material name is required");
       }
-      if (!material.uom) {
-        throw new Error("Unit of measure is required");
+      // Check for duplicate material code
+      const materialsData = await queryClient.fetchQuery({
+        queryKey: ["/api/materials"],
+        queryFn: async () => {
+          const res = await apiRequest("GET", "/api/materials");
+          if (!res.ok) throw new Error("Failed to fetch materials");
+          return res.json();
+        },
+      });
+
+      // Check if material code already exists
+      const duplicate = materialsData.find(
+        (m: any) => m.materialCode.toLowerCase() === material.materialCode.toLowerCase()
+      );
+
+      if (duplicate) {
+        throw new Error("Material code already exists. Please use a unique code.");
+      }
+
+      //Simplified UOM detection -  Replace with more robust logic if needed.
+      let detectedUOM = material.uom;
+      if (!detectedUOM && material.name.toLowerCase().includes("liter") || material.name.toLowerCase().includes("l")) {
+        detectedUOM = "liters";
+      } else if (!detectedUOM && material.name.toLowerCase().includes("gallon") || material.name.toLowerCase().includes("gal")) {
+        detectedUOM = "gallons";
+      } else if (!detectedUOM && material.name.toLowerCase().includes("kg") || material.name.toLowerCase().includes("kilogram")) {
+        detectedUOM = "kg";
+      } else if (!detectedUOM && material.name.toLowerCase().includes("ton") ) {
+        detectedUOM = "metric_tons";
+      } else if (!detectedUOM && material.name.toLowerCase().includes("kwh") || material.name.toLowerCase().includes("kilowatt hour")) {
+        detectedUOM = "kwh";
+      }
+
+
+      if (!detectedUOM) {
+        throw new Error("Unit of measure is required or could not be auto-detected. Please specify a UOM.");
       }
       if (!material.emissionFactor || isNaN(parseFloat(material.emissionFactor))) {
         throw new Error("Valid emission factor is required");
       }
 
-      const res = await apiRequest("POST", "/api/materials", material);
+      const materialToCreate = {...material, uom: detectedUOM};
+
+      const res = await apiRequest("POST", "/api/materials", materialToCreate);
       if (!res.ok) {
         const error = await res.text();
         throw new Error(`Failed to create material: ${error}`);
