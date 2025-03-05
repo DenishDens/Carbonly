@@ -5,7 +5,7 @@ import { ChatInterface } from "@/components/chat-interface";
 import { useAuth } from "@/hooks/use-auth";
 import { LogOut, Menu, Leaf, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,30 +14,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link, useLocation } from "wouter";
+import { Link } from "wouter";
 import { Footer } from "@/components/footer";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [, setLocation] = useLocation();
-
-  const handleLogout = () => {
-    logoutMutation.mutate();
-    setLocation("/auth");
-  };
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
         <div className="container flex h-14 items-center">
           <div className="flex items-center md:mr-4">
-            <Link href="/" className="mr-4 md:mr-6 flex items-center gap-2">
+            <a href="/" className="mr-4 md:mr-6 flex items-center gap-2">
               <Leaf className="h-5 w-5 md:h-6 md:w-6 text-primary" />
               <h1 className="text-xl md:text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 Carbonly.ai
               </h1>
-            </Link>
+            </a>
             <div className="hidden md:flex">
               <MainNav />
             </div>
@@ -56,6 +50,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.profilePicture} alt={user?.email} />
                       <AvatarFallback>
                         {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
                       </AvatarFallback>
@@ -65,12 +60,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>
                     <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user?.firstName} {user?.lastName}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">
-                        {user?.email}
-                      </p>
+                      <p className="text-sm font-medium leading-none">{user?.firstName} {user?.lastName}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -89,7 +80,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-red-600"
-                    onClick={handleLogout}
+                    onClick={() => logoutMutation.mutate()}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign out
@@ -103,7 +94,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         {showMobileMenu && (
           <div className="border-b md:hidden">
             <div className="container py-3">
-              <MainNav />
+              <MainNav className="flex flex-col space-y-2" />
             </div>
           </div>
         )}
@@ -115,6 +106,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <Footer />
 
+      {/* Position the chat interface at the bottom right */}
       <div className="fixed bottom-3 right-3 z-50">
         <ChatInterface />
       </div>

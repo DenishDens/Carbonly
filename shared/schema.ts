@@ -1,58 +1,27 @@
-import { pgTable, text, uuid, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, decimal, timestamp, jsonb, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
-// Organization table schema
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
+  slug: text("slug").unique(), // Custom URL segment
+  logo: text("logo"), // URL to the uploaded logo
+  ssoEnabled: boolean("sso_enabled").default(false),
+  ssoSettings: jsonb("sso_settings"), // Store SSO configuration
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// User table schema
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
-  password: text("password").notNull(),
-  role: text("role").notNull().default("user"), 
+  password: text("password"), // Optional for SSO users
+  role: text("role").notNull(), // 'super_admin', 'admin', 'user'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-// Types
-export type Organization = typeof organizations.$inferSelect;
-export type User = typeof users.$inferSelect;
-
-// Registration schema with validation
-export const insertUserSchema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  organizationId: z.string().uuid(),
-  role: z.enum(["admin", "user"]).default("user"),
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-
-// Organization registration schema
-export const insertOrganizationSchema = z.object({
-  name: z.string().min(1, "Organization name is required"),
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-});
-
-export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
-
-// Login schema
-export const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-export type LoginCredentials = z.infer<typeof loginSchema>;
 
 export const teams = pgTable("teams", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -63,89 +32,138 @@ export const teams = pgTable("teams", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-export type Team = typeof teams.$inferSelect;
-
 export const businessUnits = pgTable("business_units", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
   name: text("name").notNull(),
-  projectCode: text("project_code").unique(), 
-  label: text("label"), 
+  projectCode: text("project_code").unique(), // Add project code field
+  label: text("label"), // Made optional: 'Business Unit', 'Project', 'Division', 'Department', 'Custom'
   description: text("description"),
-  location: text("location"), 
-  category: text("category"), 
+  location: text("location"), // For tracking by state/region
+  category: text("category"), // For additional categorization
   managerId: uuid("manager_id").references(() => users.id),
-  teamId: uuid("team_id").references(() => teams.id), 
-  status: text("status"), 
-  budget: text("budget"), 
-  targetEmission: text("target_emission"), 
-  projectEmail: text("project_email"), 
-  metadata: text("metadata"), 
-  protocolSettings: text("protocol_settings"),
-  integrations: text("integrations"),
+  teamId: uuid("team_id").references(() => teams.id), // Reference to assigned team
+  status: text("status"), // active, inactive, archived
+  budget: decimal("budget"), // For tracking financial aspects
+  targetEmission: decimal("target_emission"), // Emission reduction target
+  projectEmail: text("project_email"), // Encrypted project-specific email
+  metadata: jsonb("metadata"), // For flexible additional data
+  protocolSettings: jsonb("protocol_settings").$type<{
+    version: string;
+    emissionFactors: {
+      electricity: string;
+      naturalGas: string;
+      diesel: string;
+      gasoline: string;
+    };
+  }>().default({
+    version: "org",
+    emissionFactors: {
+      electricity: "",
+      naturalGas: "",
+      diesel: "",
+      gasoline: "",
+    },
+  }),
+  integrations: jsonb("integrations").$type<{
+    storage?: {
+      onedrive?: { status: "connected" | "disconnected"; path: string };
+      googledrive?: { status: "connected" | "disconnected"; path: string };
+      sharepoint?: { status: "connected" | "disconnected"; path: string };
+    };
+    accounting?: {
+      xero?: { status: "connected" | "disconnected"; clientId: string };
+      myob?: { status: "connected" | "disconnected"; clientId: string };
+    };
+    electricity?: {
+      provider: string;
+      status: "connected" | "disconnected";
+      apiKey: string;
+    };
+    custom?: Array<{
+      name: string;
+      status: "connected" | "disconnected";
+      baseUrl: string;
+      apiToken: string;
+    }>;
+  }>().default({}),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-export type BusinessUnit = typeof businessUnits.$inferSelect;
 
 export const emissions = pgTable("emissions", {
   id: uuid("id").defaultRandom().primaryKey(),
   businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
-  scope: text("scope").notNull(), 
+  scope: text("scope").notNull(), // 'Scope 1', 'Scope 2', 'Scope 3'
   emissionSource: text("emission_source").notNull(),
-  amount: text("amount").notNull(),
-  unit: text("unit").notNull(), 
+  amount: decimal("amount").notNull(),
+  unit: text("unit").notNull(), // 'kg', 'tCO2e'
   date: timestamp("date").defaultNow().notNull(),
-  details: text("details"), 
+  details: jsonb("details").$type<{
+    fuelType?: "diesel" | "gasoline";
+    rawAmount?: string;
+    rawUnit?: "liters" | "gallons";
+    notes?: string;
+    category?: string;
+  }>(), // Explicitly type the details column
 });
-
-export type Emission = typeof emissions.$inferSelect;
 
 export const processingTransactions = pgTable("processing_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   fileName: text("file_name").notNull(),
   detectedCategory: text("detected_category").notNull(),
-  status: text("status").notNull(), 
-  errorType: text("error_type"), 
+  status: text("status").notNull(), // 'processed', 'failed', 'pending'
+  errorType: text("error_type"), // 'missing_value', 'invalid_format', 'ambiguous_data', 'none'
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
 
 export const auditLogs = pgTable("audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
-  actionType: text("action_type").notNull(), 
-  entityType: text("entity_type").notNull(), 
+  actionType: text("action_type").notNull(), // CREATE, UPDATE, DELETE
+  entityType: text("entity_type").notNull(), // organization, user, business_unit, emission
   entityId: text("entity_id").notNull(),
-  changes: text("changes"), 
+  changes: jsonb("changes"), // Store before/after state
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
-
-export type AuditLog = typeof auditLogs.$inferSelect;
-export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
 
 export const incidents = pgTable("incidents", {
   id: uuid("id").defaultRandom().primaryKey(),
   businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
-  severity: text("severity").notNull(), 
-  status: text("status").notNull(), 
-  type: text("type").notNull(), 
+  severity: text("severity").notNull(), // 'low', 'medium', 'high', 'critical'
+  status: text("status").notNull(), // 'open', 'in_progress', 'resolved', 'closed'
+  type: text("type").notNull(), // 'spill', 'leak', 'equipment_failure', 'power_outage', 'other'
   location: text("location"),
   reportedBy: uuid("reported_by").references(() => users.id),
   assignedTo: uuid("assigned_to").references(() => users.id),
   resolutionDetails: text("resolution_details"),
-  incidentDate: timestamp("incident_date").notNull(), 
-  environmentalImpact: text("environmental_impact"),
+  incidentDate: timestamp("incident_date").notNull(), // Adding incident date field
+  environmentalImpact: jsonb("environmental_impact").$type<{
+    impactType: string;
+    estimatedEmissions: number;
+    mitigationSteps: string[];
+  }>(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at"),
 });
 
+export type Organization = typeof organizations.$inferSelect;
+export type User = typeof users.$inferSelect;
+export type Team = typeof teams.$inferSelect;
+export type BusinessUnit = typeof businessUnits.$inferSelect;
+export type Emission = typeof emissions.$inferSelect;
+export type AuditLog = typeof auditLogs.$inferSelect;
+export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
 export type Incident = typeof incidents.$inferSelect;
+export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
+
+export const insertOrganizationSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
 
 export const insertTeamSchema = createInsertSchema(teams)
   .pick({
@@ -237,7 +255,7 @@ export const insertEmissionSchema = createInsertSchema(emissions)
     details: true,
   })
   .extend({
-    date: z.string(), 
+    date: z.string(), // Accept string date that will be converted to Date
   });
 
 export const insertIncidentSchema = createInsertSchema(incidents)
@@ -258,7 +276,7 @@ export const insertIncidentSchema = createInsertSchema(incidents)
     severity: z.enum(['low', 'medium', 'high', 'critical']),
     status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
     type: z.enum(['spill', 'leak', 'equipment_failure', 'power_outage', 'other']),
-    incidentDate: z.string(), 
+    incidentDate: z.string(), // Accept string date that will be converted to Date
     environmentalImpact: z.object({
       impactType: z.string(),
       estimatedEmissions: z.number(),
@@ -269,11 +287,12 @@ export const insertIncidentSchema = createInsertSchema(incidents)
 export const updateIncidentSchema = insertIncidentSchema
   .extend({
     resolutionDetails: z.string().optional(),
-    resolvedAt: z.string().optional(), 
+    resolvedAt: z.string().optional(), // Will be converted to Date
   })
   .partial();
 
 
+export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
 export type InsertEmission = z.infer<typeof insertEmissionSchema>;

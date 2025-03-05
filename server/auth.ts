@@ -1,12 +1,11 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express, Request, Response, NextFunction } from "express";
+import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser } from "@shared/schema";
-import cors from 'cors';
+import { User as SelectUser, insertOrganizationSchema } from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -35,142 +34,95 @@ export function setupAuth(app: Express) {
     resave: false,
     saveUninitialized: false,
     store: storage.sessionStore,
-    proxy: true, // Enable proxy support
     cookie: {
-      secure: false, // Set to false for development
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      path: "/"
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
     },
   };
 
-  // Trust first proxy if we're behind one
   app.set("trust proxy", 1);
-
-  // Add CORS middleware
-  app.use(cors({
-    origin: "*", // or a specific origin for production
-    methods: ["GET", "POST", "PUT", "DELETE"],
-    credentials: true // Allow cookies
-  }));
-
-
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(
-      {
-        usernameField: "email",
-        passwordField: "password",
-      },
-      async (email, password, done) => {
-        try {
-          console.log("Attempting login for email:", email);
-          const user = await storage.getUserByEmail(email);
-          if (!user) {
-            console.log("User not found:", email);
-            return done(null, false, { message: "User not found" });
-          }
+    new LocalStrategy(async (username, password, done) => {
+      try {
+        const email = username;
+        const user = await storage.getUserByEmail(email);
 
-          if (!(await comparePasswords(password, user.password))) {
-            console.log("Invalid password for user:", email);
-            return done(null, false, { message: "Invalid password" });
-          }
-
-          console.log("Login successful for user:", email);
-          return done(null, user);
-        } catch (err) {
-          console.error("Login error:", err);
-          return done(err);
+        if (!user) {
+          return done(null, false, { message: "User not found" });
         }
+
+        if (user.password && !(await comparePasswords(password, user.password))) {
+          return done(null, false, { message: "Invalid password" });
+        }
+
+        return done(null, user);
+      } catch (err) {
+        return done(err);
       }
-    )
+    }),
   );
 
-  passport.serializeUser((user, done) => {
-    console.log("Serializing user:", user.id);
-    done(null, user.id);
-  });
-
+  passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
     try {
-      console.log("Deserializing user:", id);
       const user = await storage.getUser(id);
-      if (!user) {
-        console.log("User not found during deserialization:", id);
-        return done(new Error("User not found"));
-      }
       done(null, user);
     } catch (err) {
-      console.error("Deserialization error:", err);
       done(err);
     }
   });
 
   app.post("/api/register", async (req, res, next) => {
     try {
-      console.log("Registration attempt:", req.body.email);
-      const { email, password, firstName, lastName } = req.body;
+      const userData = insertOrganizationSchema.parse(req.body);
 
       // Check if email is available
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
-        console.log("Email already registered:", email);
         return res.status(400).json({ message: "Email is already registered" });
       }
 
-      // Create organization first (single user = single org for now)
+      // Generate a temporary unique slug
+      const tempSlug = `org-${Date.now()}`;
+
+      // Create organization
       const organization = await storage.createOrganization({
-        name: email.split('@')[0], // Use email username as org name
+        name: userData.email.split('@')[0], // Use email username as org name temporarily
+        slug: tempSlug,
+        logo: null,
+        ssoEnabled: false,
+        ssoSettings: null,
         createdAt: new Date(),
       });
 
-      // Create user with the new organization
+      // Create user
       const user = await storage.createUser({
         organizationId: organization.id,
-        firstName,
-        lastName,
-        email,
-        password: await hashPassword(password),
-        role: "admin", // First user is admin
+        name: userData.email.split('@')[0],
+        email: userData.email,
+        password: await hashPassword(userData.password),
+        role: "super_admin",
+        createdAt: new Date(),
       });
-
-      console.log("Registration successful:", email);
 
       req.login(user, (err) => {
         if (err) return next(err);
         res.status(201).json(user);
       });
     } catch (error) {
-      console.error("Registration error:", error);
       next(error);
     }
   });
 
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-      req.login(user, (err) => {
-        if (err) return next(err);
-
-        // If remember me is selected, set session to expire in 30 days
-        if (req.body.rememberMe) {
-          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
-        }
-
-        res.json(user);
-      });
-    })(req, res, next);
+  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    res.status(200).json(req.user);
   });
 
   app.post("/api/logout", (req, res, next) => {
-    console.log("Logging out user:", req.user);
     req.logout((err) => {
       if (err) return next(err);
       res.sendStatus(200);
@@ -178,28 +130,7 @@ export function setupAuth(app: Express) {
   });
 
   app.get("/api/user", (req, res) => {
-    console.log("Checking auth status:", req.isAuthenticated(), req.user);
-
-    // Check for either session auth or Replit auth
-    if (!req.isAuthenticated() && !req.headers['x-replit-user-id']) {
-      return res.sendStatus(401);
-    }
-
-    // If there's a Replit user but not a session user, create temporary user object
-    if (!req.isAuthenticated() && req.headers['x-replit-user-id']) {
-      const userId = req.headers['x-replit-user-id'] as string;
-      const userName = req.headers['x-replit-user-name'] as string;
-
-      return res.json({
-        id: userId,
-        email: `${userName}@replit.user`,
-        firstName: userName,
-        lastName: '',
-        role: 'user',
-        organizationId: userId
-      });
-    }
-
+    if (!req.isAuthenticated()) return res.sendStatus(401);
     res.json(req.user);
   });
 }

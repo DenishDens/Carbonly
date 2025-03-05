@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,106 +7,29 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertUserSchema, type InsertUser } from "@shared/schema";
+import { insertOrganizationSchema } from "@shared/schema";
 import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 
-function RegisterForm() {
-  const { registerMutation } = useAuth();
-  const form = useForm<Omit<InsertUser, "organizationId" | "role">>({
-    resolver: zodResolver(
-      insertUserSchema.omit({ organizationId: true, role: true })
-    ),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = form.handleSubmit((data) => {
-    console.log("Form data:", data); // Debug log
-    registerMutation.mutate(data);
-  });
-
-  return (
-    <Form {...form}>
-      <form onSubmit={onSubmit} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="firstName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>First Name</FormLabel>
-              <FormControl>
-                <Input placeholder="John" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="lastName"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Last Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Doe" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input type="email" placeholder="name@company.com" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input type="password" placeholder="••••••••" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button
-          type="submit"
-          className="w-full"
-          disabled={registerMutation.isPending}
-        >
-          {registerMutation.isPending ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            "Create Account"
-          )}
-        </Button>
-      </form>
-    </Form>
-  );
-}
+const ENVIRONMENTAL_FACTS = [
+  {
+    title: "Did You Know?",
+    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
+    image: "🌳",
+  },
+  {
+    title: "Green Energy Impact",
+    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
+    image: "💨",
+  },
+  {
+    title: "Ocean Facts",
+    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
+    image: "🌊",
+  },
+];
 
 function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
@@ -171,13 +94,13 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const form = useForm({
     defaultValues: {
-      email: "",
+      username: "",
       password: "",
     },
   });
 
   const onSubmit = form.handleSubmit((data) => {
-    loginMutation.mutate(data);
+    loginMutation.mutate({ ...data, rememberMe });
   });
 
   const handleSSOLogin = async () => {
@@ -213,12 +136,12 @@ function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="username">Email</Label>
         <Input
-          id="email"
+          id="username"
           type="email"
           placeholder="name@company.com"
-          {...form.register("email")}
+          {...form.register("username")}
         />
       </div>
       <div className="space-y-2">
@@ -288,6 +211,56 @@ function LoginForm() {
   );
 }
 
+function RegisterForm() {
+  const { registerMutation } = useAuth();
+  const form = useForm({
+    resolver: zodResolver(insertOrganizationSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    registerMutation.mutate(data);
+  });
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="name@company.com"
+          {...form.register("email")}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          {...form.register("password")}
+        />
+        <p className="text-sm text-muted-foreground">
+          At least 8 characters long
+        </p>
+      </div>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={registerMutation.isPending}
+      >
+        {registerMutation.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        Create Account
+      </Button>
+    </form>
+  );
+}
+
 function Footer() {
   return (
     <footer className="bg-gray-800 text-white p-4 text-center">
@@ -296,24 +269,6 @@ function Footer() {
   );
 }
 
-
-const ENVIRONMENTAL_FACTS = [
-  {
-    title: "Did You Know?",
-    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
-    image: "🌳",
-  },
-  {
-    title: "Green Energy Impact",
-    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
-    image: "💨",
-  },
-  {
-    title: "Ocean Facts",
-    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
-    image: "🌊",
-  },
-];
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
