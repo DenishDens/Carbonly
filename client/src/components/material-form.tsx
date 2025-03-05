@@ -1,3 +1,6 @@
+import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+
 <FormField
   control={form.control}
   name="emissionFactor"
@@ -8,7 +11,7 @@
         <Input type="number" step="0.01" {...field} />
       </FormControl>
       <FormDescription>
-        Enter the emission factor in kgCO2e per unit of measure
+        Enter the emission factor as kilograms of CO2 equivalent per unit of measure
       </FormDescription>
       <FormMessage />
     </FormItem>

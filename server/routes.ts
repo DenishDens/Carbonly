@@ -689,26 +689,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Material name and UOM are required" });
       }
 
-      // Get suggestion from OpenAI
+      // Get suggestion from OpenAI with improved prompt
       const response = await getChatResponse(
         `Suggest an emission factor for a material with the following properties:
         Name: ${name}
         Unit of Measure: ${uom}
 
-        Respond with a valid JSON object in this format: {"message": "numeric_value_only"}. The numeric value should represent CO₂e per unit using industry standard values.`,
+        Please provide the emission factor in kilograms of CO2 equivalent (kgCO2e) per unit of measure.
+        Consider typical industry standards, EPiC database values, and environmental impact.
+        Format your response as a JSON object with this structure: 
+        {
+          "emissionFactor": numeric_value,
+          "unit": "kgCO2e per ${uom}"
+        }
+        Only include numeric values (no text explanations).`,
         { organizationId: req.user.organizationId }
       );
 
-      // Extract the numeric value from the response
-      const suggestedFactor = parseFloat(response.message);
-      if (isNaN(suggestedFactor)) {
+      try {
+        const data = JSON.parse(response.message);
+        const suggestedFactor = parseFloat(data.emissionFactor);
+
+        if (isNaN(suggestedFactor)) {
+          throw new Error("Invalid emission factor value");
+        }
+
+        res.json({ 
+          emissionFactor: suggestedFactor,
+          unit: `kgCO2e per ${uom}`
+        });
+      } catch (parseError) {
+        console.error("Error parsing AI response:", parseError);
         throw new Error("Failed to get valid emission factor suggestion");
       }
-
-      res.json({ emissionFactor: suggestedFactor });
     } catch (error) {
       console.error("Error getting emission factor suggestion:", error);
-      res.status(500).json({ message: "Failed to get emission factor suggestion" });
+      res.status(500).json({ 
+        message: "Failed to get emission factor suggestion",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
