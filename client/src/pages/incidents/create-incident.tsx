@@ -135,7 +135,7 @@ export function CreateIncidentDialog({
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select incident type" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -160,7 +160,7 @@ export function CreateIncidentDialog({
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue placeholder="Select severity level" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -199,7 +199,8 @@ export function CreateIncidentDialog({
                     <Input 
                       type="datetime-local" 
                       {...field}
-                      max={now.toISOString().slice(0, 16)}
+                      defaultValue={`${defaultDate}T${defaultTime}`}
+                      max={now.toISOString().slice(0, 16)} // Limit to current date/time
                     />
                   </FormControl>
                   <FormMessage />
