@@ -483,6 +483,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Fix for material creation endpoint
   app.post("/api/materials", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -551,48 +552,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error creating material:", error);
       res.status(500).json({ 
         message: "Failed to create material",
-        error: error instanceof Error ? error.message : "Unknown error"
-      });
-    }
-  // User profile endpoint
-  app.patch("/api/user/profile", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
-    try {
-      const userId = req.user.id;
-      const { firstName, lastName, email } = req.body;
-
-      // Get the current user
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Update user details
-      const updatedUser = await storage.updateUser({
-        ...user,
-        firstName: firstName || user.firstName,
-        lastName: lastName || user.lastName,
-        email: email || user.email,
-      });
-
-      // Create audit log
-      await storage.createAuditLog({
-        userId: req.user.id,
-        organizationId: req.user.organizationId,
-        actionType: "UPDATE",
-        entityType: "user",
-        entityId: userId,
-        changes: { before: user, after: updatedUser },
-      });
-
-      return res.json(updatedUser);
-    } catch (error) {
-      console.error("Error updating user profile:", error);
-      return res.status(500).json({ 
-        message: "Failed to update profile",
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
@@ -1339,6 +1298,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(invitation);
   });
 
+  // User profile endpoint - fixed structure
+  app.patch("/api/user/profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    try {
+      const userId = req.user.id;
+      const { firstName, lastName, email } = req.body;
+
+      // Get the current user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update user details
+      const updatedUser = await storage.updateUser({
+        ...user,
+        firstName: firstName || user.firstName,
+        lastName: lastName || user.lastName,
+        email: email || user.email,
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "UPDATE",
+        entityType: "user",
+        entityId: userId,
+        changes: { before: user, after: updatedUser },
+      });
+
+      return res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      return res.status(500).json({ 
+        message: "Failed to update profile",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;
