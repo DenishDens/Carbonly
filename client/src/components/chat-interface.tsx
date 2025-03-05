@@ -11,41 +11,21 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { MessageSquare, X, ChevronDown } from "lucide-react";
+import { MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Line, Bar, Pie } from "react-chartjs-2";
 import { useAuth } from "@/hooks/use-auth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  ArcElement,
-  Title,
-  Tooltip,
-  Legend
-);
+// Updated smart prompts focused on incidents and environmental data
+const SMART_PROMPTS = [
+  "Show me critical incidents",
+  "How many open incidents do we have?",
+  "What's the most common incident type?",
+  "Show incidents by severity",
+  "Which business unit has the most incidents?",
+  "Analyze recent environmental trends",
+  "What's our incident resolution rate?"
+];
 
 interface Message {
   role: "user" | "assistant";
@@ -56,16 +36,6 @@ interface Message {
     options?: any;
   };
 }
-
-const SMART_PROMPTS = [
-  "Show me all critical incidents in my projects",
-  "What's the status of incident reports this month?",
-  "Which projects have the most environmental incidents?",
-  "Show me unresolved incidents by severity",
-  "Summarize recent environmental impacts",
-  "Compare incident types across projects",
-  "Show me trends in incident reporting",
-];
 
 export function ChatInterface() {
   const { user } = useAuth();
@@ -184,38 +154,34 @@ export function ChatInterface() {
                 </div>
               ))}
             </ScrollArea>
-            <form onSubmit={handleSubmit} className="mt-4 flex gap-2">
-              <div className="flex-1 flex gap-2">
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {SMART_PROMPTS.map((prompt) => (
+                  <Button
+                    key={prompt}
+                    variant="outline"
+                    size="sm"
+                    className="text-sm"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      handlePromptSelect(prompt);
+                    }}
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+              <div className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your data..."
                   disabled={chatMutation.isPending}
                 />
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
-                      <ChevronDown className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[300px]">
-                    {SMART_PROMPTS.map((prompt) => (
-                      <DropdownMenuItem
-                        key={prompt}
-                        onClick={() => {
-                          setInput(prompt);
-                          handleSubmit(new Event('submit') as React.FormEvent);
-                        }}
-                      >
-                        {prompt}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                <Button type="submit" disabled={chatMutation.isPending}>
+                  Send
+                </Button>
               </div>
-              <Button type="submit" disabled={chatMutation.isPending}>
-                Send
-              </Button>
             </form>
           </CardContent>
         </Card>
