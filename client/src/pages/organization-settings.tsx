@@ -167,15 +167,18 @@ export default function OrganizationSettings() {
   });
 
   // Update the incident types query
-  const { data: existingIncidentTypes } = useQuery<IncidentType[]>({
+  const { data: existingIncidentTypes, isLoading: isLoadingTypes } = useQuery<IncidentType[]>({
     queryKey: ["/api/incident-types"],
-    enabled: user?.role === "super_admin" || user?.role === "admin",
+    enabled: !!user?.organizationId,
   });
 
   const manageIncidentTypesMutation = useMutation({
     mutationFn: async (types: typeof incidentTypes) => {
       // Filter out empty types before sending
-      const validTypes = types.filter(type => type.name.trim() !== "");
+      const validTypes = types.filter(type => type.name.trim() !== "").map(type => ({
+        ...type,
+        organizationId: user?.organizationId!,
+      }));
 
       if (validTypes.length === 0) {
         throw new Error("At least one incident type with a name is required");
@@ -183,7 +186,8 @@ export default function OrganizationSettings() {
 
       const res = await apiRequest("POST", "/api/incident-types", { types: validTypes });
       if (!res.ok) {
-        throw new Error("Failed to update incident types");
+        const error = await res.text();
+        throw new Error(`Failed to update incident types: ${error}`);
       }
       return res.json();
     },
@@ -200,20 +204,22 @@ export default function OrganizationSettings() {
     },
   });
 
-  // Make sure we initialize with at least one empty type if none exist
+  // Initialize incident types
   useEffect(() => {
-    if (existingIncidentTypes?.length === 0) {
-      setIncidentTypes([{ name: "", description: "", active: true }]);
-    } else if (existingIncidentTypes?.length) {
-      setIncidentTypes(
-        existingIncidentTypes.map(type => ({
-          name: type.name || "",
-          description: type.description || "",
-          active: type.active || true,
-        }))
-      );
+    if (!isLoadingTypes) {
+      if (!existingIncidentTypes?.length) {
+        setIncidentTypes([{ name: "", description: "", active: true }]);
+      } else {
+        setIncidentTypes(
+          existingIncidentTypes.map(type => ({
+            name: type.name,
+            description: type.description || "",
+            active: type.active || true,
+          }))
+        );
+      }
     }
-  }, [existingIncidentTypes]);
+  }, [existingIncidentTypes, isLoadingTypes]);
 
   // Add validation before submission
   const handleSaveIncidentTypes = () => {

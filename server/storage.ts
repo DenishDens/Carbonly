@@ -316,11 +316,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getIncidentTypes(organizationId: string): Promise<IncidentType[]> {
-    return db
+    // Query incident types for the specific organization
+    const types = await db
       .select()
       .from(incidentTypes)
       .where(eq(incidentTypes.organizationId, organizationId))
       .orderBy(incidentTypes.name);
+
+    return types;
   }
 
   async createIncidentType(type: Omit<IncidentType, "id" | "createdAt">): Promise<IncidentType> {
