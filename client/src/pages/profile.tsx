@@ -43,6 +43,7 @@ export default function ProfilePage() {
         variant: "destructive",
       });
     }
+  });
   };
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
