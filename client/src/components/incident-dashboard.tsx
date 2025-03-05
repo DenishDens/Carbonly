@@ -38,7 +38,8 @@ export function IncidentDashboard() {
   }));
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-6 p-6">
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -95,47 +96,36 @@ export function IncidentDashboard() {
 
       {/* Incidents List */}
       <div className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">Recent Incidents</h2>
-        </div>
+        <h2 className="text-2xl font-semibold">Recent Incidents</h2>
         <div className="grid gap-4">
           {incidents?.map((incident) => (
             <Card key={incident.id}>
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h3 className="text-lg font-semibold">{incident.title}</h3>
-                    <p className="text-sm text-muted-foreground">{incident.location}</p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setLocation(`/incidents/${incident.id}`)}
-                    className="flex items-center gap-2"
-                  >
-                    <Edit className="h-4 w-4" />
-                    Edit
-                  </Button>
-                </div>
-                <div className="grid gap-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Status</span>
-                    <span className="text-sm">{incident.status}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Severity</span>
-                    <span className="text-sm">{incident.severity}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Type</span>
-                    <span className="text-sm">{incident.type}</span>
+              <CardContent className="flex items-center justify-between p-6">
+                <div className="space-y-1">
+                  <h3 className="text-lg font-semibold">{incident.title}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Location: {incident.location}
+                  </p>
+                  <div className="flex gap-4 mt-2">
+                    <span className="text-sm">Status: {incident.status}</span>
+                    <span className="text-sm">Severity: {incident.severity}</span>
+                    <span className="text-sm">Type: {incident.type}</span>
                   </div>
                 </div>
+                <Button
+                  onClick={() => setLocation(`/incidents/${incident.id}`)}
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit
+                </Button>
               </CardContent>
             </Card>
           ))}
         </div>
       </div>
 
+      {/* Chart */}
       <Card>
         <CardHeader>
           <CardTitle>Incidents by Type</CardTitle>
