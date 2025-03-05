@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
 
 const app = express();
 app.use(express.json());
@@ -85,9 +85,10 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    let port = 5000; // Try to serve the app on port 5000 first
-    const alternativePorts = [3000, 8080, 8000, 5173]; // Fallback ports
-    
+    // Primary port is 3000 as per .replit configuration
+    let port = 3000;
+    const alternativePorts = [5000, 8080, 8000, 5173];
+
     const startServer = (portToUse: number, fallbackPorts: number[] = []) => {
       server.listen({
         port: portToUse,
