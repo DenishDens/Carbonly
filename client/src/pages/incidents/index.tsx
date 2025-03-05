@@ -70,7 +70,7 @@ export default function IncidentsPage() {
 
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
-    refetchInterval: 5000, 
+    refetchInterval: 5000,
     retry: 3,
     onError: (error) => {
       console.error("Error fetching incidents:", error);
@@ -170,8 +170,8 @@ export default function IncidentsPage() {
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Incidents</h1>
           <div className="flex gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setShowFilters(!showFilters)}
               className="flex items-center gap-2"
             >
@@ -278,8 +278,10 @@ export default function IncidentsPage() {
           </CardHeader>
           <CardContent>
             <Table>
+              {/* Table Header */}
               <TableHeader>
                 <TableRow>
+                  <TableHead>ID</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Business Unit</TableHead>
                   <TableHead>Type</TableHead>
@@ -293,6 +295,9 @@ export default function IncidentsPage() {
                 {filteredIncidents?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map((incident) => (
                     <TableRow key={incident.id}>
+                      <TableCell className="font-mono text-xs">
+                        {incident.id.split('-')[0]}
+                      </TableCell>
                       <TableCell className="font-medium">
                         {incident.title}
                       </TableCell>
@@ -324,17 +329,15 @@ export default function IncidentsPage() {
                         {canEdit && (
                           <Button
                             variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              console.log("Navigating to edit incident:", incident.id);
-                              setLocation(`/incidents/${incident.id}/edit`);
+                            size="icon"
+                            onClick={() => {
+                              const editUrl = `/incidents/${incident.id}/edit`;
+                              console.log("Navigating to:", editUrl);
+                              setLocation(editUrl);
                             }}
-                            className="hover:bg-muted"
+                            className="h-8 w-8 p-0"
                           >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
+                            <Edit className="h-4 w-4" />
                           </Button>
                         )}
                         {incident.status !== 'resolved' && (
@@ -369,8 +372,8 @@ export default function IncidentsPage() {
           </CardFooter>
         </Card>
 
-        <CreateIncidentDialog 
-          open={showNewIncident} 
+        <CreateIncidentDialog
+          open={showNewIncident}
           onOpenChange={setShowNewIncident}
         />
       </div>

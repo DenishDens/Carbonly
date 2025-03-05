@@ -15,7 +15,6 @@ import OrganizationSettings from "@/pages/organization-settings";
 import AuditLogViewer from "@/pages/audit-logs";
 import CategoryProcessing from "@/pages/data-processing/[category]";
 import Teams from "@/pages/teams";
-import FuelData from "@/pages/fuel-data";
 import ElectricityData from "@/pages/electricity-data";
 import Incidents from "@/pages/incidents";
 import EditIncident from "@/pages/incidents/edit-incident";
@@ -27,7 +26,7 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/business-units" component={BusinessUnits} />
       <ProtectedRoute path="/incidents" component={Incidents} />
-      <ProtectedRoute path="/incidents/:id/edit" component={() => <EditIncident />} />
+      <ProtectedRoute path="/incidents/:id/edit" component={EditIncident} />
       <ProtectedRoute path="/file-processing" component={FileProcessing} />
       <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
       <ProtectedRoute path="/data-processing/energy" component={ElectricityData} />
