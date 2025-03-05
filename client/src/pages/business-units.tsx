@@ -1,5 +1,17 @@
-import { DashboardLayout } from "@/components/dashboard-layout";
+import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertBusinessUnitSchema, updateBusinessUnitSchema } from "@shared/schema";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import {
   Card,
   CardContent,
@@ -8,17 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -29,15 +31,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Edit, Trash2, Settings, Plus } from "lucide-react";
+import { Building2, Edit, Trash2, Settings, Users } from "lucide-react";
 import type { BusinessUnit, User, Team } from "@shared/schema";
-import { useState } from "react";
 import { InviteUsersDialog } from "@/components/invite-users-dialog";
-import { Users } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntegrationCard } from "@/components/integration-wizard/integration-card";
 import { IntegrationWizard } from "@/components/integration-wizard/integration-wizard";
-
 
 const UNIT_LABELS = [
   "Business Unit",
@@ -58,32 +57,434 @@ const PROTOCOLS = [
   { id: "2022", label: "GHG Protocol 2022" },
 ];
 
+const UnitForm = ({ data, onSubmit }: { data?: BusinessUnit; onSubmit: (data: any) => void }) => {
+  const form = useForm({
+    resolver: zodResolver(data ? updateBusinessUnitSchema : insertBusinessUnitSchema),
+    defaultValues: data || {
+      name: "",
+      projectCode: "",
+      label: "",
+      description: "",
+      location: "",
+      category: "",
+      status: "active",
+      managerId: "",
+      teamId: "",
+      protocolSettings: {
+        version: "org",
+        emissionFactors: {
+          electricity: "",
+          naturalGas: "",
+          diesel: "",
+          gasoline: "",
+        },
+      },
+    },
+  });
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+        <FormField
+          control={form.control}
+          name="name"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Name</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="Enter business unit name" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="projectCode"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Project Code</FormLabel>
+              <FormControl>
+                <Input
+                  {...field}
+                  placeholder="e.g., PRJ-001"
+                  className="uppercase"
+                  onChange={(e) => field.onChange(e.target.value.toUpperCase())}
+                />
+              </FormControl>
+              <p className="text-sm text-muted-foreground">
+                Use uppercase letters, numbers, and hyphens only (e.g., PRJ-001)
+              </p>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="label"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Label</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select label type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {UNIT_LABELS.map((label) => (
+                    <SelectItem key={label} value={label.toLowerCase()}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Textarea {...field} placeholder="Enter description" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="location"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Location</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="e.g., Queensland, Victoria" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder="e.g., Commercial, Residential" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="managerId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Manager</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select manager" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">No Manager</SelectItem>
+                  {users?.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.firstName} {user.lastName} ({user.email})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="teamId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Team</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select team" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="none">No Team</SelectItem>
+                  {teams?.map((team) => (
+                    <SelectItem key={team.id} value={team.id}>
+                      {team.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {UNIT_STATUSES.map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="flex justify-end">
+          <Button type="submit">
+            {data ? "Save Changes" : "Create Business Unit"}
+          </Button>
+        </div>
+      </form>
+    </Form>
+  );
+};
+
+const ProtocolSettingsForm = ({ unit }: { unit: BusinessUnit }) => {
+  const [settings, setSettings] = useState(unit.protocolSettings || {
+    version: "org",
+    emissionFactors: {
+      electricity: "",
+      naturalGas: "",
+      diesel: "",
+      gasoline: "",
+    },
+  });
+
+  return (
+    <div className="space-y-4 py-4">
+      <div className="space-y-2">
+        <Label>Protocol Version</Label>
+        <Select
+          value={settings.version}
+          onValueChange={(value) => setSettings({ ...settings, version: value })}
+        >
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PROTOCOLS.map((protocol) => (
+              <SelectItem key={protocol.id} value={protocol.id}>
+                {protocol.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {settings.version !== "org" && (
+        <div className="space-y-4">
+          <Label>Emission Factors Override (kgCO2e per unit)</Label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label>Electricity (per kWh)</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={settings.emissionFactors.electricity}
+                onChange={(e) => setSettings({
+                  ...settings,
+                  emissionFactors: {
+                    ...settings.emissionFactors,
+                    electricity: e.target.value,
+                  },
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Natural Gas (per m³)</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={settings.emissionFactors.naturalGas}
+                onChange={(e) => setSettings({
+                  ...settings,
+                  emissionFactors: {
+                    ...settings.emissionFactors,
+                    naturalGas: e.target.value,
+                  },
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Diesel (per L)</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={settings.emissionFactors.diesel}
+                onChange={(e) => setSettings({
+                  ...settings,
+                  emissionFactors: {
+                    ...settings.emissionFactors,
+                    diesel: e.target.value,
+                  },
+                })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Gasoline (per L)</Label>
+              <Input
+                type="number"
+                step="0.0001"
+                value={settings.emissionFactors.gasoline}
+                onChange={(e) => setSettings({
+                  ...settings,
+                  emissionFactors: {
+                    ...settings.emissionFactors,
+                    gasoline: e.target.value,
+                  },
+                })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Button
+        className="w-full mt-4"
+        onClick={() => updateProtocolSettings.mutate({
+          id: unit.id,
+          protocolSettings: settings,
+        })}
+        disabled={updateProtocolSettings.isPending}
+      >
+        Save Protocol Settings
+      </Button>
+    </div>
+  );
+};
+
+const IntegrationsForm = ({ unit }: { unit: BusinessUnit }) => {
+  const [showWizard, setShowWizard] = useState(false);
+
+  return (
+    <div className="space-y-4">
+      {showWizard ? (
+        <IntegrationWizard
+          businessUnitId={unit.id}
+          onComplete={() => setShowWizard(false)}
+        />
+      ) : (
+        <div className="space-y-4">
+          <Button onClick={() => setShowWizard(true)} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Integration
+          </Button>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {/* Storage Integrations */}
+            {unit.integrations?.storage?.onedrive && (
+              <IntegrationCard
+                businessUnitId={unit.id}
+                type="onedrive"
+                status={unit.integrations.storage.onedrive.status}
+                folderPath={unit.integrations.storage.onedrive.path}
+              />
+            )}
+            {unit.integrations?.storage?.googledrive && (
+              <IntegrationCard
+                businessUnitId={unit.id}
+                type="googledrive"
+                status={unit.integrations.storage.googledrive.status}
+                folderPath={unit.integrations.storage.googledrive.path}
+              />
+            )}
+            {unit.integrations?.storage?.sharepoint && (
+              <IntegrationCard
+                businessUnitId={unit.id}
+                type="sharepoint"
+                status={unit.integrations.storage.sharepoint.status}
+                folderPath={unit.integrations.storage.sharepoint.path}
+              />
+            )}
+
+            {/* Accounting Integrations */}
+            {unit.integrations?.accounting?.xero && (
+              <IntegrationCard
+                businessUnitId={unit.id}
+                type="xero"
+                status={unit.integrations.accounting.xero.status}
+                clientId={unit.integrations.accounting.xero.clientId}
+              />
+            )}
+            {unit.integrations?.accounting?.myob && (
+              <IntegrationCard
+                businessUnitId={unit.id}
+                type="myob"
+                status={unit.integrations.accounting.myob.status}
+                clientId={unit.integrations.accounting.myob.clientId}
+              />
+            )}
+
+            {/* Electricity Integration */}
+            {unit.integrations?.electricity && (
+              <IntegrationCard
+                businessUnitId={unit.id}
+                type="electricity"
+                status={unit.integrations.electricity.status}
+                provider={unit.integrations.electricity.provider}
+              />
+            )}
+
+            {/* Custom Integrations */}
+            {unit.integrations?.custom?.map((integration, index) => (
+              <IntegrationCard
+                key={index}
+                businessUnitId={unit.id}
+                type="custom"
+                status={integration.status}
+                name={integration.name}
+                baseUrl={integration.baseUrl}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function BusinessUnits() {
   const { toast } = useToast();
   const [editingUnit, setEditingUnit] = useState<BusinessUnit>();
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showSettingsDialog, setShowSettingsDialog] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState<BusinessUnit>();
-  const [newUnit, setNewUnit] = useState({
-    name: "",
-    label: "",
-    description: "",
-    location: "",
-    category: "",
-    status: "active",
-    managerId: "",
-    teamId: "",
-    projectCode: "", // Added projectCode
-    protocolSettings: {
-      version: "org",
-      emissionFactors: {
-        electricity: "",
-        naturalGas: "",
-        diesel: "",
-        gasoline: "",
-      },
-    },
-  });
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [selectedUnitForInvite, setSelectedUnitForInvite] = useState<BusinessUnit>();
 
@@ -100,7 +501,7 @@ export default function BusinessUnits() {
   });
 
   const createBusinessUnit = useMutation({
-    mutationFn: async (data: typeof newUnit) => {
+    mutationFn: async (data: BusinessUnit) => {
       const res = await apiRequest("POST", "/api/business-units", data);
       return res.json();
     },
@@ -108,34 +509,14 @@ export default function BusinessUnits() {
       queryClient.invalidateQueries({ queryKey: ["/api/business-units"] });
       toast({ title: "Business unit created" });
       setShowAddDialog(false);
-      setNewUnit({
-        name: "",
-        label: "",
-        description: "",
-        location: "",
-        category: "",
-        status: "active",
-        managerId: "none",
-        teamId: "none",
-        projectCode: "", // Added projectCode
-        protocolSettings: {
-          version: "org",
-          emissionFactors: {
-            electricity: "",
-            naturalGas: "",
-            diesel: "",
-            gasoline: "",
-          },
-        },
-      });
       setSelectedUnitForInvite(createdUnit);
       setShowInviteDialog(true);
     },
   });
 
   const updateBusinessUnit = useMutation({
-    mutationFn: async ({ id, ...data }: BusinessUnit) => {
-      const res = await apiRequest("PATCH", `/api/business-units/${id}`, data);
+    mutationFn: async (data: BusinessUnit) => {
+      const res = await apiRequest("PATCH", `/api/business-units/${data.id}`, data);
       return res.json();
     },
     onSuccess: () => {
@@ -168,348 +549,6 @@ export default function BusinessUnits() {
     },
   });
 
-  const UnitForm = ({ data, onChange }: { data: any; onChange: (data: any) => void }) => {
-    return (
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label htmlFor="name">Name</Label>
-          <Input
-            id="name"
-            value={data.name}
-            onChange={(e) => onChange({ ...data, name: e.target.value })}
-            placeholder="Enter business unit name"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="projectCode">Project Code</Label>
-          <Input
-            id="projectCode"
-            value={data.projectCode}
-            onChange={(e) => onChange({ ...data, projectCode: e.target.value.toUpperCase() })}
-            placeholder="e.g., PRJ-001"
-            className="uppercase"
-          />
-          <p className="text-sm text-muted-foreground">
-            Use uppercase letters, numbers, and hyphens only (e.g., PRJ-001)
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="label">Label</Label>
-          <Select
-            value={data.label}
-            onValueChange={(value) => onChange({ ...data, label: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select label type" />
-            </SelectTrigger>
-            <SelectContent>
-              {UNIT_LABELS.map((label) => (
-                <SelectItem key={label} value={label.toLowerCase()}>
-                  {label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Description</Label>
-          <Textarea
-            id="description"
-            value={data.description}
-            onChange={(e) => onChange({ ...data, description: e.target.value })}
-            placeholder="Enter description"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            value={data.location}
-            onChange={(e) => onChange({ ...data, location: e.target.value })}
-            placeholder="e.g., Queensland, Victoria"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="category">Category</Label>
-          <Input
-            id="category"
-            value={data.category}
-            onChange={(e) => onChange({ ...data, category: e.target.value })}
-            placeholder="e.g., Commercial, Residential"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="manager">Manager</Label>
-          <Select
-            value={data.managerId}
-            onValueChange={(value) => onChange({ ...data, managerId: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select manager" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Manager</SelectItem>
-              {users?.map((user) => (
-                <SelectItem key={user.id} value={user.id}>
-                  {user.firstName} {user.lastName} ({user.email})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="team">Team</Label>
-          <Select
-            value={data.teamId}
-            onValueChange={(value) => onChange({ ...data, teamId: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select team" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">No Team</SelectItem>
-              {teams?.map((team) => (
-                <SelectItem key={team.id} value={team.id}>
-                  {team.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="status">Status</Label>
-          <Select
-            value={data.status}
-            onValueChange={(value) => onChange({ ...data, status: value })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {UNIT_STATUSES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status.charAt(0).toUpperCase() + status.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-    );
-  };
-
-  const ProtocolSettingsForm = ({ unit }: { unit: BusinessUnit }) => {
-    const [settings, setSettings] = useState(unit.protocolSettings || {
-      version: "org",
-      emissionFactors: {
-        electricity: "",
-        naturalGas: "",
-        diesel: "",
-        gasoline: "",
-      },
-    });
-
-    return (
-      <div className="space-y-4 py-4">
-        <div className="space-y-2">
-          <Label>Protocol Version</Label>
-          <Select
-            value={settings.version}
-            onValueChange={(value) => setSettings({ ...settings, version: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {PROTOCOLS.map((protocol) => (
-                <SelectItem key={protocol.id} value={protocol.id}>
-                  {protocol.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {settings.version !== "org" && (
-          <div className="space-y-4">
-            <Label>Emission Factors Override (kgCO2e per unit)</Label>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Electricity (per kWh)</Label>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  value={settings.emissionFactors.electricity}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    emissionFactors: {
-                      ...settings.emissionFactors,
-                      electricity: e.target.value,
-                    },
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Natural Gas (per m³)</Label>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  value={settings.emissionFactors.naturalGas}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    emissionFactors: {
-                      ...settings.emissionFactors,
-                      naturalGas: e.target.value,
-                    },
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Diesel (per L)</Label>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  value={settings.emissionFactors.diesel}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    emissionFactors: {
-                      ...settings.emissionFactors,
-                      diesel: e.target.value,
-                    },
-                  })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Gasoline (per L)</Label>
-                <Input
-                  type="number"
-                  step="0.0001"
-                  value={settings.emissionFactors.gasoline}
-                  onChange={(e) => setSettings({
-                    ...settings,
-                    emissionFactors: {
-                      ...settings.emissionFactors,
-                      gasoline: e.target.value,
-                    },
-                  })}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        <Button
-          className="w-full mt-4"
-          onClick={() => updateProtocolSettings.mutate({
-            id: unit.id,
-            protocolSettings: settings,
-          })}
-          disabled={updateProtocolSettings.isPending}
-        >
-          Save Protocol Settings
-        </Button>
-      </div>
-    );
-  };
-
-  const IntegrationsForm = ({ unit }: { unit: BusinessUnit }) => {
-    const [showWizard, setShowWizard] = useState(false);
-
-    return (
-      <div className="space-y-4">
-        {showWizard ? (
-          <IntegrationWizard
-            businessUnitId={unit.id}
-            onComplete={() => setShowWizard(false)}
-          />
-        ) : (
-          <div className="space-y-4">
-            <Button onClick={() => setShowWizard(true)} className="w-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Integration
-            </Button>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Storage Integrations */}
-              {unit.integrations?.storage?.onedrive && (
-                <IntegrationCard
-                  businessUnitId={unit.id}
-                  type="onedrive"
-                  status={unit.integrations.storage.onedrive.status}
-                  folderPath={unit.integrations.storage.onedrive.path}
-                />
-              )}
-              {unit.integrations?.storage?.googledrive && (
-                <IntegrationCard
-                  businessUnitId={unit.id}
-                  type="googledrive"
-                  status={unit.integrations.storage.googledrive.status}
-                  folderPath={unit.integrations.storage.googledrive.path}
-                />
-              )}
-              {unit.integrations?.storage?.sharepoint && (
-                <IntegrationCard
-                  businessUnitId={unit.id}
-                  type="sharepoint"
-                  status={unit.integrations.storage.sharepoint.status}
-                  folderPath={unit.integrations.storage.sharepoint.path}
-                />
-              )}
-
-              {/* Accounting Integrations */}
-              {unit.integrations?.accounting?.xero && (
-                <IntegrationCard
-                  businessUnitId={unit.id}
-                  type="xero"
-                  status={unit.integrations.accounting.xero.status}
-                  clientId={unit.integrations.accounting.xero.clientId}
-                />
-              )}
-              {unit.integrations?.accounting?.myob && (
-                <IntegrationCard
-                  businessUnitId={unit.id}
-                  type="myob"
-                  status={unit.integrations.accounting.myob.status}
-                  clientId={unit.integrations.accounting.myob.clientId}
-                />
-              )}
-
-              {/* Electricity Integration */}
-              {unit.integrations?.electricity && (
-                <IntegrationCard
-                  businessUnitId={unit.id}
-                  type="electricity"
-                  status={unit.integrations.electricity.status}
-                  provider={unit.integrations.electricity.provider}
-                />
-              )}
-
-              {/* Custom Integrations */}
-              {unit.integrations?.custom?.map((integration, index) => (
-                <IntegrationCard
-                  key={index}
-                  businessUnitId={unit.id}
-                  type="custom"
-                  status={integration.status}
-                  name={integration.name}
-                  baseUrl={integration.baseUrl}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -529,14 +568,8 @@ export default function BusinessUnits() {
                   Create a new business unit to track emissions
                 </DialogDescription>
               </DialogHeader>
-              <UnitForm data={newUnit} onChange={setNewUnit} />
+              <UnitForm onSubmit={createBusinessUnit.mutate} />
               <DialogFooter>
-                <Button
-                  onClick={() => createBusinessUnit.mutate(newUnit)}
-                  disabled={!newUnit.name || createBusinessUnit.isPending}
-                >
-                  Create
-                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -619,17 +652,8 @@ export default function BusinessUnits() {
                   Update the business unit details
                 </DialogDescription>
               </DialogHeader>
-              <UnitForm
-                data={editingUnit}
-                onChange={(data) => setEditingUnit({ ...editingUnit, ...data })}
-              />
+              <UnitForm data={editingUnit} onSubmit={(data) => updateBusinessUnit.mutate({...editingUnit, ...data})}/>
               <DialogFooter>
-                <Button
-                  onClick={() => updateBusinessUnit.mutate(editingUnit)}
-                  disabled={updateBusinessUnit.isPending}
-                >
-                  Save Changes
-                </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
