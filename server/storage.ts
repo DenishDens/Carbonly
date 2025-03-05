@@ -266,19 +266,10 @@ export class DatabaseStorage implements IStorage {
 
   // Implement incident methods
   async getIncidents(organizationId: string): Promise<Incident[]> {
-    // First get business units for the organization
-    const units = await this.getBusinessUnits(organizationId);
-    const unitIds = units.map(unit => unit.id);
-
-    // Then get incidents for those business units
+    // Get all incidents ordered by creation date
     return db
       .select()
       .from(incidents)
-      .where(
-        and(
-          ...unitIds.map(id => eq(incidents.businessUnitId, id))
-        )
-      )
       .orderBy(desc(incidents.createdAt));
   }
 

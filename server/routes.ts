@@ -466,21 +466,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      // First get business units for the organization
-      const units = await storage.getBusinessUnits(req.user.organizationId);
-      const unitIds = units.map(u => u.id);
-      console.log("Business unit IDs:", unitIds);
-
       // Get all incidents
-      const incidents = await storage.getIncidents(req.user.organizationId);
-      console.log("Raw incidents:", incidents);
+      const allIncidents = await storage.getIncidents(req.user.organizationId);
+      console.log("Retrieved incidents:", allIncidents);
 
-      // Filter to only include incidents from business units in this org
-      const filteredIncidents = incidents.filter(incident =>
-        unitIds.includes(incident.businessUnitId)
+      // Get business units for filtering
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      console.log("Business units for org:", units);
+
+      // Filter incidents to only show those from the user's organization's business units
+      const filteredIncidents = allIncidents.filter(incident =>
+        units.some(unit => unit.id === incident.businessUnitId)
       );
+      console.log("Filtered incidents:", filteredIncidents);
 
-      console.log(`Found ${filteredIncidents.length} incidents for organization ${req.user.organizationId}`);
       res.json(filteredIncidents);
     } catch (error) {
       console.error("Error fetching incidents:", error);
