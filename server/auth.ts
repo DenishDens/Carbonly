@@ -86,17 +86,34 @@ export function setupAuth(app: Express) {
   });
 
   app.post("/api/login", (req, res, next) => {
+    console.log('Login request received:', { 
+      email: req.body.email,
+      hasPassword: !!req.body.password 
+    });
+
     if (!req.body.email || !req.body.password) {
+      console.log('Missing credentials:', { 
+        hasEmail: !!req.body.email, 
+        hasPassword: !!req.body.password 
+      });
       return res.status(400).json({ message: "Email and password are required" });
     }
 
     passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
+      if (err) {
+        console.error('Authentication error:', err);
+        return next(err);
+      }
       if (!user) {
+        console.log('Authentication failed:', info);
         return res.status(401).json({ message: info?.message || "Authentication failed" });
       }
       req.login(user, (err) => {
-        if (err) return next(err);
+        if (err) {
+          console.error('Login error:', err);
+          return next(err);
+        }
+        console.log('Login successful for user:', user.email);
         res.status(200).json(user);
       });
     })(req, res, next);

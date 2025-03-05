@@ -100,34 +100,9 @@ function LoginForm() {
   });
 
   const onSubmit = form.handleSubmit((data) => {
+    console.log('Submitting login data:', data); 
     loginMutation.mutate({ ...data, rememberMe });
   });
-
-  const handleSSOLogin = async () => {
-    try {
-      setSSOLoading(true);
-      const domain = window.location.hostname;
-      const response = await fetch(`/api/auth/sso`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ domain })
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "SSO authentication failed");
-      }
-
-      // The SAML redirect will happen automatically
-    } catch (error) {
-      console.error("SSO login error:", error);
-    } finally {
-      setSSOLoading(false);
-    }
-  };
 
   if (showResetPassword) {
     return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
@@ -141,7 +116,7 @@ function LoginForm() {
           id="email"
           type="email"
           placeholder="name@company.com"
-          {...form.register("email")}
+          {...form.register("email", { required: true })}
         />
       </div>
       <div className="space-y-2">
@@ -149,7 +124,7 @@ function LoginForm() {
         <Input
           id="password"
           type="password"
-          {...form.register("password")}
+          {...form.register("password", { required: true })}
         />
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-2">
@@ -184,28 +159,6 @@ function LoginForm() {
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         )}
         Sign In
-      </Button>
-
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t"></div>
-        </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="bg-background px-2 text-muted-foreground">
-            Or continue with
-          </span>
-        </div>
-      </div>
-
-      <Button
-        type="button"
-        variant="outline"
-        className="w-full"
-        onClick={handleSSOLogin}
-        disabled={ssoLoading}
-      >
-        {ssoLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Sign in with SSO
       </Button>
     </form>
   );
