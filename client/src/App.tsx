@@ -20,15 +20,13 @@ import Incidents from "./pages/incidents/index.js";
 import EditIncident from "./pages/incidents/edit-incident.js";
 import ProfilePage from "./pages/profile.js";
 import { Navbar } from "@/components/ui/navbar";
-import { Home, Building2, Settings, BarChart, AlertTriangle, User } from "lucide-react";
+import { Home, Building2, Settings, AlertTriangle } from "lucide-react";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: <Home className="h-4 w-4" /> },
   { title: "Business Units", href: "/business-units", icon: <Building2 className="h-4 w-4" /> },
   { title: "Incidents", href: "/incidents", icon: <AlertTriangle className="h-4 w-4" /> },
-  { title: "Reports", href: "/reports", icon: <BarChart className="h-4 w-4" /> },
-  { title: "Settings", href: "/settings", icon: <Settings className="h-4 w-4" /> },
-  { title: "Profile", href: "/profile", icon: <User className="h-4 w-4" /> },
+  { title: "Reports", href: "/reports", icon: <Settings className="h-4 w-4" /> },
 ];
 
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
