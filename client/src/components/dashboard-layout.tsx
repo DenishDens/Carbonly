@@ -106,8 +106,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
       <Footer />
 
-      {/* Increase z-index and adjust positioning */}
-      <div className="fixed bottom-6 right-6 z-[100]">
+      <div className="fixed bottom-6 right-6" style={{ zIndex: 9999 }}>
         <ChatInterface />
       </div>
     </div>

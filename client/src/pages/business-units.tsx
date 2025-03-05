@@ -87,8 +87,8 @@ const UnitForm = ({
       location: "",
       category: "",
       status: "active",
-      managerId: "",
-      teamId: "",
+      managerId: "none",
+      teamId: "none", 
       protocolSettings: {
         version: "org",
         emissionFactors: {
@@ -238,11 +238,11 @@ const UnitForm = ({
           name="teamId"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Team</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value}>
+              <FormLabel>Team (Optional)</FormLabel>
+              <Select onValueChange={field.onChange} value={field.value || "none"}>
                 <FormControl>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select team" />
+                    <SelectValue placeholder="Select team (optional)" />
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
