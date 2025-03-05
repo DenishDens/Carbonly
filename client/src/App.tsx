@@ -12,7 +12,18 @@ import Dashboard from "@/pages/dashboard";
 function ProtectedDashboard() {
   return (
     <DashboardLayout>
-      <Dashboard />
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/business-units" component={() => <div>Business Units</div>} />
+        <Route path="/incidents" component={() => <div>Incidents</div>} />
+        <Route path="/file-processing" component={() => <div>File Processing</div>} />
+        <Route path="/data-processing" component={() => <div>Data Processing</div>} />
+        <Route path="/data-processing/energy" component={() => <div>Energy Data</div>} />
+        <Route path="/data-processing/fuel" component={() => <div>Fuel Data</div>} />
+        <Route path="/reports" component={() => <div>Reports</div>} />
+        <Route path="/settings" component={() => <div>Settings</div>} />
+        <Route component={NotFound} />
+      </Switch>
     </DashboardLayout>
   );
 }
@@ -21,8 +32,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <ProtectedRoute path="/" component={ProtectedDashboard} />
-      <Route component={NotFound} />
+      <ProtectedRoute path="/:rest*" component={ProtectedDashboard} />
     </Switch>
   );
 }

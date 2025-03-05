@@ -14,12 +14,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Footer } from "@/components/footer";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [, setLocation] = useLocation();
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+    setLocation("/auth");
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -83,7 +89,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     className="text-red-600"
-                    onClick={() => logoutMutation.mutate()}
+                    onClick={handleLogout}
                   >
                     <LogOut className="h-4 w-4 mr-2" />
                     Sign out
