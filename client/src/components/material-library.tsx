@@ -1,3 +1,16 @@
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Pencil, Trash2 } from "lucide-react";
+import type { Material } from "@shared/schema";
+
 interface MaterialTableProps {
   materials: Material[];
   onEdit?: (material: Material) => void;
