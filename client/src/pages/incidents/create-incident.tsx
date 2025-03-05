@@ -57,20 +57,15 @@ export function CreateIncidentDialog({
       status: "open",
       type: "spill",
       location: "",
-      incidentDate: defaultDate,
-      incidentTime: defaultTime,
+      incidentDate: `${defaultDate}T${defaultTime}`,
     },
   });
 
   const createIncident = useMutation({
     mutationFn: async (data: any) => {
-      // Combine date and time into a single ISO string
-      const { incidentDate, incidentTime, ...rest } = data;
-      const datetime = new Date(`${incidentDate}T${incidentTime}`);
-
       const formattedData = {
-        ...rest,
-        incidentDate: datetime.toISOString(),
+        ...data,
+        incidentDate: new Date(data.incidentDate).toISOString(),
       };
 
       const res = await apiRequest("POST", "/api/incidents", formattedData);
@@ -194,35 +189,23 @@ export function CreateIncidentDialog({
               )}
             />
 
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="incidentDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date</FormLabel>
-                    <FormControl>
-                      <Input type="date" {...field} max={defaultDate} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="incidentTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Time</FormLabel>
-                    <FormControl>
-                      <Input type="time" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            <FormField
+              control={form.control}
+              name="incidentDate"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Date and Time</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="datetime-local" 
+                      {...field}
+                      max={now.toISOString().slice(0, 16)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <Button 
               type="submit" 
