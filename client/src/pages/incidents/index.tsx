@@ -56,7 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function IncidentsPage() {
   const { user } = useAuth();
-  const [_, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
   const [showNewIncident, setShowNewIncident] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -71,27 +71,11 @@ export default function IncidentsPage() {
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
     refetchInterval: 5000,
-    retry: 3,
-    onError: (error) => {
-      console.error("Error fetching incidents:", error);
-      toast({
-        title: "Error loading incidents",
-        description: "Please try refreshing the page",
-        variant: "destructive",
-      });
-    }
   });
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
-    retry: 3,
-    onError: (error) => {
-      console.error("Error fetching business units:", error);
-    }
   });
-
-  console.log("Incidents data:", incidents);
-  console.log("Business units data:", businessUnits);
 
   const filteredIncidents = incidents?.filter(incident => {
     if (filters.type !== 'all' && incident.type !== filters.type) return false;
@@ -114,41 +98,8 @@ export default function IncidentsPage() {
     return true;
   });
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "critical":
-        return "text-red-500";
-      case "high":
-        return "text-orange-500";
-      case "medium":
-        return "text-yellow-500";
-      default:
-        return "text-green-500";
-    }
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "open":
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case "in_progress":
-        return <Clock className="h-4 w-4 text-blue-500" />;
-      case "resolved":
-        return <CircleDot className="h-4 w-4 text-green-500" />;
-      default:
-        return null;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleEditClick = (id: string) => {
+    window.location.href = `/incidents/${id}/edit`;
   };
 
   if (isLoading) {
@@ -278,10 +229,9 @@ export default function IncidentsPage() {
           </CardHeader>
           <CardContent>
             <Table>
-              {/* Table Header */}
               <TableHeader>
                 <TableRow>
-                  <TableHead>ID</TableHead>
+                  <TableHead>#</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Business Unit</TableHead>
                   <TableHead>Type</TableHead>
@@ -295,16 +245,14 @@ export default function IncidentsPage() {
                 {filteredIncidents?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map((incident) => (
                     <TableRow key={incident.id}>
-                      <TableCell className="font-mono text-xs">
-                        {incident.id.split('-')[0]}
+                      <TableCell className="font-mono">
+                        {incident.sequenceNumber}
                       </TableCell>
                       <TableCell className="font-medium">
                         {incident.title}
                       </TableCell>
                       <TableCell>
-                        {businessUnits?.find(
-                          (u) => u.id === incident.businessUnitId
-                        )?.name || 'Unknown'}
+                        {businessUnits?.find(u => u.id === incident.businessUnitId)?.name || 'Unknown'}
                       </TableCell>
                       <TableCell className="capitalize">
                         {incident.type.replace(/_/g, " ")}
@@ -330,11 +278,7 @@ export default function IncidentsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => {
-                              const editUrl = `/incidents/${incident.id}/edit`;
-                              console.log("Navigating to:", editUrl);
-                              setLocation(editUrl);
-                            }}
+                            onClick={() => handleEditClick(incident.id)}
                             className="h-8 w-8 p-0"
                           >
                             <Edit className="h-4 w-4" />
@@ -380,3 +324,40 @@ export default function IncidentsPage() {
     </DashboardLayout>
   );
 }
+
+const getSeverityColor = (severity: string) => {
+  switch (severity) {
+    case "critical":
+      return "text-red-500";
+    case "high":
+      return "text-orange-500";
+    case "medium":
+      return "text-yellow-500";
+    default:
+      return "text-green-500";
+  }
+};
+
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "open":
+      return <AlertTriangle className="h-4 w-4 text-red-500" />;
+    case "in_progress":
+      return <Clock className="h-4 w-4 text-blue-500" />;
+    case "resolved":
+      return <CircleDot className="h-4 w-4 text-green-500" />;
+    default:
+      return null;
+  }
+};
+
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};

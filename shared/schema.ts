@@ -132,6 +132,7 @@ export const auditLogs = pgTable("audit_logs", {
 
 export const incidents = pgTable("incidents", {
   id: uuid("id").defaultRandom().primaryKey(),
+  sequenceNumber: decimal("sequence_number").notNull(),  
   businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
   title: text("title").notNull(),
   description: text("description").notNull(),

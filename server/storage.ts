@@ -1,6 +1,6 @@
 import { Pool } from "@neondatabase/serverless";
 import { db } from "./db";
-import { eq, desc, and } from "drizzle-orm";
+import { eq, desc, and, sql } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents, incidentTypes } from "@shared/schema";
@@ -281,11 +281,27 @@ export class DatabaseStorage implements IStorage {
     return incident;
   }
 
+  async getNextIncidentSequenceNumber(): Promise<string> {
+    const [result] = await db
+      .select({ maxNum: sql`MAX(sequence_number)` })
+      .from(incidents);
+
+    const nextNum = (parseInt(result?.maxNum?.toString() || "0") + 1).toString();
+    return nextNum;
+  }
+
   async createIncident(incident: Omit<Incident, "id">): Promise<Incident> {
+    // Get next sequence number
+    const sequenceNumber = await this.getNextIncidentSequenceNumber();
+
     const [newIncident] = await db
       .insert(incidents)
-      .values(incident)
+      .values({
+        ...incident,
+        sequenceNumber,
+      })
       .returning();
+
     return newIncident;
   }
 
