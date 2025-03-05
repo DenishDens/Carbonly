@@ -37,6 +37,15 @@ import { InviteUsersDialog } from "@/components/invite-users-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntegrationCard } from "@/components/integration-wizard/integration-card";
 import { IntegrationWizard } from "@/components/integration-wizard/integration-wizard";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const UNIT_LABELS = [
   "Business Unit",
