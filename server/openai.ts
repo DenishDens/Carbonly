@@ -91,20 +91,37 @@ export async function getChatResponse(message: string, context: {
     const incidents = await storage.getIncidents(context.organizationId);
     const emissions = await storage.getEmissions(context.organizationId);
 
+    // Parse business unit name from the query
+    const businessUnitQuery = extractBusinessUnitQuery(message, businessUnits);
+
+    // Filter incidents by business unit if specified
+    const filteredIncidents = businessUnitQuery
+      ? incidents.filter(i => {
+          const businessUnit = businessUnits.find(bu => bu.id === i.businessUnitId);
+          return businessUnit?.name.toLowerCase().includes(businessUnitQuery.toLowerCase());
+        })
+      : incidents;
+
     // Calculate comprehensive statistics
-    const incidentStats = calculateIncidentStats(incidents);
+    const incidentStats = calculateIncidentStats(filteredIncidents);
     const businessUnitStats = calculateBusinessUnitStats(businessUnits, incidents);
     const emissionStats = calculateEmissionStats(emissions);
 
     // Calculate trends
-    const incidentTrends = calculateIncidentTrends(incidents);
+    const incidentTrends = calculateIncidentTrends(filteredIncidents);
     const emissionTrends = calculateEmissionTrends(emissions);
 
     // Prepare detailed context
     const analysisContext = {
-      businessUnits: businessUnits.length,
-      incidents: incidents.length,
-      emissions: emissions.length,
+      businessUnits: businessUnits.map(bu => ({
+        name: bu.name,
+        location: bu.location,
+        incidents: incidents.filter(i => i.businessUnitId === bu.id).length,
+      })),
+      currentQuery: {
+        businessUnit: businessUnitQuery,
+        filteredIncidents: filteredIncidents.length,
+      },
       incidentStats,
       businessUnitStats,
       emissionStats,
@@ -129,9 +146,9 @@ ${JSON.stringify(analysisContext, null, 2)}
 
 Guidelines:
 1. Always analyze trends and patterns in the data
-2. Provide actionable insights and recommendations
-3. Use appropriate visualizations for data presentation
-4. Consider historical context when making observations
+2. When a specific business unit is mentioned, focus on that unit's data
+3. Provide actionable insights and recommendations
+4. Use appropriate visualizations for data presentation
 5. Be proactive in highlighting potential issues or opportunities
 
 When responding:
@@ -168,6 +185,25 @@ When responding:
     console.error("Error getting chat response:", error);
     throw new Error(`Failed to process chat message: ${error.message}`);
   }
+}
+
+function extractBusinessUnitQuery(message: string, businessUnits: BusinessUnit[]): string | null {
+  const words = message.toLowerCase().split(' ');
+
+  for (const businessUnit of businessUnits) {
+    const businessUnitName = businessUnit.name.toLowerCase();
+    const nameWords = businessUnitName.split(' ');
+
+    // Check if any consecutive words in the message match the business unit name
+    for (let i = 0; i <= words.length - nameWords.length; i++) {
+      const phrase = words.slice(i, i + nameWords.length).join(' ');
+      if (phrase === businessUnitName) {
+        return businessUnit.name;
+      }
+    }
+  }
+
+  return null;
 }
 
 function calculateIncidentStats(incidents: Incident[]) {
