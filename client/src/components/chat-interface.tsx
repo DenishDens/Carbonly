@@ -132,10 +132,9 @@ export function ChatInterface() {
   // Show greeting when chat is opened
   const handleOpen = () => {
     if (!isOpen && messages.length === 0) {
-      const unitCount = businessUnits?.length || 0;
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || 'there'}! 👋 I can help analyze data from your ${unitCount} business unit${unitCount !== 1 ? 's' : ''}. How can I assist you?`
+        content: `Hi ${user?.firstName || 'there'}! 👋 How can I help you analyze your environmental data?`
       };
       setMessages([greeting]);
     }

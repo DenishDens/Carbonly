@@ -91,16 +91,17 @@ export function IncidentDashboard() {
         </Card>
       </div>
 
-      {/* Incidents Table */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="flex justify-between items-center p-4 border-b">
+      {/* All Incidents */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
           <h2 className="text-lg font-semibold">All Incidents</h2>
           <Button variant="outline">Filters</Button>
         </div>
-        <div className="overflow-x-auto">
+
+        <div className="bg-card rounded-md border">
           <table className="w-full">
             <thead>
-              <tr className="bg-muted/50">
+              <tr className="border-b">
                 <th className="text-left p-4 font-medium">Title</th>
                 <th className="text-left p-4 font-medium">Business Unit</th>
                 <th className="text-left p-4 font-medium">Type</th>
@@ -120,7 +121,7 @@ export function IncidentDashboard() {
                     <span className={`${
                       incident.severity === 'critical' ? 'text-red-600' :
                       incident.severity === 'high' ? 'text-orange-600' :
-                      'text-slate-600'
+                      'text-muted-foreground'
                     }`}>
                       {incident.severity}
                     </span>
@@ -134,11 +135,14 @@ export function IncidentDashboard() {
                       {incident.status}
                     </span>
                   </td>
-                  <td className="p-4">{new Date(incident.createdAt).toLocaleString()}</td>
+                  <td className="p-4">
+                    {new Date(incident.createdAt).toLocaleString()}
+                  </td>
                   <td className="p-4 text-right">
                     <Button
                       variant="outline"
                       size="sm"
+                      className="bg-background hover:bg-muted"
                       onClick={() => setLocation(`/incidents/${incident.id}`)}
                     >
                       Close
