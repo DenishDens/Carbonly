@@ -161,7 +161,7 @@ Response Format:
     "data": {...},
     "options": {...}
   }
-}`
+}`,
         },
         {
           role: "user",
@@ -198,7 +198,7 @@ function shouldAddChart(message: string): boolean {
     'visualization', 'pattern', 'distribution', 'how many',
     'what is the breakdown', 'analyze', 'display'
   ];
-  return chartTriggers.some(trigger => 
+  return chartTriggers.some(trigger =>
     message.toLowerCase().includes(trigger)
   );
 }
@@ -325,7 +325,47 @@ function calculatePerformanceScore(incidents: Incident[]) {
 function generateAppropriateChart(message: string, context: any) {
   const messageLower = message.toLowerCase();
 
-  // Determine the type of chart based on the query
+  // Handle severity-specific queries
+  if (messageLower.includes('severity') || messageLower.includes('by severity')) {
+    const severityData = context.incidents.severity.by_severity;
+    return {
+      type: 'pie',
+      data: {
+        labels: Object.keys(severityData).map(s => s.charAt(0).toUpperCase() + s.slice(1)), // Capitalize labels
+        datasets: [{
+          data: Object.values(severityData),
+          backgroundColor: [
+            '#FF6384', // critical - red
+            '#FFCE56', // high - yellow
+            '#36A2EB', // medium - blue
+            '#4BC0C0'  // low - green
+          ]
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: 'right' as const,
+            labels: {
+              padding: 20,
+              font: {
+                size: 12
+              }
+            }
+          },
+          title: {
+            display: true,
+            text: 'Incidents by Severity',
+            font: {
+              size: 16
+            }
+          }
+        }
+      }
+    };
+  }
+
+  // Rest of the chart generation logic remains the same
   if (messageLower.includes('breakdown') || messageLower.includes('distribution') || messageLower.includes('by type')) {
     return {
       type: 'pie',
