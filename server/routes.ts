@@ -1240,6 +1240,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add the following route after the materials routes
+  app.post("/api/materials/upload/epic", upload.single("file"), async (req: Express.Request & { file?: Express.Multer.File }, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+
+    try {
+      const result = await processEPiCDatabase(req.file.path, req.user.organizationId);
+      if (!result.success) {
+        return res.status(400).json({ message: result.message });
+      }
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "CREATE",
+        entityType: "material",
+        entityId: "bulk-upload",
+        changes: { data: { source: "EPiC Database" } },
+      });
+
+      res.json({ message: "Materials imported successfully" });
+    } catch (error) {
+      console.error("Error processing EPiC Database:", error);
+      res.status(500).json({ 
+        message: "Failed to process EPiC Database",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
