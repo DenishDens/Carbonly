@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertIncidentSchema } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -39,6 +39,7 @@ export function CreateIncidentDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Get current date and time
   const now = new Date();
