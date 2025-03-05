@@ -42,8 +42,10 @@ export function CreateIncidentDialog({
 }) {
   const { toast } = useToast();
 
-  // Get current date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0];
+  // Get current date and time
+  const now = new Date();
+  const defaultDate = now.toISOString().split('T')[0];
+  const defaultTime = now.toTimeString().split(' ')[0].slice(0, 5); // HH:mm format
 
   const form = useForm({
     resolver: zodResolver(insertIncidentSchema),
@@ -51,21 +53,24 @@ export function CreateIncidentDialog({
       businessUnitId,
       title: "",
       description: "",
-      severity: "medium", // Set default severity
+      severity: "medium",
       status: "open",
       type: "spill",
       location: "",
-      incidentDate: today,
+      incidentDate: defaultDate,
+      incidentTime: defaultTime,
     },
   });
 
   const createIncident = useMutation({
     mutationFn: async (data: any) => {
-      // Convert the date string to a proper ISO string
-      const incidentDate = new Date(data.incidentDate);
+      // Combine date and time into a single ISO string
+      const { incidentDate, incidentTime, ...rest } = data;
+      const datetime = new Date(`${incidentDate}T${incidentTime}`);
+
       const formattedData = {
-        ...data,
-        incidentDate: incidentDate.toISOString(),
+        ...rest,
+        incidentDate: datetime.toISOString(),
       };
 
       const res = await apiRequest("POST", "/api/incidents", formattedData);
@@ -132,7 +137,7 @@ export function CreateIncidentDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Type</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -157,7 +162,7 @@ export function CreateIncidentDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Severity</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue />
@@ -189,19 +194,35 @@ export function CreateIncidentDialog({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="incidentDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Incident Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} max={today} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="incidentDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} max={defaultDate} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="incidentTime"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time</FormLabel>
+                    <FormControl>
+                      <Input type="time" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             <Button 
               type="submit" 
