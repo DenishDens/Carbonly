@@ -78,7 +78,7 @@ const generateProjectEmail = (id: string, organizationId: string): string => {
   const projectId = id.slice(0, 8); // Take first 8 chars of UUID
   const orgId = organizationId.slice(0, 4); // Take first 4 chars of org UUID
   return `project-${projectId}-${orgId}@carbontrack.io`; // Use a consistent domain
-}
+};
 
 // Export a single instance
 export const storage = new DatabaseStorage();
