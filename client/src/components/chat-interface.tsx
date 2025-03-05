@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -73,6 +73,8 @@ export function ChatInterface() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
+  const [predictions, setPredictions] = useState<string[]>([]);
+  const [showPredictions, setShowPredictions] = useState(false);
 
   // Get user's accessible business units
   const { data: businessUnits } = useQuery({
@@ -101,6 +103,7 @@ export function ChatInterface() {
         }
       ]);
       setInput("");
+      setPredictions([]);
     },
   });
 
@@ -108,6 +111,7 @@ export function ChatInterface() {
     e.preventDefault();
     if (!input.trim()) return;
     chatMutation.mutate(input);
+    setShowPredictions(false);
   };
 
   const handlePromptSelect = (prompt: string) => {
@@ -115,6 +119,20 @@ export function ChatInterface() {
     const event = new Event('submit') as unknown as React.FormEvent;
     handleSubmit(event);
   };
+
+  // Predict as user types
+  useEffect(() => {
+    if (input.length > 2) {
+      const matchingPrompts = SMART_PROMPTS.filter(prompt => 
+        prompt.toLowerCase().includes(input.toLowerCase())
+      );
+      setPredictions(matchingPrompts);
+      setShowPredictions(matchingPrompts.length > 0);
+    } else {
+      setPredictions([]);
+      setShowPredictions(false);
+    }
+  }, [input]);
 
   const renderChart = (chart: Message['chart']) => {
     if (!chart) return null;
@@ -197,7 +215,7 @@ export function ChatInterface() {
               ))}
             </ScrollArea>
             <form onSubmit={handleSubmit} className="mt-4">
-              <div className="flex gap-2">
+              <div className="flex gap-2 relative">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -224,6 +242,24 @@ export function ChatInterface() {
                 <Button type="submit" disabled={chatMutation.isPending}>
                   Send
                 </Button>
+                {/* Predictions dropdown */}
+                {showPredictions && predictions.length > 0 && (
+                  <div className="absolute top-full left-0 right-16 mt-1 bg-popover border rounded-md shadow-lg">
+                    {predictions.map((prediction, index) => (
+                      <button
+                        key={index}
+                        className="w-full text-left px-3 py-2 hover:bg-muted"
+                        onClick={() => {
+                          setInput(prediction);
+                          setShowPredictions(false);
+                          handlePromptSelect(prediction);
+                        }}
+                      >
+                        {prediction}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </form>
           </CardContent>
