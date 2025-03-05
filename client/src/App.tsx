@@ -27,11 +27,10 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/business-units" component={BusinessUnits} />
       <ProtectedRoute path="/incidents" component={Incidents} />
-      <ProtectedRoute path="/incidents/:id/edit" component={EditIncident} />
+      <ProtectedRoute path="/incidents/:id/edit" component={() => <EditIncident />} />
       <ProtectedRoute path="/file-processing" component={FileProcessing} />
       <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
       <ProtectedRoute path="/data-processing/energy" component={ElectricityData} />
-      <ProtectedRoute path="/data-processing/fuel" component={FuelData} />
       <ProtectedRoute path="/emissions" component={EmissionsData} />
       <ProtectedRoute path="/users" component={UserManagement} />
       <ProtectedRoute path="/teams" component={Teams} />

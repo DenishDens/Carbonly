@@ -324,11 +324,15 @@ export default function IncidentsPage() {
                         {canEdit && (
                           <Button
                             variant="ghost"
-                            size="icon"
-                            onClick={() => setLocation(`/incidents/${incident.id}/edit`)}
+                            size="sm"
+                            onClick={() => {
+                              console.log("Navigating to edit incident:", incident.id);
+                              setLocation(`/incidents/${incident.id}/edit`);
+                            }}
                             className="hover:bg-muted"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
                           </Button>
                         )}
                         {incident.status !== 'resolved' && (

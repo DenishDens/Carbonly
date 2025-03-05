@@ -30,15 +30,16 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 
 export default function EditIncidentPage() {
   const [_, setLocation] = useLocation();
-  const params = useParams<{ id: string }>();
+  const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { user } = useAuth();
-  const incidentId = params?.id;
+
+  console.log("Editing incident:", id); // Debug log
 
   // Get incident data
   const { data: incident, isLoading: isLoadingIncident } = useQuery({
-    queryKey: [`/api/incidents/${incidentId}`],
-    enabled: !!incidentId && !!user?.organizationId,
+    queryKey: [`/api/incidents/${id}`],
+    enabled: !!id && !!user?.organizationId,
   });
 
   // Get business units
@@ -64,6 +65,7 @@ export default function EditIncidentPage() {
   // Update form when incident data is loaded
   useEffect(() => {
     if (incident) {
+      console.log("Setting form values:", incident); // Debug log
       form.reset({
         ...incident,
         incidentDate: new Date(incident.incidentDate).toISOString().slice(0, 16),
@@ -73,14 +75,15 @@ export default function EditIncidentPage() {
 
   const updateIncident = useMutation({
     mutationFn: async (data: any) => {
-      if (!incidentId) throw new Error("No incident ID provided");
+      if (!id) throw new Error("No incident ID provided");
+      console.log("Updating incident with data:", data); // Debug log
 
       const formattedData = {
         ...data,
         incidentDate: new Date(data.incidentDate).toISOString(),
       };
 
-      const res = await apiRequest("PATCH", `/api/incidents/${incidentId}`, formattedData);
+      const res = await apiRequest("PATCH", `/api/incidents/${id}`, formattedData);
       if (!res.ok) {
         const error = await res.json();
         throw new Error(error.message || "Failed to update incident");
@@ -89,7 +92,7 @@ export default function EditIncidentPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
-      queryClient.invalidateQueries({ queryKey: [`/api/incidents/${incidentId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/incidents/${id}`] });
       toast({ title: "Incident updated successfully" });
       setLocation("/incidents");
     },
@@ -102,7 +105,8 @@ export default function EditIncidentPage() {
     },
   });
 
-  if (!incidentId || !user?.organizationId) {
+  if (!id || !user?.organizationId) {
+    console.log("Missing required data, redirecting"); // Debug log
     setLocation("/incidents");
     return null;
   }
@@ -116,6 +120,8 @@ export default function EditIncidentPage() {
       </DashboardLayout>
     );
   }
+
+  console.log("Rendering edit form with data:", incident); // Debug log
 
   return (
     <DashboardLayout>
