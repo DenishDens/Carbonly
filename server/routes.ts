@@ -467,8 +467,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      // Get all business units for the organization first
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const unitIds = units.map(u => u.id);
+
+      // Get incidents only for those business units
       const incidents = await storage.getIncidents(req.user.organizationId);
-      res.json(incidents);
+      const filteredIncidents = incidents.filter(incident =>
+        unitIds.includes(incident.businessUnitId)
+      );
+
+      console.log(`Found ${filteredIncidents.length} incidents for organization ${req.user.organizationId}`);
+      res.json(filteredIncidents);
     } catch (error) {
       console.error("Error fetching incidents:", error);
       res.status(500).json({ message: "Failed to fetch incidents" });
