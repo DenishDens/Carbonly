@@ -13,7 +13,6 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { MessageSquare, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Line, Bar, Pie } from "react-chartjs-2";
 import { useAuth } from "@/hooks/use-auth";
 
 // Updated smart prompts focused on incidents and environmental data
@@ -42,7 +41,6 @@ export function ChatInterface() {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [showPrompts, setShowPrompts] = useState(false);
 
   // Get user's accessible business units
   const { data: businessUnits } = useQuery({
@@ -78,25 +76,8 @@ export function ChatInterface() {
 
   const handlePromptSelect = (prompt: string) => {
     setInput(prompt);
-    handleSubmit(new Event('submit') as React.FormEvent);
-  };
-
-  const renderChart = (chart: Message['chart']) => {
-    if (!chart) return null;
-
-    const ChartComponent = {
-      line: Line,
-      bar: Bar,
-      pie: Pie,
-    }[chart.type];
-
-    if (!ChartComponent) return null;
-
-    return (
-      <div className="mt-4 p-4 bg-background rounded-md h-[300px]">
-        <ChartComponent data={chart.data} options={chart.options} />
-      </div>
-    );
+    const event = new Event('submit') as unknown as React.FormEvent;
+    handleSubmit(event);
   };
 
   // Show greeting when chat is opened
@@ -150,7 +131,6 @@ export function ChatInterface() {
                   )}
                 >
                   {message.content}
-                  {message.chart && renderChart(message.chart)}
                 </div>
               ))}
             </ScrollArea>
