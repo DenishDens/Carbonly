@@ -85,14 +85,27 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    const port = process.env.NODE_ENV === "development" ? 3000 : (process.env.PORT || 5000);
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
-      log(`Server started successfully, serving on port ${port}`);
-    });
+    let port = process.env.NODE_ENV === "development" ? 3000 : (process.env.PORT || 5000);
+    
+    const startServer = (portToUse: number) => {
+      server.listen({
+        port: portToUse,
+        host: "0.0.0.0",
+        reusePort: true,
+      }, () => {
+        log(`Server started successfully, serving on port ${portToUse}`);
+      }).on('error', (error: any) => {
+        if (error.code === 'EADDRINUSE' && portToUse === 3000) {
+          log(`Port ${portToUse} is in use, trying port 3001 instead...`);
+          startServer(3001);
+        } else {
+          log(`Error starting server: ${error.message}`);
+          throw error;
+        }
+      });
+    };
+    
+    startServer(port);
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);
     console.error('Full error details:', error);
