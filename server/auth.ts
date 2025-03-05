@@ -162,7 +162,27 @@ export function setupAuth(app: Express) {
 
   app.get("/api/user", (req, res) => {
     console.log("Checking auth status:", req.isAuthenticated(), req.user);
-    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Check for either session auth or Replit auth
+    if (!req.isAuthenticated() && !req.headers['x-replit-user-id']) {
+      return res.sendStatus(401);
+    }
+
+    // If there's a Replit user but not a session user, create temporary user object
+    if (!req.isAuthenticated() && req.headers['x-replit-user-id']) {
+      const userId = req.headers['x-replit-user-id'] as string;
+      const userName = req.headers['x-replit-user-name'] as string;
+
+      return res.json({
+        id: userId,
+        email: `${userName}@replit.user`,
+        firstName: userName,
+        lastName: '',
+        role: 'user',
+        organizationId: userId
+      });
+    }
+
     res.json(req.user);
   });
 }

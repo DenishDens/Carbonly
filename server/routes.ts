@@ -23,6 +23,28 @@ interface FileUploadRequest extends Express.Request {
   };
 }
 
+  // Add Replit Auth middleware to check authentication
+  app.use((req, res, next) => {
+    // Check if Replit auth headers are present
+    if (req.path.startsWith('/api/user') || req.path.startsWith('/api/auth')) {
+      const replitUserId = req.headers['x-replit-user-id'];
+      const replitUserName = req.headers['x-replit-user-name'];
+      
+      if (replitUserId && replitUserName) {
+        // Set a user object that can be used by the existing code
+        req.user = {
+          id: replitUserId as string,
+          name: replitUserName as string,
+          email: `${replitUserName}@replit.user`,
+          role: 'user',
+          organizationId: replitUserId as string // Use the Replit user ID as the org ID
+        };
+      }
+    }
+    next();
+  });
+
+
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
