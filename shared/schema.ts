@@ -6,6 +6,7 @@ import { z } from "zod";
 export const materials = pgTable("materials", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  materialCode: text("material_code").notNull(), // Added material code field
   name: text("name").notNull(),
   category: text("category").notNull(), // Fuel, Energy, Raw Material, Waste, etc.
   uom: text("uom").notNull(), // kg, liters, metric tons, kWh, m³, etc.
@@ -15,6 +16,18 @@ export const materials = pgTable("materials", {
   lastUpdated: timestamp("last_updated").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// Add material code to the schema types
+export type Material = typeof materials.$inferSelect;
+export type InsertMaterial = Omit<Material, "id" | "createdAt" | "lastUpdated" | "approvalStatus">;
+
+// Create the CSV template for bulk import
+export const materialCsvTemplate = [
+  "material_code,name,category,uom,emission_factor,source",
+  "FUEL001,Diesel,Fuel,liters,2.68,Default",
+  "ELEC001,Electricity,Energy,kwh,0.42,Default",
+  "WASTE001,Mixed Waste,Waste,metric_tons,0.58,Default"
+].join("\n");
 
 export const UserRole = {
   ADMIN: 'admin',
@@ -201,7 +214,6 @@ export type IncidentType = typeof incidentTypes.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
 // Add new Material types
-export type Material = typeof materials.$inferSelect;
 
 export const insertIncidentTypeSchema = createInsertSchema(incidentTypes)
   .pick({

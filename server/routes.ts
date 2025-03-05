@@ -489,11 +489,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("Creating material with data:", req.body);
 
       // Validate required fields
-      const { name, category, uom, emissionFactor, source } = req.body;
-      if (!name || !category || !uom || !emissionFactor || !source) {
+      const { materialCode, name, category, uom, emissionFactor, source } = req.body;
+      if (!materialCode || !name || !category || !uom || !emissionFactor || !source) {
         return res.status(400).json({ 
           message: "Missing required fields", 
-          required: ["name", "category", "uom", "emissionFactor", "source"] 
+          required: ["materialCode", "name", "category", "uom", "emissionFactor", "source"] 
+        });
+      }
+
+      // Validate material code format
+      if (!/^[A-Z0-9-]{2,10}$/.test(materialCode)) {
+        return res.status(400).json({ 
+          message: "Invalid material code. Must be 2-10 characters, uppercase letters, numbers, and hyphens only." 
         });
       }
 
@@ -504,6 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const material = await storage.createMaterial({
+        materialCode,
         name,
         category,
         uom,
@@ -532,6 +540,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: "Failed to create material",
         error: error instanceof Error ? error.message : "Unknown error"
       });
+    }
+  });
+
+  // Add endpoint for emission factor suggestions
+  app.get("/api/materials/suggest", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { name, uom } = req.query;
+      if (!name || !uom) {
+        return res.status(400).json({ message: "Material name and UOM are required" });
+      }
+
+      // Get suggestion from OpenAI
+      const response = await getChatResponse(
+        `Suggest an emission factor for a material with the following properties:
+        Name: ${name}
+        Unit of Measure: ${uom}
+
+        Respond with a number only, representing CO₂e per unit. Use industry standard values.`,
+        { organizationId: req.user.organizationId }
+      );
+
+      // Extract the numeric value from the response
+      const suggestedFactor = parseFloat(response.message);
+      if (isNaN(suggestedFactor)) {
+        throw new Error("Failed to get valid emission factor suggestion");
+      }
+
+      res.json({ emissionFactor: suggestedFactor });
+    } catch (error) {
+      console.error("Error getting emission factor suggestion:", error);
+      res.status(500).json({ message: "Failed to get emission factor suggestion" });
     }
   });
 
@@ -884,7 +925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ authUrl });
     } catch (error) {
       console.error("Google Drive auth error:", error);
-            res.status(500).json({ message: "Failed to start authentication" });
+      res.status(500).json({ message: "Failed to start authentication" });
     }
   });
 
@@ -943,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify business unit ownership
       const units = await storage.getBusinessUnits(req.user.organizationId);
       const unit = units.find(u => u.id === id);
-      if (!unit) returnres.sendStatus(403);
+      if (!unit) return res.sendStatus(403);
 
       // Get provider-specific client
       const client = await getStorageClient(provider, unit.integrations);

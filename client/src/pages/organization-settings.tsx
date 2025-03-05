@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Upload, Key, Plus, Filter, ChevronDown, ChevronUp, Search, AlertTriangle, Save, Mail, UserPlus } from "lucide-react";
+import { Building2, Upload, Key, Plus, Filter, ChevronDown, ChevronUp, Search, AlertTriangle, Save, Mail, UserPlus, Download } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { FaMicrosoft } from "react-icons/fa";
 import { cn } from "@/lib/utils";
@@ -71,6 +71,7 @@ export default function OrganizationSettings() {
     diesel: "0.0",
     gasoline: "0.0",
   });
+
   const [ssoConfig, setSsoConfig] = useState({
     enabled: false,
     provider: "google",
@@ -79,6 +80,63 @@ export default function OrganizationSettings() {
     clientSecret: "",
     samlMetadata: "",
   });
+
+  const [newMaterial, setNewMaterial] = useState<Omit<Material, "id" | "createdAt" | "lastUpdated" | "approvalStatus">>({
+    materialCode: "",
+    name: "",
+    category: "Fuel",
+    uom: "",
+    emissionFactor: "0.0",
+    source: "Default",
+    organizationId: user?.organizationId!,
+  });
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const getEmissionFactorSuggestion = useMutation({
+    mutationFn: async ({ name, uom }: { name: string; uom: string }) => {
+      const res = await apiRequest(
+        "GET",
+        `/api/materials/suggest?name=${encodeURIComponent(name)}&uom=${encodeURIComponent(uom)}`
+      );
+      if (!res.ok) {
+        throw new Error("Failed to get suggestion");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setNewMaterial(prev => ({
+        ...prev,
+        emissionFactor: data.emissionFactor.toString(),
+      }));
+      toast({
+        title: "AI Suggestion",
+        description: "Emission factor updated based on AI suggestion",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to get suggestion",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  useEffect(() => {
+    if (newMaterial.name && newMaterial.uom) {
+      const timeoutId = setTimeout(() => {
+        getEmissionFactorSuggestion.mutate({
+          name: newMaterial.name,
+          uom: newMaterial.uom,
+        });
+      }, 1000); // Debounce for 1 second
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [newMaterial.name, newMaterial.uom]);
 
   const [integrations, setIntegrations] = useState({
     xero: {
@@ -176,7 +234,6 @@ export default function OrganizationSettings() {
     },
   });
 
-  // Update the incident types query
   const { data: existingIncidentTypes, isLoading: isLoadingTypes } = useQuery<IncidentType[]>({
     queryKey: ["/api/incident-types"],
     enabled: !!user?.organizationId,
@@ -213,7 +270,6 @@ export default function OrganizationSettings() {
     },
   });
 
-  // Initialize incident types
   useEffect(() => {
     if (!isLoadingTypes) {
       if (!existingIncidentTypes?.length) {
@@ -236,7 +292,6 @@ export default function OrganizationSettings() {
     }
   }, [existingIncidentTypes, isLoadingTypes, user?.organizationId]);
 
-  // Add validation before submission
   const handleSaveIncidentTypes = () => {
     const validTypes = incidentTypes.filter(type => type.name.trim() !== "");
     if (validTypes.length === 0) {
@@ -250,7 +305,6 @@ export default function OrganizationSettings() {
     manageIncidentTypesMutation.mutate(validTypes);
   };
 
-  // Update the access check logic
   if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
     return (
       <DashboardLayout>
@@ -267,13 +321,11 @@ export default function OrganizationSettings() {
     );
   }
 
-  // Add new state for invitations form
   const [invitationForm, setInvitationForm] = useState({
     email: "",
     role: "team_member" as const,
   });
 
-  // Add the invitation mutation
   const sendInvitationMutation = useMutation({
     mutationFn: async (invitation: InsertInvitation) => {
       const res = await apiRequest("POST", "/api/invitations", invitation);
@@ -296,28 +348,11 @@ export default function OrganizationSettings() {
     },
   });
 
-  // Get existing invitations
   const { data: invitations } = useQuery({
     queryKey: ["/api/invitations"],
     enabled: !!user?.organizationId,
   });
 
-
-  // Add state for materials management
-  const [newMaterial, setNewMaterial] = useState<Omit<Material, "id" | "createdAt" | "lastUpdated" | "approvalStatus">>({
-    name: "",
-    category: "Fuel",
-    uom: "",
-    emissionFactor: "0.0",
-    source: "Default",
-    organizationId: user?.organizationId!,
-  });
-
-  // Add Material Library queries
-  const { data: materials, isLoading: isLoadingMaterials } = useQuery<Material[]>({
-    queryKey: ["/api/materials"],
-    enabled: !!user?.organizationId,
-  });
 
   const createMaterialMutation = useMutation({
     mutationFn: async (material: typeof newMaterial) => {
@@ -342,6 +377,7 @@ export default function OrganizationSettings() {
       queryClient.invalidateQueries({ queryKey: ["/api/materials"] });
       toast({ title: "Material added successfully" });
       setNewMaterial({
+        materialCode: "",
         name: "",
         category: "Fuel",
         uom: "",
@@ -358,6 +394,74 @@ export default function OrganizationSettings() {
       });
     },
   });
+
+  const { data: materials, isLoading: isLoadingMaterials } = useQuery<Material[]>({
+    queryKey: ["/api/materials"],
+    enabled: !!user?.organizationId,
+  });
+
+  const handleCsvImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const text = e.target?.result as string;
+      const rows = text.split("\n").map(row => row.split(","));
+      const headers = rows[0];
+      const materials = rows.slice(1).map(row => {
+        const material: any = {};
+        headers.forEach((header, index) => {
+          material[header.trim()] = row[index]?.trim();
+        });
+        return {
+          ...material,
+          organizationId: user?.organizationId,
+        };
+      });
+
+      try {
+        for (const material of materials) {
+          await createMaterialMutation.mutateAsync(material);
+        }
+        toast({ title: "Materials imported successfully" });
+      } catch (error) {
+        toast({
+          title: "Import failed",
+          description: error instanceof Error ? error.message : "Unknown error",
+          variant: "destructive",
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportCsv = () => {
+    if (!materials?.length) return;
+
+    const headers = ["material_code", "name", "category", "uom", "emission_factor", "source"];
+    const csvContent = [
+      headers.join(","),
+      ...materials.map(m => [
+        m.materialCode,
+        m.name,
+        m.category,
+        m.uom,
+        m.emissionFactor,
+        m.source
+      ].join(","))
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "materials.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <DashboardLayout>
@@ -829,9 +933,51 @@ export default function OrganizationSettings() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Add New Material Form */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search materials..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="max-w-sm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      type="file"
+                      accept=".csv"
+                      onChange={handleCsvImport}
+                      className="hidden"
+                      id="csv-import"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={() => document.getElementById("csv-import")?.click()}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import CSV
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleExportCsv}
+                      disabled={!materials?.length}
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <Label>Material Code</Label>
+                      <Input
+                        value={newMaterial.materialCode}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, materialCode: e.target.value })}
+                        placeholder="e.g., FUEL001"
+                      />
+                    </div>
                     <div>
                       <Label>Material Name</Label>
                       <Input
@@ -910,13 +1056,23 @@ export default function OrganizationSettings() {
                     </div>
                     <div>
                       <Label>Emission Factor (CO₂e/unit)</Label>
-                      <Input
-                        type="number"
-                        step="0.0001"
-                        value={newMaterial.emissionFactor}
-                        onChange={(e) => setNewMaterial({ ...newMaterial, emissionFactor: e.target.value })}
-                        placeholder="0.0"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          type="number"
+                          step="0.0001"
+                          value={newMaterial.emissionFactor}
+                          onChange={(e) => setNewMaterial({ ...newMaterial, emissionFactor: e.target.value })}
+                          placeholder="0.0"
+                          className={cn({
+                            "border-primary": getEmissionFactorSuggestion.isPending,
+                          })}
+                        />
+                        {getEmissionFactorSuggestion.isPending && (
+                          <div className="text-sm text-muted-foreground animate-pulse">
+                            Getting AI suggestion...
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <Label>Source</Label>
@@ -953,38 +1109,49 @@ export default function OrganizationSettings() {
                   </Button>
                 </div>
 
-                {/* Materials Table */}
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Material Name</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>UOM</TableHead>
-                        <TableHead>Emission Factor</TableHead>
+                        <TableHead className="w-28">Code</TableHead>
+                        <TableHead className="w-48">Material Name</TableHead>
+                        <TableHead className="w-32">Category</TableHead>
+                        <TableHead className="w-32">UOM</TableHead>
+                        <TableHead className="w-32 text-right">Emission Factor</TableHead>
                         <TableHead>Source</TableHead>
                         <TableHead>Last Updated</TableHead>
                         <TableHead>Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {materials?.map((material) => (
-                        <TableRow key={material.id}>
-                          <TableCell>{material.name}</TableCell>
-                          <TableCell>{material.category}</TableCell>
-                          <TableCell>
-                            {/* Format UOM display */}
-                            {material.uom.replace(/_/g, ' ')}
-                          </TableCell>
-                          <TableCell>{parseFloat(material.emissionFactor).toFixed(4)}</TableCell>
-                          <TableCell>{material.source}</TableCell>
-                          <TableCell>{new Date(material.lastUpdated).toLocaleDateString()}</TableCell>
-                          <TableCell className="capitalize">{material.approvalStatus}</TableCell>
-                        </TableRow>
-                      ))}
-                                            {!materials?.length && (
+                      {materials
+                        ?.filter(material =>
+                          searchQuery
+                            ? material.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              material.materialCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              material.category.toLowerCase().includes(searchQuery.toLowerCase())
+                            : true
+                        )
+                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                        .map((material) => (
+                          <TableRow key={material.id}>
+                            <TableCell className="font-mono">{material.materialCode}</TableCell>
+                            <TableCell>{material.name}</TableCell>
+                            <TableCell>{material.category}</TableCell>
+                            <TableCell className="font-mono">
+                              {material.uom.replace(/_/g, ' ')}
+                            </TableCell>
+                            <TableCell className="text-right font-mono">
+                              {parseFloat(material.emissionFactor).toFixed(4)}
+                            </TableCell>
+                            <TableCell>{material.source}</TableCell>
+                            <TableCell>{new Date(material.lastUpdated).toLocaleDateString()}</TableCell>
+                            <TableCell className="capitalize">{material.approvalStatus}</TableCell>
+                          </TableRow>
+                        ))}
+                      {!materials?.length && (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center text-muted-foreground">
                             No materials added yet
                           </TableCell>
                         </TableRow>
@@ -992,6 +1159,30 @@ export default function OrganizationSettings() {
                     </TableBody>
                   </Table>
                 </div>
+
+                {materials && materials.length > itemsPerPage && (
+                  <div className="flex items-center justify-center gap-2 py-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      Page {currentPage} of {Math.ceil(materials.length / itemsPerPage)}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(Math.ceil(materials.length / itemsPerPage), p + 1))}
+                      disabled={currentPage === Math.ceil(materials.length / itemsPerPage)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
@@ -1013,7 +1204,7 @@ export default function OrganizationSettings() {
                         id="email"
                         type="email"
                         value={invitationForm.email}
-                        onChange={(e) => setInvitationForm(prev=> ({ ...prev, email: e.target.value }))}
+                        onChange={(e) => setInvitationForm(prev => ({ ...prev, email: e.target.value }))}
                         placeholder="teammate@example.com"
                       />
                     </div>
