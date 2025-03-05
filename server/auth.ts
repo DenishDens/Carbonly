@@ -86,26 +86,22 @@ export function setupAuth(app: Express) {
         return res.status(400).json({ message: "Email is already registered" });
       }
 
-      // Generate a temporary unique slug
-      const tempSlug = `org-${Date.now()}`;
-
-      // Create organization
+      // Create organization with minimal data
       const organization = await storage.createOrganization({
-        name: userData.email.split('@')[0], // Use email username as org name temporarily
-        slug: tempSlug,
-        logo: null,
+        name: userData.email.split('@')[0], // Simple org name from email
         ssoEnabled: false,
         ssoSettings: null,
         createdAt: new Date(),
       });
 
-      // Create user
+      // Create initial admin user
       const user = await storage.createUser({
         organizationId: organization.id,
-        name: userData.email.split('@')[0],
+        firstName: userData.email.split('@')[0], // Use email username as first name
+        lastName: "",
         email: userData.email,
         password: await hashPassword(userData.password),
-        role: "super_admin",
+        role: "admin", // Set as admin by default
         createdAt: new Date(),
       });
 
