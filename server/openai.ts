@@ -91,66 +91,63 @@ export async function getChatResponse(message: string, context: {
     const incidents = await storage.getIncidents(context.organizationId);
     const emissions = await storage.getEmissions(context.organizationId);
 
-    // Calculate severity statistics
-    const severityStats = {
-      critical: incidents.filter(i => i.severity === 'critical').length,
-      high: incidents.filter(i => i.severity === 'high').length,
-      medium: incidents.filter(i => i.severity === 'medium').length,
-      low: incidents.filter(i => i.severity === 'low').length
+    // Calculate comprehensive statistics
+    const stats = {
+      incidents: {
+        severity: calculateIncidentStats(incidents),
+        trends: calculateIncidentTrends(incidents)
+      },
+      emissions: {
+        total: calculateEmissionStats(emissions),
+        trends: calculateEmissionTrends(emissions)
+      },
+      businessUnits: calculateBusinessUnitStats(businessUnits, incidents)
     };
 
-    // Calculate total and percentages
-    const total = Object.values(severityStats).reduce((sum, val) => sum + val, 0);
-    const severityPercentages = Object.entries(severityStats).reduce((acc, [key, value]) => {
-      acc[key] = total > 0 ? Math.round((value / total) * 100) : 0;
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Calculate business unit specific stats
-    const businessUnitStats = businessUnits.map(unit => ({
-      name: unit.name,
-      incidents: incidents.filter(i => i.businessUnitId === unit.id),
-      severityBreakdown: {
-        critical: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'critical').length,
-        high: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'high').length,
-        medium: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'medium').length,
-        low: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'low').length
-      }
-    }));
-
-    console.log("Analysis context:", {
-      severityStats,
-      severityPercentages,
-      businessUnitStats,
-      totalIncidents: total
-    });
+    console.log("Analysis context:", stats);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are an AI assistant for Carbonly.ai's carbon emission tracking platform.
-You help users understand their emission data and incidents across their business units.
+          content: `You are an AI assistant for Carbonly.ai's ESG and emission tracking platform.
+You help environmental engineers and managers understand their environmental data across business units.
 
 Current Context:
-- Total Incidents: ${total}
-- Severity Stats: ${JSON.stringify(severityStats)}
-- Severity Percentages: ${JSON.stringify(severityPercentages)}
-- Business Unit Stats: ${JSON.stringify(businessUnitStats)}
+${JSON.stringify(stats, null, 2)}
 
 Guidelines:
-1. For severity queries, ALWAYS include:
-   - Exact numbers for each severity level
-   - Percentages of total
-   - Total number of incidents
-2. If a business unit is mentioned, focus on that unit's data
-3. Provide clear, numerical insights
-4. Only include charts when explicitly requested
+1. For incident queries:
+   - Show exact numbers and percentages
+   - Include severity breakdowns
+   - Highlight critical incidents first
 
-Example Response for "Show incidents by severity":
+2. For emission analysis:
+   - Compare against industry benchmarks
+   - Show month-over-month trends
+   - Highlight unusual patterns
+   - Calculate intensity metrics
+
+3. For environmental metrics:
+   - Focus on compliance thresholds
+   - Show resource efficiency
+   - Identify optimization opportunities
+   - Compare against targets
+
+4. Always provide actionable insights:
+   - Suggest potential improvements
+   - Highlight areas needing attention
+   - Compare with best practices
+   - Identify cost-saving opportunities
+
+Response Format:
 {
-  "message": "Here's the breakdown of incidents by severity:\\n- Critical: ${severityStats.critical} (${severityPercentages.critical}%)\\n- High: ${severityStats.high} (${severityPercentages.high}%)\\n- Medium: ${severityStats.medium} (${severityPercentages.medium}%)\\n- Low: ${severityStats.low} (${severityPercentages.low}%)\\n\\nTotal: ${total} incidents"
+  "message": "Clear analysis with specific metrics and recommendations",
+  "chart": {
+    "type": "line|bar|pie",
+    "data": {...}
+  }
 }`
         },
         {
@@ -161,38 +158,35 @@ Example Response for "Show incidents by severity":
       response_format: { type: "json_object" },
     });
 
-    const content = response.choices[0].message.content;
-    if (!content) {
+    if (!response.choices[0].message.content) {
       throw new Error("Failed to get response from OpenAI");
     }
 
-    const parsedResponse = JSON.parse(content);
+    const parsedResponse = JSON.parse(response.choices[0].message.content);
 
-    // Add chart for visualization requests
-    if (!parsedResponse.chart && 
-        (message.toLowerCase().includes('chart') || 
-         message.toLowerCase().includes('graph') ||
-         message.toLowerCase().includes('show me'))) {
-      parsedResponse.chart = {
-        type: 'pie',
-        data: {
-          labels: Object.keys(severityStats),
-          datasets: [{
-            data: Object.values(severityStats),
-            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
-          }]
-        }
-      };
+    // Auto-generate appropriate chart if needed
+    if (!parsedResponse.chart && shouldAddChart(message)) {
+      parsedResponse.chart = generateAppropriateChart(message, stats);
     }
 
     return parsedResponse;
   } catch (error: any) {
     console.error("Error getting chat response:", error);
     return {
-      message: "I apologize, but I encountered an error analyzing the incident data. Please try rephrasing your question.",
+      message: "I apologize, but I encountered an error analyzing the environmental data. Please try rephrasing your question.",
       chart: null
     };
   }
+}
+
+function shouldAddChart(message: string): boolean {
+  const chartTriggers = [
+    'chart', 'graph', 'trend', 'compare', 'show me',
+    'visualization', 'pattern', 'distribution'
+  ];
+  return chartTriggers.some(trigger => 
+    message.toLowerCase().includes(trigger)
+  );
 }
 
 function extractBusinessUnitQuery(message: string, businessUnits: BusinessUnit[]): string | null {
@@ -299,9 +293,9 @@ function generateAppropriateChart(message: string, context: any) {
     return {
       type: 'pie',
       data: {
-        labels: Object.keys(context.incidentStats.by_severity),
+        labels: Object.keys(context.incidents.severity.by_severity),
         datasets: [{
-          data: Object.values(context.incidentStats.by_severity),
+          data: Object.values(context.incidents.severity.by_severity),
           backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
         }]
       }
@@ -309,18 +303,33 @@ function generateAppropriateChart(message: string, context: any) {
   }
 
   if (message.toLowerCase().includes('trend')) {
-    return {
-      type: 'line',
-      data: {
-        labels: Object.keys(context.trends.incidents.monthly),
-        datasets: [{
-          label: 'Incidents',
-          data: Object.values(context.trends.incidents.monthly),
-          borderColor: '#36A2EB',
-          tension: 0.1
-        }]
-      }
-    };
+    if (message.toLowerCase().includes('incident')) {
+      return {
+        type: 'line',
+        data: {
+          labels: Object.keys(context.incidents.trends.monthly),
+          datasets: [{
+            label: 'Incidents',
+            data: Object.values(context.incidents.trends.monthly),
+            borderColor: '#36A2EB',
+            tension: 0.1
+          }]
+        }
+      };
+    } else if (message.toLowerCase().includes('emission')) {
+      return {
+        type: 'line',
+        data: {
+          labels: Object.keys(context.emissions.trends.monthly),
+          datasets: [{
+            label: 'Emissions',
+            data: Object.values(context.emissions.trends.monthly),
+            borderColor: '#36A2EB',
+            tension: 0.1
+          }]
+        }
+      };
+    }
   }
 
   return null;

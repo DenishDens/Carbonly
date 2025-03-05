@@ -21,7 +21,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Smart prompts focused on incidents and environmental data
+// Smart prompts focused on environmental engineering and incident analysis
 const SMART_PROMPTS = [
   "Show me critical incidents",
   "How many open incidents do we have?",
@@ -29,7 +29,17 @@ const SMART_PROMPTS = [
   "Show incidents by severity",
   "Which business unit has the most incidents?",
   "Show me a pie chart by incident types",
-  "What's our incident resolution rate?"
+  "What's our incident resolution rate?",
+  // Environmental engineering specific prompts
+  "Show me Scope 1 emissions trend",
+  "Compare emissions across business units",
+  "What's our biggest emission source?",
+  "Calculate emission intensity per unit",
+  "Show water usage patterns",
+  "Analyze waste management metrics",
+  "Compare energy efficiency across sites",
+  "Show air quality compliance status",
+  "Predict monthly emission trends"
 ];
 
 interface Message {
