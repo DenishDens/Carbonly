@@ -11,7 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { MessageSquare, X, ChevronDown } from "lucide-react";
+import { MessageSquare, X, ChevronDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
 import {
@@ -20,32 +20,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Chart as ChartJS,
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-} from 'chart.js';
-import { Line, Bar, Pie } from 'react-chartjs-2';
-
-// Register ChartJS components
-ChartJS.register(
-  ArcElement,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend
-);
 
 // Smart prompts focused on incidents and environmental data
 const SMART_PROMPTS = [
@@ -111,18 +85,40 @@ export function ChatInterface() {
       queryClient.setQueryData(["/api/chat/messages"], newMessages);
       setInput("");
     },
+    onError: (error) => {
+      const errorMessage = { 
+        role: "assistant", 
+        content: "I'm sorry, I encountered an error processing your request. Please try again." 
+      };
+      const newMessages = [...messages, { role: "user", content: input }, errorMessage];
+      queryClient.setQueryData(["/api/chat/messages"], newMessages);
+      setInput("");
+    }
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || chatMutation.isPending) return;
     chatMutation.mutate(input);
   };
 
   const handlePromptSelect = (prompt: string) => {
+    if (chatMutation.isPending) return;
     setInput(prompt);
     const event = new Event('submit') as unknown as React.FormEvent;
     handleSubmit(event);
+  };
+
+  // Show greeting when chat is opened
+  const handleOpen = () => {
+    if (!isOpen && messages.length === 0) {
+      const greeting: Message = {
+        role: "assistant",
+        content: `Hi ${user?.firstName || 'there'}! 👋 How can I help you analyze your environmental data?`
+      };
+      queryClient.setQueryData(["/api/chat/messages"], [greeting]);
+    }
+    setIsOpen(true);
   };
 
   const renderChart = (chart: Message['chart']) => {
@@ -150,17 +146,6 @@ export function ChatInterface() {
     );
   };
 
-  // Show greeting when chat is opened
-  const handleOpen = () => {
-    if (!isOpen && messages.length === 0) {
-      const greeting: Message = {
-        role: "assistant",
-        content: `Hi ${user?.firstName || 'there'}! 👋 How can I help you analyze your environmental data?`
-      };
-      queryClient.setQueryData(["/api/chat/messages"], [greeting]);
-    }
-    setIsOpen(true);
-  };
 
   return (
     <div className="fixed bottom-6 right-6 z-[999]">
@@ -204,6 +189,12 @@ export function ChatInterface() {
                   {message.chart && renderChart(message.chart)}
                 </div>
               ))}
+              {chatMutation.isPending && (
+                <div className="flex items-center gap-2 text-muted-foreground mr-8 mb-4 p-4 rounded-lg bg-muted">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Thinking...
+                </div>
+              )}
             </ScrollArea>
             <form onSubmit={handleSubmit} className="mt-4">
               <div className="flex gap-2 relative">
@@ -215,7 +206,11 @@ export function ChatInterface() {
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon">
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      disabled={chatMutation.isPending}
+                    >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -235,8 +230,15 @@ export function ChatInterface() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button type="submit" disabled={chatMutation.isPending}>
-                  Send
+                <Button 
+                  type="submit" 
+                  disabled={chatMutation.isPending}
+                >
+                  {chatMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    'Send'
+                  )}
                 </Button>
               </div>
             </form>
