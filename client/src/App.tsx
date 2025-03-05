@@ -19,49 +19,36 @@ import ElectricityData from "./pages/electricity-data.js";
 import Incidents from "./pages/incidents/index.js";
 import EditIncident from "./pages/incidents/edit-incident.js";
 import ProfilePage from "./pages/profile.js";
-import { Navbar } from "@/components/ui/navbar";
-import { Home, Building2, AlertTriangle, BarChart } from "lucide-react";
-
-const navItems = [
-  { title: "Dashboard", href: "/", icon: <Home className="h-4 w-4" /> },
-  { title: "Business Units", href: "/business-units", icon: <Building2 className="h-4 w-4" /> },
-  { title: "Incidents", href: "/incidents", icon: <AlertTriangle className="h-4 w-4" /> },
-  { title: "Reports", href: "/reports", icon: <BarChart className="h-4 w-4" /> },
-];
+import { DashboardLayout } from "@/components/dashboard-layout";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
 
-  // If not authenticated, show auth page
   if (!isAuthenticated) {
     return <AuthPage />;
   }
 
-  // Show authenticated layout
   return (
-    <div className="flex flex-col min-h-screen">
-      <Navbar items={navItems} />
-      <main className="flex-1 container py-6">
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/business-units" component={BusinessUnits} />
-          <Route path="/incidents" component={Incidents} />
-          <Route path="/incidents/:id/edit">
-            {(params) => <EditIncident id={params.id} />}
-          </Route>
-          <Route path="/file-processing" component={FileProcessing} />
-          <Route path="/data-processing/:category" component={CategoryProcessing} />
-          <Route path="/data-processing/energy" component={ElectricityData} />
-          <Route path="/emissions" component={EmissionsData} />
-          <Route path="/users" component={UserManagement} />
-          <Route path="/teams" component={Teams} />
-          <Route path="/audit-logs" component={AuditLogViewer} />
-          <Route path="/settings" component={OrganizationSettings} />
-          <Route path="/profile" component={ProfilePage} />
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-    </div>
+    <DashboardLayout>
+      <Switch>
+        <Route path="/" component={Dashboard} />
+        <Route path="/business-units" component={BusinessUnits} />
+        <Route path="/incidents" component={Incidents} />
+        <Route path="/incidents/:id/edit">
+          {(params) => <EditIncident id={params.id} />}
+        </Route>
+        <Route path="/file-processing" component={FileProcessing} />
+        <Route path="/data-processing/:category" component={CategoryProcessing} />
+        <Route path="/data-processing/energy" component={ElectricityData} />
+        <Route path="/emissions" component={EmissionsData} />
+        <Route path="/users" component={UserManagement} />
+        <Route path="/teams" component={Teams} />
+        <Route path="/audit-logs" component={AuditLogViewer} />
+        <Route path="/settings" component={OrganizationSettings} />
+        <Route path="/profile" component={ProfilePage} />
+        <Route component={NotFound} />
+      </Switch>
+    </DashboardLayout>
   );
 }
 
