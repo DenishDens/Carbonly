@@ -4,7 +4,7 @@ import { ClientSecretCredential } from "@azure/identity";
 import { spfi, SPFx } from "@pnp/sp";
 import "@pnp/sp/webs/index.js";
 import "@pnp/sp/files/index.js";
-import "@pnp/sp/folders";
+import "@pnp/sp/folders/index.js";
 
 interface StorageFile {
   id: string;
