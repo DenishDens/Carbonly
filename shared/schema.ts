@@ -269,7 +269,13 @@ export const insertIncidentSchema = createInsertSchema(incidents)
     severity: z.enum(['low', 'medium', 'high', 'critical']),
     status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
     type: z.enum(['spill', 'leak', 'equipment_failure', 'power_outage', 'other']),
-    incidentDate: z.string(), // This will be the combined date and time
+    incidentDate: z.string().transform((val) => {
+      const date = new Date(val);
+      if (isNaN(date.getTime())) {
+        throw new Error('Invalid date format');
+      }
+      return date;
+    }),
     environmentalImpact: z.object({
       impactType: z.string(),
       estimatedEmissions: z.number(),

@@ -65,7 +65,7 @@ export function CreateIncidentDialog({
     mutationFn: async (data: any) => {
       const formattedData = {
         ...data,
-        incidentDate: new Date(data.incidentDate).toISOString(),
+        incidentDate: data.incidentDate, // Send as is, let server handle the date formatting
       };
 
       const res = await apiRequest("POST", "/api/incidents", formattedData);
@@ -198,8 +198,7 @@ export function CreateIncidentDialog({
                   <FormControl>
                     <Input 
                       type="datetime-local" 
-                      {...field}
-                      defaultValue={`${defaultDate}T${defaultTime}`}
+                      {...field} 
                       max={now.toISOString().slice(0, 16)} // Limit to current date/time
                     />
                   </FormControl>
