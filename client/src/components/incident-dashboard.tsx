@@ -139,14 +139,24 @@ export function IncidentDashboard() {
                     {new Date(incident.createdAt).toLocaleString()}
                   </td>
                   <td className="p-4 text-right">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="bg-background hover:bg-muted"
-                      onClick={() => setLocation(`/incidents/${incident.id}`)}
-                    >
-                      Close
-                    </Button>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-background hover:bg-muted"
+                        onClick={() => setLocation(`/incidents/${incident.id}/edit`)}
+                      >
+                        Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="bg-background hover:bg-muted"
+                        onClick={() => setLocation(`/incidents/${incident.id}`)}
+                      >
+                        Close
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

@@ -108,7 +108,7 @@ export function ChatInterface() {
 
   const handlePromptSelect = (prompt: string) => {
     setInput(prompt);
-    setShowPrompts(false);
+    handleSubmit(new Event('submit') as React.FormEvent);
   };
 
   const renderChart = (chart: Message['chart']) => {
@@ -192,7 +192,7 @@ export function ChatInterface() {
                   placeholder="Ask about your data..."
                   disabled={chatMutation.isPending}
                 />
-                <DropdownMenu open={showPrompts} onOpenChange={setShowPrompts}>
+                <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" size="icon">
                       <ChevronDown className="h-4 w-4" />
@@ -202,7 +202,10 @@ export function ChatInterface() {
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
-                        onClick={() => handlePromptSelect(prompt)}
+                        onClick={() => {
+                          setInput(prompt);
+                          handleSubmit(new Event('submit') as React.FormEvent);
+                        }}
                       >
                         {prompt}
                       </DropdownMenuItem>
