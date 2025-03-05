@@ -2,7 +2,7 @@ import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient.js";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
-import { AuthProvider } from "./hooks/use-auth.js";
+import { AuthProvider, useAuth } from "./hooks/use-auth.js";
 import { ProtectedRoute } from "./lib/protected-route.js";
 import NotFound from "./pages/not-found.js";
 import AuthPage from "./pages/auth-page.js";
@@ -31,37 +31,53 @@ const navItems = [
   { title: "Profile", href: "/profile", icon: <User className="h-4 w-4" /> },
 ];
 
-function Router() {
+function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar items={navItems} />
       <main className="flex-1">
-        <Switch>
-          <Route path="/auth" component={AuthPage} />
-          <ProtectedRoute path="/" component={Dashboard} />
-          <ProtectedRoute path="/business-units" component={BusinessUnits} />
-          <ProtectedRoute path="/incidents" component={Incidents} />
-          <Route path="/incidents/:id/edit">
-            {(params) => (
-              <ProtectedRoute
-                path={`/incidents/${params.id}/edit`}
-                component={EditIncident}
-              />
-            )}
-          </Route>
-          <ProtectedRoute path="/file-processing" component={FileProcessing} />
-          <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
-          <ProtectedRoute path="/data-processing/energy" component={ElectricityData} />
-          <ProtectedRoute path="/emissions" component={EmissionsData} />
-          <ProtectedRoute path="/users" component={UserManagement} />
-          <ProtectedRoute path="/teams" component={Teams} />
-          <ProtectedRoute path="/audit-logs" component={AuditLogViewer} />
-          <ProtectedRoute path="/settings" component={OrganizationSettings} />
-          <ProtectedRoute path="/profile" component={ProfilePage} />
-          <Route component={NotFound} />
-        </Switch>
+        {children}
       </main>
     </div>
+  );
+}
+
+function Router() {
+  return (
+    <Switch>
+      <Route path="/auth" component={AuthPage} />
+
+      <Route path="/">
+        {() => (
+          <AuthenticatedLayout>
+            <Switch>
+              <Route path="/" component={Dashboard} />
+              <Route path="/business-units" component={BusinessUnits} />
+              <Route path="/incidents" component={Incidents} />
+              <Route path="/incidents/:id/edit">
+                {(params) => <EditIncident id={params.id} />}
+              </Route>
+              <Route path="/file-processing" component={FileProcessing} />
+              <Route path="/data-processing/:category" component={CategoryProcessing} />
+              <Route path="/data-processing/energy" component={ElectricityData} />
+              <Route path="/emissions" component={EmissionsData} />
+              <Route path="/users" component={UserManagement} />
+              <Route path="/teams" component={Teams} />
+              <Route path="/audit-logs" component={AuditLogViewer} />
+              <Route path="/settings" component={OrganizationSettings} />
+              <Route path="/profile" component={ProfilePage} />
+              <Route component={NotFound} />
+            </Switch>
+          </AuthenticatedLayout>
+        )}
+      </Route>
+    </Switch>
   );
 }
 
