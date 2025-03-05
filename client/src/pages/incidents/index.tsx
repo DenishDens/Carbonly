@@ -5,9 +5,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { CreateIncidentDialog } from "./create-incident";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
 import type { Incident, BusinessUnit } from "@shared/schema";
 import { DashboardLayout } from "@/components/dashboard-layout";
@@ -35,6 +37,7 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Search,
 } from "lucide-react";
 import {
   Collapsible,
@@ -45,6 +48,7 @@ import {
 export default function IncidentsPage() {
   const [showNewIncident, setShowNewIncident] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState({
     type: 'all',
     severity: 'all',
@@ -60,10 +64,27 @@ export default function IncidentsPage() {
     queryKey: ["/api/business-units"],
   });
 
+  // Search and filter logic
   const filteredIncidents = incidents?.filter(incident => {
+    // Apply filters
     if (filters.type !== 'all' && incident.type !== filters.type) return false;
     if (filters.severity !== 'all' && incident.severity !== filters.severity) return false;
     if (filters.status !== 'all' && incident.status !== filters.status) return false;
+
+    // Apply text search across all fields
+    if (searchQuery) {
+      const searchLower = searchQuery.toLowerCase();
+      const businessUnitName = businessUnits?.find(u => u.id === incident.businessUnitId)?.name || '';
+      return (
+        incident.title.toLowerCase().includes(searchLower) ||
+        incident.description.toLowerCase().includes(searchLower) ||
+        incident.type.toLowerCase().includes(searchLower) ||
+        incident.severity.toLowerCase().includes(searchLower) ||
+        incident.status.toLowerCase().includes(searchLower) ||
+        incident.location?.toLowerCase().includes(searchLower) ||
+        businessUnitName.toLowerCase().includes(searchLower)
+      );
+    }
     return true;
   });
 
@@ -144,6 +165,18 @@ export default function IncidentsPage() {
               <Plus className="h-4 w-4 mr-2" />
               New Incident
             </Button>
+          </div>
+        </div>
+
+        <div className="flex gap-4 items-center">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search incidents..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
           </div>
         </div>
 
@@ -264,6 +297,11 @@ export default function IncidentsPage() {
               </TableBody>
             </Table>
           </CardContent>
+          <CardFooter className="flex justify-between text-sm text-muted-foreground">
+            <div>
+              Total Records: {filteredIncidents?.length || 0} of {incidents?.length || 0}
+            </div>
+          </CardFooter>
         </Card>
 
         <CreateIncidentDialog 

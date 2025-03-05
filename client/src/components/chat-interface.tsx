@@ -58,13 +58,13 @@ interface Message {
 }
 
 const SMART_PROMPTS = [
-  "What's our total fuel consumption by project this quarter?",
-  "Show me water usage by project in the last quarter",
-  "Based on current data, what will our fuel consumption be in the next 30 days?",
-  "Which projects have the highest emissions this month?",
-  "Compare energy usage between different projects",
-  "What are our top emission sources across all projects?",
-  "Show me emission trends for the past 6 months",
+  "Show me all critical incidents in my projects",
+  "What's the status of incident reports this month?",
+  "Which projects have the most environmental incidents?",
+  "Show me unresolved incidents by severity",
+  "Summarize recent environmental impacts",
+  "Compare incident types across projects",
+  "Show me trends in incident reporting",
 ];
 
 export function ChatInterface() {
@@ -132,7 +132,7 @@ export function ChatInterface() {
       const unitCount = accessibleUnits?.length || 0;
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help analyze data from your ${unitCount} accessible business unit${unitCount !== 1 ? 's' : ''}. Feel free to ask me anything or try one of the suggested questions below.`
+        content: `Hi ${user?.firstName || user?.lastName || 'there'}! 👋 I'm your AI assistant. I can help analyze incident and emissions data from your ${unitCount} accessible business unit${unitCount !== 1 ? 's' : ''}. Feel free to ask me anything about your environmental data or try one of the suggested questions below.`
       };
       setMessages([greeting]);
     }
@@ -155,7 +155,7 @@ export function ChatInterface() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>AI Assistant</CardTitle>
-              <CardDescription>Ask about your emissions data</CardDescription>
+              <CardDescription>Ask about your data</CardDescription>
             </div>
             <Button
               variant="ghost"
