@@ -90,8 +90,13 @@ export default function ProfilePage() {
       console.log("Profile picture will be handled separately");
     }
     
-    updateProfileMutation.mutate(data as any);
+    try {
+      await updateProfileMutation.mutateAsync(data);
+    } catch (error) {
+      console.error("Profile update error:", error);
+    }
   };
+</old_str>
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
