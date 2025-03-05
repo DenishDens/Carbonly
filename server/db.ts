@@ -1,16 +1,9 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
 import * as schema from "@shared/schema";
 
-// Set WebSocket constructor based on environment
-if (process.env.NODE_ENV === 'production') {
-  // In production, we need to use the ws module directly
-  neonConfig.webSocketConstructor = require('ws');
-} else {
-  // In development, use the imported ws
-  neonConfig.webSocketConstructor = ws;
-}
+// Set WebSocket constructor for all environments
+neonConfig.webSocketConstructor = require('ws');
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
