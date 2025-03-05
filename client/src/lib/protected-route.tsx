@@ -22,6 +22,7 @@ export function ProtectedRoute({
   }
 
   if (!user) {
+    console.log("Protected route: no user found, redirecting to /auth");
     return (
       <Route path={path}>
         <Redirect to="/auth" />
@@ -29,5 +30,6 @@ export function ProtectedRoute({
     );
   }
 
+  console.log("Protected route: rendering component for authenticated user");
   return <Route path={path} component={Component} />;
 }
