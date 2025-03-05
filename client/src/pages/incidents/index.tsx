@@ -20,15 +20,28 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertTriangle,
   CircleDot,
   Clock,
   Loader2,
   Plus,
+  Filter,
 } from "lucide-react";
 
 export default function IncidentsPage() {
   const [showNewIncident, setShowNewIncident] = useState(false);
+  const [filters, setFilters] = useState({
+    type: 'all',
+    severity: 'all',
+    status: 'all',
+  });
 
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
@@ -37,6 +50,13 @@ export default function IncidentsPage() {
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
+  });
+
+  const filteredIncidents = incidents?.filter(incident => {
+    if (filters.type !== 'all' && incident.type !== filters.type) return false;
+    if (filters.severity !== 'all' && incident.severity !== filters.severity) return false;
+    if (filters.status !== 'all' && incident.status !== filters.status) return false;
+    return true;
   });
 
   const getSeverityColor = (severity: string) => {
@@ -97,6 +117,70 @@ export default function IncidentsPage() {
           </Button>
         </div>
 
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Filter className="h-4 w-4 mr-2" />
+              Filters
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-4">
+              <div className="w-1/3">
+                <Select
+                  value={filters.type}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, type: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="spill">Spill</SelectItem>
+                    <SelectItem value="leak">Leak</SelectItem>
+                    <SelectItem value="equipment_failure">Equipment Failure</SelectItem>
+                    <SelectItem value="power_outage">Power Outage</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-1/3">
+                <Select
+                  value={filters.severity}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, severity: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Severities</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="critical">Critical</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-1/3">
+                <Select
+                  value={filters.status}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="resolved">Resolved</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader>
             <CardTitle>All Incidents</CardTitle>
@@ -117,7 +201,7 @@ export default function IncidentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {incidents?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                {filteredIncidents?.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
                   .map((incident) => (
                     <TableRow key={incident.id}>
                       <TableCell className="font-medium">
@@ -126,7 +210,7 @@ export default function IncidentsPage() {
                       <TableCell>
                         {businessUnits?.find(
                           (u) => u.id === incident.businessUnitId
-                        )?.name}
+                        )?.name || 'Unknown'}
                       </TableCell>
                       <TableCell className="capitalize">
                         {incident.type.replace("_", " ")}

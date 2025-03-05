@@ -81,7 +81,7 @@ export function CreateIncidentDialog({
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to report incident",
+        title: "Failed to create incident",
         description: error.message,
         variant: "destructive",
       });
