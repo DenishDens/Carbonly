@@ -39,10 +39,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
-      console.log('Sending login request with:', {
+      console.log('Sending login request:', {
         email: credentials.email,
         hasPassword: !!credentials.password,
-        rememberMe: credentials.rememberMe
       });
 
       const response = await fetch('/api/login', {
@@ -54,25 +53,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         credentials: 'include'
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const error = await response.json();
-        console.error('Login failed:', error);
-        throw new Error(error.message || "Login failed");
+        console.error('Login failed:', data);
+        throw new Error(data.message || "Login failed");
       }
 
-      const data = await response.json();
-      console.log('Login response:', data);
+      console.log('Login successful:', data);
       return data;
     },
     onSuccess: (user: SelectUser) => {
-      console.log('Login successful, updating user data:', user);
+      console.log('Setting user data after successful login:', user);
       queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
       console.error('Login mutation error:', error);
       toast({
-        title: "Login failed",
-        description: error.message,
+        title: "Login Failed",
+        description: error.message || "Please check your credentials and try again",
         variant: "destructive",
       });
     },

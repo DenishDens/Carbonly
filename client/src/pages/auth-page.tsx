@@ -38,7 +38,7 @@ function LoginForm() {
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     const formData = form.getValues();
-    console.log('Form data:', formData);
+    console.log('Attempting login with:', { email: formData.email, hasPassword: !!formData.password });
 
     if (!formData.email || !formData.password) {
       toast({
@@ -59,15 +59,11 @@ function LoginForm() {
       console.error('Login error:', error);
       toast({
         title: "Login Failed",
-        description: error instanceof Error ? error.message : "Please try again",
+        description: error instanceof Error ? error.message : "Invalid email or password",
         variant: "destructive",
       });
     }
   };
-
-  if (showResetPassword) {
-    return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
-  }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -93,29 +89,6 @@ function LoginForm() {
         {form.formState.errors.password && (
           <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
         )}
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="remember"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-            />
-            <label
-              htmlFor="remember"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Remember me
-            </label>
-          </div>
-          <Button
-            type="button"
-            variant="link"
-            className="text-sm"
-            onClick={() => setShowResetPassword(true)}
-          >
-            Forgot password?
-          </Button>
-        </div>
       </div>
       <Button
         type="submit"
