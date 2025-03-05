@@ -26,7 +26,7 @@ import { Building2, Upload, Key, Plus, Filter, ChevronDown, ChevronUp, Search, A
 import { SiXero } from "react-icons/si";
 import { FaMicrosoft } from "react-icons/fa";
 import { cn } from "@/lib/utils";
-import type { Organization, IncidentType, InsertInvitation } from "@shared/schema";
+import type { Organization, IncidentType, InsertInvitation, Material } from "@shared/schema";
 import { IntegrationWizard } from "@/components/integration-wizard/integration-wizard";
 import { IntegratedDataView } from "@/components/integrated-data-view";
 import {
@@ -303,6 +303,53 @@ export default function OrganizationSettings() {
   });
 
 
+  // Add state for materials management
+  const [newMaterial, setNewMaterial] = useState<Omit<Material, "id" | "createdAt" | "lastUpdated" | "approvalStatus">>({
+    name: "",
+    category: "Fuel",
+    uom: "",
+    emissionFactor: "0.0",
+    source: "Default",
+    organizationId: user?.organizationId!,
+  });
+
+  // Add Material Library queries
+  const { data: materials, isLoading: isLoadingMaterials } = useQuery<Material[]>({
+    queryKey: ["/api/materials"],
+    enabled: !!user?.organizationId,
+  });
+
+  const createMaterialMutation = useMutation({
+    mutationFn: async (material: Material) => {
+      const res = await apiRequest("POST", "/api/materials", {
+        ...material,
+        organizationId: user?.organizationId,
+      });
+      if (!res.ok) {
+        throw new Error("Failed to create material");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/materials"] });
+      toast({ title: "Material added successfully" });
+      setNewMaterial({
+        name: "",
+        category: "Fuel",
+        uom: "",
+        emissionFactor: "",
+        source: "Default",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to add material",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -314,6 +361,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="protocol">Protocol</TabsTrigger>
             <TabsTrigger value="sso">SSO</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="materials">Material Library</TabsTrigger>
             <TabsTrigger value="incidents">Incident Types</TabsTrigger>
             <TabsTrigger value="team">Team Invitations</TabsTrigger>
           </TabsList>
@@ -759,6 +807,136 @@ export default function OrganizationSettings() {
                   <Save className="h-4 w-4 mr-2" />
                   Save Incident Types
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="materials">
+            <Card>
+              <CardHeader>
+                <CardTitle>Material Library</CardTitle>
+                <CardDescription>
+                  Manage emission factors for different materials
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Add New Material Form */}
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <Label>Material Name</Label>
+                      <Input
+                        value={newMaterial.name}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, name: e.target.value })}
+                        placeholder="e.g., Diesel"
+                      />
+                    </div>
+                    <div>
+                      <Label>Category</Label>
+                      <Select
+                        value={newMaterial.category}
+                        onValueChange={(value) => setNewMaterial({ ...newMaterial, category: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Fuel">Fuel</SelectItem>
+                          <SelectItem value="Energy">Energy</SelectItem>
+                          <SelectItem value="Raw Material">Raw Material</SelectItem>
+                          <SelectItem value="Waste">Waste</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Unit of Measure (UOM)</Label>
+                      <Select
+                        value={newMaterial.uom}
+                        onValueChange={(value) => setNewMaterial({ ...newMaterial, uom: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select UOM" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                          <SelectItem value="liters">Liters (L)</SelectItem>
+                          <SelectItem value="metric_tons">Metric Tons (t)</SelectItem>
+                          <SelectItem value="kwh">Kilowatt Hours (kWh)</SelectItem>
+                          <SelectItem value="cubic_meters">Cubic Meters (m³)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Emission Factor (CO₂e/unit)</Label>
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        value={newMaterial.emissionFactor}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, emissionFactor: e.target.value })}
+                        placeholder="0.0"
+                      />
+                    </div>
+                    <div>
+                      <Label>Source</Label>
+                      <Select
+                        value={newMaterial.source}
+                        onValueChange={(value) => setNewMaterial({ ...newMaterial, source: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Default">Government/Industry Standard</SelectItem>
+                          <SelectItem value="User-Defined">User-Defined</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => createMaterialMutation.mutate(newMaterial)}
+                    disabled={createMaterialMutation.isPending}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Material
+                  </Button>
+                </div>
+
+                {/* Materials Table */}
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Material Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>UOM</TableHead>
+                        <TableHead>Emission Factor</TableHead>
+                        <TableHead>Source</TableHead>
+                        <TableHead>Last Updated</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {materials?.map((material) => (
+                        <TableRow key={material.id}>
+                          <TableCell>{material.name}</TableCell>
+                          <TableCell>{material.category}</TableCell>
+                          <TableCell>{material.uom}</TableCell>
+                          <TableCell>{material.emissionFactor}</TableCell>
+                          <TableCell>{material.source}</TableCell>
+                          <TableCell>{new Date(material.lastUpdated).toLocaleDateString()}</TableCell>
+                          <TableCell className="capitalize">{material.approvalStatus}</TableCell>
+                        </TableRow>
+                      ))}
+                      {!materials?.length && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center text-muted-foreground">
+                            No materials added yet
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

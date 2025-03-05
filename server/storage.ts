@@ -3,12 +3,13 @@ import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents, incidentTypes, invitations } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident, IncidentType, Invitation } from "@shared/schema";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents, incidentTypes, invitations, materials } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident, IncidentType, Invitation, Material } from "@shared/schema";
 import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
 
+// Update IStorage interface to include material operations
 export interface IStorage {
   sessionStore: session.Store;
 
@@ -72,6 +73,13 @@ export interface IStorage {
   getInvitationByToken(token: string): Promise<Invitation | undefined>;
   getInvitationsByOrganization(organizationId: string): Promise<Invitation[]>;
   updateInvitationStatus(id: string, status: string): Promise<Invitation>;
+
+  // Material Library operations
+  getMaterials(organizationId: string): Promise<Material[]>;
+  getMaterialById(id: string): Promise<Material | undefined>;
+  createMaterial(material: Omit<Material, "id" | "createdAt" | "lastUpdated">): Promise<Material>;
+  updateMaterial(material: Material): Promise<Material>;
+  getMaterialsByCategory(organizationId: string, category: string): Promise<Material[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -394,6 +402,60 @@ export class DatabaseStorage implements IStorage {
       .where(eq(invitations.id, id))
       .returning();
     return updatedInvitation;
+  }
+
+  // Implement Material Library operations
+  async getMaterials(organizationId: string): Promise<Material[]> {
+    return db
+      .select()
+      .from(materials)
+      .where(eq(materials.organizationId, organizationId))
+      .orderBy(materials.category, materials.name);
+  }
+
+  async getMaterialById(id: string): Promise<Material | undefined> {
+    const [material] = await db
+      .select()
+      .from(materials)
+      .where(eq(materials.id, id));
+    return material;
+  }
+
+  async createMaterial(material: Omit<Material, "id" | "createdAt" | "lastUpdated">): Promise<Material> {
+    const [newMaterial] = await db
+      .insert(materials)
+      .values({
+        ...material,
+        lastUpdated: new Date(),
+        createdAt: new Date(),
+      })
+      .returning();
+    return newMaterial;
+  }
+
+  async updateMaterial(material: Material): Promise<Material> {
+    const [updatedMaterial] = await db
+      .update(materials)
+      .set({
+        ...material,
+        lastUpdated: new Date(),
+      })
+      .where(eq(materials.id, material.id))
+      .returning();
+    return updatedMaterial;
+  }
+
+  async getMaterialsByCategory(organizationId: string, category: string): Promise<Material[]> {
+    return db
+      .select()
+      .from(materials)
+      .where(
+        and(
+          eq(materials.organizationId, organizationId),
+          eq(materials.category, category)
+        )
+      )
+      .orderBy(materials.name);
   }
 }
 

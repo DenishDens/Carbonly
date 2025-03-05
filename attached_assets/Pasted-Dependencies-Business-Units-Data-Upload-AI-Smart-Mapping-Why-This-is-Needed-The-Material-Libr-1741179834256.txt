@@ -1,0 +1,108 @@
+Dependencies: Business Units, Data Upload, AI Smart Mapping
+✅ Why This is Needed?
+
+The Material Library stores predefined emission factors for different materials.
+Users can search, manage, and override emission values.
+AI suggests emission factors for unknown materials.
+Unit of Measure (UOM) enforcement ensures accurate calculations.
+🔹 Objective:
+💡 "Build a robust Material Library in Carbonly.ai that allows users to search, add, edit, and manage materials with predefined emission factors. AI should suggest missing values, and users should be able to override emission factors manually. Ensure that Unit of Measure (UOM) validation is enforced."
+
+1️⃣ Material Library Core Features
+✅ Database of Preloaded Materials & Emission Factors
+✅ Allows Users to Manually Add Custom Materials
+✅ AI-Suggested Emission Factors for Unknown Materials
+✅ Unit of Measure (UOM) Enforcement
+✅ Editable Emission Factors for Customization
+
+2️⃣ Material Library Schema
+✅ Each material must have:
+
+Field Name	Type	Description
+Material Name	Text	Fuel, Electricity, Concrete, Steel, etc.
+Category	Dropdown	Fuel, Energy, Raw Material, Waste, etc.
+Unit of Measure (UOM)	Dropdown	kg, liters, metric tons, kWh, m³, etc.
+Emission Factor (CO₂e/unit)	Numeric	Default from regulatory databases but user can override
+Source of Emission Factor	Dropdown	Default (Government/Industry Standard) or User-Defined
+Last Updated Date	Auto	Tracks modification history
+Approval Status	Dropdown	Pending / Approved (Admin & Business Unit Manager only)
+3️⃣ Search, Filter & Sorting Features
+✅ Users should be able to:
+
+Search materials by name or category
+Filter by material type (Fuel, Energy, Raw Material, etc.)
+Sort by highest or lowest emission factor
+View last updated date to track changes
+✅ Auto-Suggestion for Material Matching
+
+If a user adds a new material, AI should suggest a similar material from existing data.
+If no match is found, AI should request user confirmation before assigning an emission factor.
+4️⃣ AI-Driven Emission Factor Assignment
+✅ AI Workflow for New Materials:
+1️⃣ User adds a new material
+2️⃣ AI searches existing database for similar materials
+3️⃣ AI suggests closest match & recommended emission factor
+4️⃣ User can accept or manually enter a new value
+5️⃣ New material is stored & available for future use
+
+✅ AI Smart Suggestions for Missing UOMs:
+
+If a user selects a material but doesn’t choose a UOM, AI should auto-suggest one.
+Example:
+Diesel → Suggests Liters
+Electricity → Suggests kWh
+Cement → Suggests Metric Tons
+5️⃣ User Roles & Permissions (RBAC)
+✅ Who Can Manage the Material Library?
+
+User Role	View	Edit	Approve New Materials
+Admin	✅ Yes	✅ Yes	✅ Yes
+Business Unit Manager	✅ Yes	✅ Yes	✅ Yes
+Team Member	✅ Yes	❌ No	❌ No
+Auditor	✅ Yes	❌ No	❌ No
+6️⃣ Bulk Upload & Importing Materials
+✅ Users must be able to upload a CSV file to bulk-import materials.
+
+✅ CSV Format:
+
+Material Name	Category	Unit of Measure (UOM)	Emission Factor (CO₂e/unit)	Source
+Diesel	Fuel	Liters	2.68	Government Database
+Natural Gas	Fuel	kWh	0.18	Industry Standard
+Concrete	Raw Material	Metric Tons	0.13	User-Defined
+✅ Bulk Upload Validation Rules:
+
+Reject missing UOMs
+Prompt AI to suggest emission factors for unknown materials
+Flag inconsistencies for user review
+7️⃣ AI Chatbot Integration (Floating Button)
+✅ Users can ask:
+
+"What is the emission factor for Diesel?"
+"How much CO₂ is produced per ton of Cement?"
+"Show me all materials under the Fuel category."
+"What is the standard UOM for Natural Gas?"
+"Can I override the default emission factor for my company?"
+✅ AI Responses Should:
+
+Fetch real-time emission factors from the database.
+Provide source validation (government, industry, user-defined).
+Allow users to override values (if permissions allow).
+8️⃣ UI & User Experience
+✅ Material Library Page Layout
+📌 Main Features:
+
+Search bar & filters
+Material list table with sorting options
+"Add New Material" button
+Bulk Upload CSV option
+AI-suggested materials for new entries
+✅ Material Detail Page (Editable View)
+
+Shows material properties (name, category, UOM, emission factor)
+Edit emission factor (if role permits)
+View material history & changes
+✅ Data Validation Alerts
+
+If UOM is missing, AI suggests one.
+If a new material is added, AI tries to find a match.
+Flag outdated emission factors for review.

@@ -2,6 +2,20 @@ import { pgTable, text, uuid, decimal, timestamp, jsonb, boolean } from "drizzle
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// Material Library related schemas
+export const materials = pgTable("materials", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  category: text("category").notNull(), // Fuel, Energy, Raw Material, Waste, etc.
+  uom: text("uom").notNull(), // kg, liters, metric tons, kWh, m³, etc.
+  emissionFactor: decimal("emission_factor").notNull(), // CO₂e per unit
+  source: text("source").notNull(), // Default (Government/Industry Standard) or User-Defined
+  approvalStatus: text("approval_status").default("pending"), // Pending / Approved
+  lastUpdated: timestamp("last_updated").defaultNow().notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const UserRole = {
   ADMIN: 'admin',
   BUSINESS_UNIT_MANAGER: 'business_unit_manager',
@@ -143,7 +157,7 @@ export const auditLogs = pgTable("audit_logs", {
 
 export const incidents = pgTable("incidents", {
   id: uuid("id").defaultRandom().primaryKey(),
-  sequenceNumber: decimal("sequence_number").notNull(),  
+  sequenceNumber: decimal("sequence_number").notNull(),
   businessUnitId: uuid("business_unit_id").notNull().references(() => businessUnits.id),
   title: text("title").notNull(),
   description: text("description").notNull(),
@@ -186,8 +200,9 @@ export type Incident = typeof incidents.$inferSelect;
 export type IncidentType = typeof incidentTypes.$inferSelect;
 export type Invitation = typeof invitations.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
+// Add new Material types
+export type Material = typeof materials.$inferSelect;
 
-// Add at the appropriate location in the schema
 export const insertIncidentTypeSchema = createInsertSchema(incidentTypes)
   .pick({
     name: true,
@@ -403,4 +418,4 @@ export type EmissionDetails = {
   category?: string;
 };
 
-export type { InsertIncidentType, InsertInvitation };
+export type { InsertIncidentType, InsertInvitation, Material, InsertMaterial };

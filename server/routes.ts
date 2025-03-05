@@ -467,6 +467,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(updatedUnit);
   });
 
+  // Add these new routes for material management
+  app.get("/api/materials", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const materials = await storage.getMaterials(req.user.organizationId);
+      res.json(materials);
+    } catch (error) {
+      console.error("Error fetching materials:", error);
+      res.status(500).json({ message: "Failed to fetch materials" });
+    }
+  });
+
+  app.post("/api/materials", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const material = await storage.createMaterial({
+        ...req.body,
+        organizationId: req.user.organizationId,
+      });
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "CREATE",
+        entityType: "material",
+        entityId: material.id,
+        changes: { data: req.body },
+      });
+
+      res.json(material);
+    } catch (error) {
+      console.error("Error creating material:", error);
+      res.status(500).json({ message: "Failed to create material" });
+    }
+  });
+
   // Add these endpoints after the existing routes
   app.get("/api/incidents", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
