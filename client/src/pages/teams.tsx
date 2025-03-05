@@ -142,35 +142,37 @@ export default function Teams() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="relative space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Teams</h1>
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Users className="h-4 w-4 mr-2" />
-                Add Team
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Add Team</DialogTitle>
-                <DialogDescription>
-                  Create a new team and add members
-                </DialogDescription>
-              </DialogHeader>
-              <TeamForm data={newTeam} onChange={setNewTeam} />
-              <DialogFooter>
-                <Button
-                  onClick={() => createTeam.mutate(newTeam)}
-                  disabled={!newTeam.name || createTeam.isPending}
-                >
-                  Create Team
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
         </div>
+
+        {/* Move Dialog outside of flex container and make it fixed */}
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogTrigger asChild>
+            <Button className="fixed bottom-6 right-6 shadow-lg">
+              <Users className="h-4 w-4 mr-2" />
+              Add Team
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Add Team</DialogTitle>
+              <DialogDescription>
+                Create a new team and add members
+              </DialogDescription>
+            </DialogHeader>
+            <TeamForm data={newTeam} onChange={setNewTeam} />
+            <DialogFooter>
+              <Button
+                onClick={() => createTeam.mutate(newTeam)}
+                disabled={!newTeam.name || createTeam.isPending}
+              >
+                Create Team
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <div className="grid gap-4">
           {teams?.map((team) => (
