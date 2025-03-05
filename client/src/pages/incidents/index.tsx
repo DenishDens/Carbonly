@@ -70,7 +70,6 @@ export default function IncidentsPage() {
 
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
-    refetchInterval: 5000,
   });
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
