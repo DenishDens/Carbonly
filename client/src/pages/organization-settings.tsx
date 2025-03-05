@@ -42,6 +42,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge"; //Import added here
 import {
   Table,
   TableBody,
@@ -1006,7 +1007,7 @@ export default function OrganizationSettings() {
                       className="hidden"
                       id="csv-import"
                     />
-                    <Button
+                                        <Button
                                             variant="outline"
                       onClick={() => document.getElementById("csv-import")?.click()}
                     >
