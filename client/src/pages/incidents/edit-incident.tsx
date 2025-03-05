@@ -6,6 +6,7 @@ import { insertIncidentSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation, useParams } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import {
   Form,
   FormControl,
@@ -29,19 +30,21 @@ import { DashboardLayout } from "@/components/dashboard-layout";
 
 export default function EditIncidentPage() {
   const [_, setLocation] = useLocation();
-  const params = useParams();
+  const params = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { user } = useAuth();
   const incidentId = params?.id;
 
   // Get incident data
   const { data: incident, isLoading: isLoadingIncident } = useQuery({
     queryKey: [`/api/incidents/${incidentId}`],
-    enabled: !!incidentId,
+    enabled: !!incidentId && !!user?.organizationId,
   });
 
   // Get business units
   const { data: businessUnits } = useQuery({
     queryKey: ["/api/business-units"],
+    enabled: !!user?.organizationId,
   });
 
   const form = useForm({
@@ -70,6 +73,8 @@ export default function EditIncidentPage() {
 
   const updateIncident = useMutation({
     mutationFn: async (data: any) => {
+      if (!incidentId) throw new Error("No incident ID provided");
+
       const formattedData = {
         ...data,
         incidentDate: new Date(data.incidentDate).toISOString(),
@@ -97,7 +102,7 @@ export default function EditIncidentPage() {
     },
   });
 
-  if (!incidentId) {
+  if (!incidentId || !user?.organizationId) {
     setLocation("/incidents");
     return null;
   }
@@ -262,7 +267,10 @@ export default function EditIncidentPage() {
                 type="submit" 
                 disabled={updateIncident.isPending}
               >
-                {updateIncident.isPending ? "Updating..." : "Update Incident"}
+                {updateIncident.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                Update Incident
               </Button>
             </div>
           </form>
