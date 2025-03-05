@@ -25,10 +25,15 @@ export function IncidentDashboard() {
       {/* Header with search */}
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Incidents</h1>
-        <Input 
-          placeholder="Search incidents..." 
-          className="w-64"
-        />
+        <div className="flex gap-4">
+          <Input 
+            placeholder="Search incidents..." 
+            className="w-[300px]"
+          />
+          <Button onClick={() => setLocation('/incidents/new')}>
+            New Incident
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -90,14 +95,12 @@ export function IncidentDashboard() {
       <div className="bg-white rounded-lg shadow">
         <div className="flex justify-between items-center p-4 border-b">
           <h2 className="text-lg font-semibold">All Incidents</h2>
-          <div className="flex items-center gap-2">
-            <Button variant="outline">Filters</Button>
-          </div>
+          <Button variant="outline">Filters</Button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
+            <thead>
+              <tr className="bg-muted/50">
                 <th className="text-left p-4 font-medium">Title</th>
                 <th className="text-left p-4 font-medium">Business Unit</th>
                 <th className="text-left p-4 font-medium">Type</th>
@@ -109,11 +112,19 @@ export function IncidentDashboard() {
             </thead>
             <tbody>
               {incidents?.map((incident) => (
-                <tr key={incident.id} className="border-b">
+                <tr key={incident.id} className="border-b hover:bg-muted/50">
                   <td className="p-4">{incident.title}</td>
                   <td className="p-4">{incident.businessUnitId}</td>
                   <td className="p-4">{incident.type}</td>
-                  <td className="p-4">{incident.severity}</td>
+                  <td className="p-4">
+                    <span className={`${
+                      incident.severity === 'critical' ? 'text-red-600' :
+                      incident.severity === 'high' ? 'text-orange-600' :
+                      'text-slate-600'
+                    }`}>
+                      {incident.severity}
+                    </span>
+                  </td>
                   <td className="p-4">
                     <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs ${
                       incident.status === 'open' ? 'bg-red-100 text-red-700' :
@@ -123,12 +134,11 @@ export function IncidentDashboard() {
                       {incident.status}
                     </span>
                   </td>
-                  <td className="p-4">
-                    {new Date(incident.createdAt).toLocaleString()}
-                  </td>
+                  <td className="p-4">{new Date(incident.createdAt).toLocaleString()}</td>
                   <td className="p-4 text-right">
                     <Button
-                      variant="secondary"
+                      variant="outline"
+                      size="sm"
                       onClick={() => setLocation(`/incidents/${incident.id}`)}
                     >
                       Close
