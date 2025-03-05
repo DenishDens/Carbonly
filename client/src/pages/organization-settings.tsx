@@ -1,5 +1,5 @@
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Card,
@@ -182,9 +182,22 @@ export default function OrganizationSettings() {
     enabled: user?.role === "super_admin",
   });
 
+  // Load existing incident types when component mounts
+  useEffect(() => {
+    if (existingIncidentTypes?.length) {
+      setIncidentTypes(
+        existingIncidentTypes.map(type => ({
+          name: type.name,
+          description: type.description || "",
+          active: type.active,
+        }))
+      );
+    }
+  }, [existingIncidentTypes]);
 
-  // Only super admins can access this page
-  if (user?.role !== "super_admin") {
+
+  // Update the access check logic
+  if (!user || (user.role !== "super_admin" && user.role !== "org_admin")) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">

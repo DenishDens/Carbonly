@@ -49,8 +49,10 @@ import {
   Dialog,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
 
 export default function IncidentsPage() {
+  const { toast } = useToast();
   const [showNewIncident, setShowNewIncident] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -61,14 +63,32 @@ export default function IncidentsPage() {
   });
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
 
+  // Update the data fetching logic
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
     refetchInterval: 5000, // Refresh every 5 seconds
+    retry: 3,
+    onError: (error) => {
+      console.error("Error fetching incidents:", error);
+      toast({
+        title: "Error loading incidents",
+        description: "Please try refreshing the page",
+        variant: "destructive",
+      });
+    }
   });
 
   const { data: businessUnits } = useQuery<BusinessUnit[]>({
     queryKey: ["/api/business-units"],
+    retry: 3,
+    onError: (error) => {
+      console.error("Error fetching business units:", error);
+    }
   });
+
+  // Add debug logging
+  console.log("Incidents data:", incidents);
+  console.log("Business units data:", businessUnits);
 
   // Filter and search logic
   const filteredIncidents = incidents?.filter(incident => {
