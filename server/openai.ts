@@ -55,7 +55,7 @@ Categorize the data appropriately based on the source:
       throw new Error("Failed to get response from OpenAI");
     }
 
-    console.log("OpenAI Response:", content); // Log the response
+    console.log("OpenAI Response:", content);
 
     const extractedData = JSON.parse(content) as ExtractionResult;
 
@@ -89,24 +89,32 @@ export async function getChatResponse(message: string, context: {
     // Fetch all business units for context
     const businessUnits = await storage.getBusinessUnits(context.organizationId);
     const incidents = await storage.getIncidents(context.organizationId);
+    const emissions = await storage.getEmissions(context.organizationId);
 
-    // Calculate incident statistics
+    // Calculate comprehensive statistics
     const incidentStats = calculateIncidentStats(incidents);
     const businessUnitStats = calculateBusinessUnitStats(businessUnits, incidents);
+    const emissionStats = calculateEmissionStats(emissions);
 
-    // For pie chart queries, prepare data
-    const incidentsByType = incidents.reduce((acc, incident) => {
-      acc[incident.type] = (acc[incident.type] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    // Calculate trends
+    const incidentTrends = calculateIncidentTrends(incidents);
+    const emissionTrends = calculateEmissionTrends(emissions);
 
-    console.log("Chat context:", {
+    // Prepare detailed context
+    const analysisContext = {
       businessUnits: businessUnits.length,
       incidents: incidents.length,
+      emissions: emissions.length,
       incidentStats,
       businessUnitStats,
-      incidentsByType
-    });
+      emissionStats,
+      trends: {
+        incidents: incidentTrends,
+        emissions: emissionTrends
+      }
+    };
+
+    console.log("Analysis context:", analysisContext);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -117,18 +125,21 @@ export async function getChatResponse(message: string, context: {
 You help users understand their emission data and incidents across their business units.
 
 Current Context:
-- Organization has ${businessUnits.length} business units
-- There are ${incidents.length} total incidents
-- Incident Status: ${JSON.stringify(incidentStats)}
-- Business Units: ${JSON.stringify(businessUnitStats)}
-- Incident Types: ${JSON.stringify(incidentsByType)}
+${JSON.stringify(analysisContext, null, 2)}
+
+Guidelines:
+1. Always analyze trends and patterns in the data
+2. Provide actionable insights and recommendations
+3. Use appropriate visualizations for data presentation
+4. Consider historical context when making observations
+5. Be proactive in highlighting potential issues or opportunities
 
 When responding:
 1. Always return a JSON object with { message: string, chart?: { type: string, data: any } }
 2. For charts, use one of: 'pie', 'bar', 'line'
 3. Format chart data according to Chart.js structure
 4. Use colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
-5. When showing incident types, use the incidentsByType data provided above`
+5. Make charts interactive and informative with proper labels and legends`
         },
         {
           role: "user",
@@ -145,18 +156,11 @@ When responding:
 
     const parsedResponse = JSON.parse(content);
 
-    // If it's a pie chart request and we didn't get chart data, add it
-    if (message.toLowerCase().includes('pie chart') && !parsedResponse.chart) {
-      parsedResponse.chart = {
-        type: 'pie',
-        data: {
-          labels: Object.keys(incidentsByType),
-          datasets: [{
-            data: Object.values(incidentsByType),
-            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
-          }]
-        }
-      };
+    // Auto-generate appropriate chart if not provided
+    if (!parsedResponse.chart) {
+      if (message.toLowerCase().includes('chart') || message.toLowerCase().includes('trend')) {
+        parsedResponse.chart = generateAppropriateChart(message, analysisContext);
+      }
     }
 
     return parsedResponse;
@@ -184,8 +188,98 @@ function calculateBusinessUnitStats(businessUnits: BusinessUnit[], incidents: In
   return businessUnits.map(unit => ({
     name: unit.name,
     location: unit.location,
-    incidents: incidents.filter(i => i.businessUnitId === unit.id).length
+    incidents: incidents.filter(i => i.businessUnitId === unit.id).length,
+    performance: calculatePerformanceScore(incidents.filter(i => i.businessUnitId === unit.id))
   }));
+}
+
+function calculateEmissionStats(emissions: any[]) {
+  return {
+    total: emissions.reduce((sum, e) => sum + parseFloat(e.amount), 0),
+    by_scope: {
+      scope1: emissions.filter(e => e.scope === 'Scope 1').length,
+      scope2: emissions.filter(e => e.scope === 'Scope 2').length,
+      scope3: emissions.filter(e => e.scope === 'Scope 3').length
+    },
+    by_category: emissions.reduce((acc, e) => {
+      acc[e.category] = (acc[e.category] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>)
+  };
+}
+
+function calculateIncidentTrends(incidents: Incident[]) {
+  // Group incidents by month
+  const monthlyIncidents = incidents.reduce((acc, incident) => {
+    const month = new Date(incident.createdAt).toISOString().slice(0, 7);
+    acc[month] = (acc[month] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return {
+    monthly: monthlyIncidents,
+    trend: Object.values(monthlyIncidents)
+  };
+}
+
+function calculateEmissionTrends(emissions: any[]) {
+  // Group emissions by month and calculate total
+  const monthlyEmissions = emissions.reduce((acc, emission) => {
+    const month = new Date(emission.date).toISOString().slice(0, 7);
+    acc[month] = (acc[month] || 0) + parseFloat(emission.amount);
+    return acc;
+  }, {} as Record<string, number>);
+
+  return {
+    monthly: monthlyEmissions,
+    trend: Object.values(monthlyEmissions)
+  };
+}
+
+function calculatePerformanceScore(incidents: Incident[]) {
+  // Calculate a simple performance score based on incident severity and resolution time
+  const weights = { critical: 4, high: 3, medium: 2, low: 1 };
+  let score = 100;
+
+  incidents.forEach(incident => {
+    score -= weights[incident.severity as keyof typeof weights];
+    if (incident.status === 'open') score -= 2;
+  });
+
+  return Math.max(0, score);
+}
+
+function generateAppropriateChart(message: string, context: any) {
+  // Auto-generate appropriate chart based on user query and data context
+  if (message.toLowerCase().includes('pie chart')) {
+    return {
+      type: 'pie',
+      data: {
+        labels: Object.keys(context.incidentStats.by_severity),
+        datasets: [{
+          data: Object.values(context.incidentStats.by_severity),
+          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+        }]
+      }
+    };
+  }
+
+  if (message.toLowerCase().includes('trend')) {
+    return {
+      type: 'line',
+      data: {
+        labels: Object.keys(context.trends.incidents.monthly),
+        datasets: [{
+          label: 'Incidents',
+          data: Object.values(context.trends.incidents.monthly),
+          borderColor: '#36A2EB',
+          tension: 0.1
+        }]
+      }
+    };
+  }
+
+  return null;
 }
 
 export interface ChatResponse {

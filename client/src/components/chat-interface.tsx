@@ -73,8 +73,6 @@ export function ChatInterface() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
-  const [predictions, setPredictions] = useState<string[]>([]);
-  const [showPredictions, setShowPredictions] = useState(false);
 
   // Get user's accessible business units
   const { data: businessUnits } = useQuery({
@@ -112,7 +110,6 @@ export function ChatInterface() {
       ];
       queryClient.setQueryData(["/api/chat/messages"], newMessages);
       setInput("");
-      setPredictions([]);
     },
   });
 
@@ -120,7 +117,6 @@ export function ChatInterface() {
     e.preventDefault();
     if (!input.trim()) return;
     chatMutation.mutate(input);
-    setShowPredictions(false);
   };
 
   const handlePromptSelect = (prompt: string) => {
@@ -128,20 +124,6 @@ export function ChatInterface() {
     const event = new Event('submit') as unknown as React.FormEvent;
     handleSubmit(event);
   };
-
-  // Predict as user types
-  useEffect(() => {
-    if (input.length > 2) {
-      const matchingPrompts = SMART_PROMPTS.filter(prompt => 
-        prompt.toLowerCase().includes(input.toLowerCase())
-      );
-      setPredictions(matchingPrompts);
-      setShowPredictions(matchingPrompts.length > 0);
-    } else {
-      setPredictions([]);
-      setShowPredictions(false);
-    }
-  }, [input]);
 
   const renderChart = (chart: Message['chart']) => {
     if (!chart) return null;
@@ -181,7 +163,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-6 right-6 z-[999]">
       {!isOpen && (
         <Button
           onClick={handleOpen}
@@ -239,15 +221,14 @@ export function ChatInterface() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent 
                     align="end" 
-                    className="w-[300px] z-[100]"
+                    className="w-[300px]"
+                    style={{ zIndex: 9999 }}
                     sideOffset={5}
                   >
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
-                        onClick={() => {
-                          handlePromptSelect(prompt);
-                        }}
+                        onClick={() => handlePromptSelect(prompt)}
                       >
                         {prompt}
                       </DropdownMenuItem>
