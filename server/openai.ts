@@ -91,83 +91,66 @@ export async function getChatResponse(message: string, context: {
     const incidents = await storage.getIncidents(context.organizationId);
     const emissions = await storage.getEmissions(context.organizationId);
 
-    // Parse business unit name from the query
-    const businessUnitQuery = extractBusinessUnitQuery(message, businessUnits);
-
-    // Filter incidents by business unit if specified
-    const filteredIncidents = businessUnitQuery
-      ? incidents.filter(i => {
-          const businessUnit = businessUnits.find(bu => bu.id === i.businessUnitId);
-          return businessUnit?.name.toLowerCase().includes(businessUnitQuery.toLowerCase());
-        })
-      : incidents;
-
-    // Calculate comprehensive statistics
-    const incidentStats = calculateIncidentStats(filteredIncidents);
-    const businessUnitStats = calculateBusinessUnitStats(businessUnits, incidents);
-    const emissionStats = calculateEmissionStats(emissions);
-
-    // Calculate trends
-    const incidentTrends = calculateIncidentTrends(filteredIncidents);
-    const emissionTrends = calculateEmissionTrends(emissions);
-
-    // Prepare detailed context
-    const analysisContext = {
-      businessUnits: businessUnits.map(bu => ({
-        name: bu.name,
-        location: bu.location,
-        incidents: incidents.filter(i => i.businessUnitId === bu.id).length,
-      })),
-      currentQuery: {
-        businessUnit: businessUnitQuery,
-        filteredIncidents: filteredIncidents.length,
-      },
-      incidentStats,
-      businessUnitStats,
-      emissionStats,
-      trends: {
-        incidents: incidentTrends,
-        emissions: emissionTrends
-      }
+    // Calculate severity statistics
+    const severityStats = {
+      critical: incidents.filter(i => i.severity === 'critical').length,
+      high: incidents.filter(i => i.severity === 'high').length,
+      medium: incidents.filter(i => i.severity === 'medium').length,
+      low: incidents.filter(i => i.severity === 'low').length
     };
 
-    console.log("Analysis context:", analysisContext);
+    // Calculate total and percentages
+    const total = Object.values(severityStats).reduce((sum, val) => sum + val, 0);
+    const severityPercentages = Object.entries(severityStats).reduce((acc, [key, value]) => {
+      acc[key] = total > 0 ? Math.round((value / total) * 100) : 0;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Calculate business unit specific stats
+    const businessUnitStats = businessUnits.map(unit => ({
+      name: unit.name,
+      incidents: incidents.filter(i => i.businessUnitId === unit.id),
+      severityBreakdown: {
+        critical: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'critical').length,
+        high: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'high').length,
+        medium: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'medium').length,
+        low: incidents.filter(i => i.businessUnitId === unit.id && i.severity === 'low').length
+      }
+    }));
+
+    console.log("Analysis context:", {
+      severityStats,
+      severityPercentages,
+      businessUnitStats,
+      totalIncidents: total
+    });
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: `You are an AI assistant for a carbon emission tracking platform.
+          content: `You are an AI assistant for Carbonly.ai's carbon emission tracking platform.
 You help users understand their emission data and incidents across their business units.
 
 Current Context:
-${JSON.stringify(analysisContext, null, 2)}
+- Total Incidents: ${total}
+- Severity Stats: ${JSON.stringify(severityStats)}
+- Severity Percentages: ${JSON.stringify(severityPercentages)}
+- Business Unit Stats: ${JSON.stringify(businessUnitStats)}
 
 Guidelines:
-1. Provide direct answers to questions about numbers, statistics, and trends
-2. When a specific business unit is mentioned, focus on that unit's data
-3. For numerical questions, always include the exact numbers in your response
-4. Only suggest charts when they add value or are explicitly requested
-5. Be concise and precise in your responses
+1. For severity queries, ALWAYS include:
+   - Exact numbers for each severity level
+   - Percentages of total
+   - Total number of incidents
+2. If a business unit is mentioned, focus on that unit's data
+3. Provide clear, numerical insights
+4. Only include charts when explicitly requested
 
-Response Format:
-Always return a JSON object with:
+Example Response for "Show incidents by severity":
 {
-  "message": "Your clear, direct answer with specific numbers and insights",
-  "chart": null  // Only include chart data if explicitly requested or highly relevant
-}
-
-Example responses:
-Q: "How many open incidents do we have for Gold Coast project?"
-A: {
-  "message": "The Gold Coast Highway Upgrade project currently has 3 open incidents."
-}
-
-Q: "Show me a pie chart of incident types"
-A: {
-  "message": "Here's a breakdown of incident types across all projects.",
-  "chart": { type: "pie", data: {...} }
+  "message": "Here's the breakdown of incidents by severity:\\n- Critical: ${severityStats.critical} (${severityPercentages.critical}%)\\n- High: ${severityStats.high} (${severityPercentages.high}%)\\n- Medium: ${severityStats.medium} (${severityPercentages.medium}%)\\n- Low: ${severityStats.low} (${severityPercentages.low}%)\\n\\nTotal: ${total} incidents"
 }`
         },
         {
@@ -185,20 +168,30 @@ A: {
 
     const parsedResponse = JSON.parse(content);
 
-    // Only auto-generate chart if not provided AND explicitly requested
-    if (!parsedResponse.chart && (
-      message.toLowerCase().includes('chart') || 
-      message.toLowerCase().includes('graph') ||
-      message.toLowerCase().includes('visualize') ||
-      message.toLowerCase().includes('show me')
-    )) {
-      parsedResponse.chart = generateAppropriateChart(message, analysisContext);
+    // Add chart for visualization requests
+    if (!parsedResponse.chart && 
+        (message.toLowerCase().includes('chart') || 
+         message.toLowerCase().includes('graph') ||
+         message.toLowerCase().includes('show me'))) {
+      parsedResponse.chart = {
+        type: 'pie',
+        data: {
+          labels: Object.keys(severityStats),
+          datasets: [{
+            data: Object.values(severityStats),
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
+          }]
+        }
+      };
     }
 
     return parsedResponse;
   } catch (error: any) {
     console.error("Error getting chat response:", error);
-    throw new Error(`Failed to process chat message: ${error.message}`);
+    return {
+      message: "I apologize, but I encountered an error analyzing the incident data. Please try rephrasing your question.",
+      chart: null
+    };
   }
 }
 

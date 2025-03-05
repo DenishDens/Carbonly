@@ -2,6 +2,15 @@ import { pgTable, text, uuid, decimal, timestamp, jsonb, boolean } from "drizzle
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+export const UserRole = {
+  ADMIN: 'admin',
+  BUSINESS_UNIT_MANAGER: 'business_unit_manager',
+  TEAM_MEMBER: 'team_member',
+  AUDITOR: 'auditor'
+} as const;
+
+export type UserRoleType = typeof UserRole[keyof typeof UserRole];
+
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -19,7 +28,9 @@ export const users = pgTable("users", {
   lastName: text("last_name").notNull(),
   email: text("email").notNull(),
   password: text("password"), // Optional for SSO users
-  role: text("role").notNull(), // 'super_admin', 'admin', 'user'
+  role: text("role", { enum: Object.values(UserRole) }).notNull(),
+  businessUnitId: uuid("business_unit_id").references(() => businessUnits.id), // For Business Unit Manager role
+  teamId: uuid("team_id").references(() => teams.id), // For Team Member role
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -304,6 +315,22 @@ export const updateIncidentSchema = insertIncidentSchema
   })
   .partial();
 
+export const insertUserSchema = createInsertSchema(users)
+  .pick({
+    firstName: true,
+    lastName: true,
+    email: true,
+    password: true,
+    role: true,
+    businessUnitId: true,
+    teamId: true,
+  })
+  .extend({
+    role: z.enum(Object.values(UserRole)),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    email: z.string().email("Invalid email address"),
+  });
+
 export type InsertTeam = z.infer<typeof insertTeamSchema>;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 export type InsertBusinessUnit = z.infer<typeof insertBusinessUnitSchema>;
@@ -311,6 +338,7 @@ export type InsertEmission = z.infer<typeof insertEmissionSchema>;
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
 export type UpdateBusinessUnit = z.infer<typeof updateBusinessUnitSchema>;
+export type InsertUser = z.infer<typeof insertUserSchema>;
 
 export interface FuelData {
   businessUnitId: string;
