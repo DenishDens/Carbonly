@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Card,
   CardContent,
@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/card";
 import { CreateIncidentDialog } from "./create-incident";
 import { Button } from "@/components/ui/button";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import type { Incident, BusinessUnit } from "@shared/schema";
 import { DashboardLayout } from "@/components/dashboard-layout";
 import {
@@ -29,7 +29,6 @@ import {
 
 export default function IncidentsPage() {
   const [showNewIncident, setShowNewIncident] = useState(false);
-  const [selectedBusinessUnit, setSelectedBusinessUnit] = useState<string>("");
 
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
@@ -158,7 +157,6 @@ export default function IncidentsPage() {
         <CreateIncidentDialog 
           open={showNewIncident} 
           onOpenChange={setShowNewIncident}
-          businessUnitId={selectedBusinessUnit}
         />
       </div>
     </DashboardLayout>

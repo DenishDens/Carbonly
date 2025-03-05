@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertIncidentSchema } from "@shared/schema";
@@ -34,11 +34,9 @@ import {
 export function CreateIncidentDialog({
   open,
   onOpenChange,
-  businessUnitId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  businessUnitId: string;
 }) {
   const { toast } = useToast();
 
@@ -47,10 +45,14 @@ export function CreateIncidentDialog({
   const defaultDate = now.toISOString().split('T')[0];
   const defaultTime = now.toTimeString().split(' ')[0].slice(0, 5); // HH:mm format
 
+  // Get business units
+  const { data: businessUnits } = useQuery({
+    queryKey: ["/api/business-units"],
+  });
+
   const form = useForm({
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
-      businessUnitId,
       title: "",
       description: "",
       severity: "medium",
@@ -98,6 +100,31 @@ export function CreateIncidentDialog({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit((data) => createIncident.mutate(data))} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="businessUnitId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Business Unit</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select business unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {businessUnits?.map((unit) => (
+                        <SelectItem key={unit.id} value={unit.id}>
+                          {unit.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <FormField
               control={form.control}
               name="title"
