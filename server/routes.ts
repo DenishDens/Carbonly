@@ -712,7 +712,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Add UOM suggestion endpoint
+  // Add UOM suggestion endpoint with enhanced prompt for biodiesel and other materials
   app.get("/api/materials/suggest-uom", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -722,22 +722,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Material name is required" });
       }
 
-      // Get suggestion from OpenAI
+      // Pre-analyze common materials for faster response
+      const materialName = (name as string).toLowerCase();
+      let suggestedUom = "";
+      
+      // Fast-path for common materials without calling AI
+      if (materialName.includes('diesel') || materialName.includes('fuel') || 
+          materialName.includes('gasoline') || materialName.includes('petrol') || 
+          materialName.includes('oil') || materialName.includes('b10') || 
+          materialName.includes('b20')) {
+        suggestedUom = "liters";
+      } else if (materialName.includes('electricity') || materialName.includes('energy')) {
+        suggestedUom = "kwh";
+      } else if (materialName.includes('waste') && (
+                 materialName.includes('solid') || materialName.includes('mixed'))) {
+        suggestedUom = "metric_tons";
+      }
+
+      // If fast-path found a match, return it immediately
+      if (suggestedUom) {
+        console.log(`Fast-tracked UOM suggestion for ${name}: ${suggestedUom}`);
+        return res.json({ uom: suggestedUom });
+      }
+
+      // Otherwise get suggestion from OpenAI with enhanced prompt
       const response = await getChatResponse(
         `Based on the material name "${name}", suggest the most appropriate unit of measure (UOM).
-        Common UOMs include:
-        - liters, gallons, cubic_meters (for liquids/gases)
-        - metric_tons, kg, lbs (for mass)
-        - kwh, mwh (for energy)
-        - square_meters, square_feet (for area)
-        - person_days (for labor)
+
+For fuels and biodiesel (like B10, B20, etc.), use "liters" as the standard UOM.
+
+Common UOMs for materials include:
+- liters, gallons, cubic_meters (for liquids/gases)
+- metric_tons, kg, lbs (for mass)
+- kwh, mwh (for energy)
+- square_meters, square_feet (for area)
+- person_days (for labor)
         
-        Respond with a valid JSON object in this format: {"message": "uom_value_only"}, where uom_value_only is one of the common UOMs listed above.`,
+Respond with a valid JSON object in this format: {"message": "uom_value_only"}, where uom_value_only is one of the common UOMs listed above.`,
         { organizationId: req.user.organizationId }
       );
 
       // Extract the UOM from the response
-      const suggestedUom = response.message.trim();
+      suggestedUom = response.message.trim();
+      console.log(`AI suggested UOM for ${name}: ${suggestedUom}`);
       
       res.json({ uom: suggestedUom });
     } catch (error) {

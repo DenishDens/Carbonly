@@ -130,6 +130,77 @@ export default function OrganizationSettings() {
     },
   });
 
+  // Get UOM suggestion when name changes
+  const getUomSuggestion = useMutation({
+    mutationFn: async ({ name }: { name: string }) => {
+      const res = await apiRequest(
+        "GET",
+        `/api/materials/suggest-uom?name=${encodeURIComponent(name)}`
+      );
+      if (!res.ok) {
+        throw new Error("Failed to get UOM suggestion");
+      }
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setNewMaterial(prev => ({
+        ...prev,
+        uom: data.uom,
+      }));
+      toast({
+        title: "AI Suggestion",
+        description: "Unit of measure updated based on AI suggestion",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to get UOM suggestion",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-suggest category based on name
+  const suggestCategory = (name: string) => {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('diesel') || lowerName.includes('gasoline') || 
+        lowerName.includes('petrol') || lowerName.includes('oil') || 
+        lowerName.includes('b10') || lowerName.includes('b20')) {
+      return "Fuel";
+    } else if (lowerName.includes('electricity') || lowerName.includes('energy') ||
+              lowerName.includes('power') || lowerName.includes('kwh')) {
+      return "Energy";
+    } else if (lowerName.includes('waste') || lowerName.includes('garbage') ||
+              lowerName.includes('sewage')) {
+      return "Waste";
+    } else {
+      return "Raw Material";
+    }
+  };
+
+  // Suggest UOM when name changes
+  useEffect(() => {
+    if (newMaterial.name && newMaterial.name.length > 2) {
+      // Suggest category immediately
+      const suggestedCategory = suggestCategory(newMaterial.name);
+      setNewMaterial(prev => ({
+        ...prev,
+        category: suggestedCategory,
+      }));
+      
+      // Get UOM suggestion from AI
+      const timeoutId = setTimeout(() => {
+        getUomSuggestion.mutate({
+          name: newMaterial.name,
+        });
+      }, 600); // Shorter debounce for better UX
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [newMaterial.name]);
+
+  // Get emission factor when both name and UOM are available
   useEffect(() => {
     if (newMaterial.name && newMaterial.uom) {
       const timeoutId = setTimeout(() => {

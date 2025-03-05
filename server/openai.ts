@@ -78,12 +78,31 @@ export async function getChatResponse(message: string, context: {
     console.timeEnd('calculateMetrics');
     console.time('openaiCall');
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: `You are an incident management assistant. Analyze and respond to queries about incident data.
+    // Determine if this is a material suggestion request
+    const isMaterialRequest = message.toLowerCase().includes('material') && 
+                              (message.toLowerCase().includes('uom') || 
+                               message.toLowerCase().includes('emission factor'));
+
+    // Use the appropriate system message based on request type
+    const systemMessage = isMaterialRequest ? 
+      `You are an ESG data assistant specializing in material categorization, units of measure, and emission factors.
+
+For emission factor requests, use the following guidelines:
+- Diesel: ~2.68 kgCO₂e per liter
+- Biodiesel B10 (10% bio): ~2.41 kgCO₂e per liter
+- Biodiesel B20 (20% bio): ~2.14 kgCO₂e per liter
+- Biodiesel B100 (100% bio): ~0.17 kgCO₂e per liter
+- Electricity: varies by region, but typically ~0.42 kgCO₂e per kWh
+- Natural Gas: ~2.03 kgCO₂e per cubic meter
+
+For UOM suggestions, use:
+- Liquid fuels: liters
+- Energy: kWh
+- Solid waste: metric_tons
+- Raw materials: kg or metric_tons
+
+Respond only with the exact numeric value or unit name, no explanations.` :
+      `You are an incident management assistant. Analyze and respond to queries about incident data.
 
 Current Data Context (Last 30 Days):
 ${JSON.stringify(metrics, null, 2)}
@@ -104,7 +123,14 @@ Response Format (must be valid JSON):
     "data": {...},
     "options": {...}
   }
-}`
+}`;
+
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content: systemMessage
         },
         {
           role: "user",
