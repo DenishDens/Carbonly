@@ -3,8 +3,8 @@ import { db } from "./db";
 import { eq, desc, and, sql } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents, incidentTypes } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident, IncidentType } from "@shared/schema";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents, incidentTypes, invitations } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident, IncidentType, Invitation } from "@shared/schema";
 import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
@@ -66,6 +66,12 @@ export interface IStorage {
   getIncidentTypes(organizationId: string): Promise<IncidentType[]>;
   createIncidentType(type: Omit<IncidentType, "id" | "createdAt">): Promise<IncidentType>;
   updateIncidentType(type: IncidentType): Promise<IncidentType>;
+
+  // Invitation operations
+  createInvitation(invitation: Omit<Invitation, "id" | "status" | "token" | "expiresAt" | "createdAt">): Promise<Invitation>;
+  getInvitationByToken(token: string): Promise<Invitation | undefined>;
+  getInvitationsByOrganization(organizationId: string): Promise<Invitation[]>;
+  updateInvitationStatus(id: string, status: string): Promise<Invitation>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -344,6 +350,50 @@ export class DatabaseStorage implements IStorage {
       .where(eq(incidentTypes.id, type.id))
       .returning();
     return updatedType;
+  }
+
+  async createInvitation(invitation: Omit<Invitation, "id" | "status" | "token" | "expiresAt" | "createdAt">): Promise<Invitation> {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7); // Expire after 7 days
+
+    const [newInvitation] = await db
+      .insert(invitations)
+      .values({
+        ...invitation,
+        token,
+        status: 'pending',
+        expiresAt,
+        createdAt: new Date(),
+      })
+      .returning();
+
+    return newInvitation;
+  }
+
+  async getInvitationByToken(token: string): Promise<Invitation | undefined> {
+    const [invitation] = await db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.token, token));
+    return invitation;
+  }
+
+  async getInvitationsByOrganization(organizationId: string): Promise<Invitation[]> {
+    return db
+      .select()
+      .from(invitations)
+      .where(eq(invitations.organizationId, organizationId))
+      .orderBy(desc(invitations.createdAt));
+  }
+
+  async updateInvitationStatus(id: string, status: string): Promise<Invitation> {
+    const [updatedInvitation] = await db
+      .update(invitations)
+      .set({ status })
+      .where(eq(invitations.id, id))
+      .returning();
+    return updatedInvitation;
   }
 }
 

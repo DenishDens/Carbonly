@@ -22,11 +22,11 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Upload, Key, Plus, Filter, ChevronDown, ChevronUp, Search, AlertTriangle, Save } from "lucide-react"; // Consolidated imports
+import { Building2, Upload, Key, Plus, Filter, ChevronDown, ChevronUp, Search, AlertTriangle, Save, Mail, UserPlus } from "lucide-react";
 import { SiXero } from "react-icons/si";
 import { FaMicrosoft } from "react-icons/fa";
 import { cn } from "@/lib/utils";
-import type { Organization, IncidentType } from "@shared/schema";
+import type { Organization, IncidentType, InsertInvitation } from "@shared/schema";
 import { IntegrationWizard } from "@/components/integration-wizard/integration-wizard";
 import { IntegratedDataView } from "@/components/integrated-data-view";
 import {
@@ -42,14 +42,21 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type InsertIncidentType = {
   name: string;
   description: string;
   active: boolean;
   organizationId: string;
-}
+};
 
 export default function OrganizationSettings() {
   const { user } = useAuth();
@@ -101,7 +108,7 @@ export default function OrganizationSettings() {
 
   const { data: organization } = useQuery<Organization>({
     queryKey: ["/api/organization"],
-    enabled: user?.role === "super_admin" || user?.role === "admin", //Added admin check
+    enabled: user?.role === "super_admin" || user?.role === "admin",
   });
 
   const updateSlugMutation = useMutation({
@@ -177,7 +184,6 @@ export default function OrganizationSettings() {
 
   const manageIncidentTypesMutation = useMutation({
     mutationFn: async (types: InsertIncidentType[]) => {
-      // Filter out empty types before sending
       const validTypes = types.filter(type => type.name.trim() !== "").map(type => ({
         ...type,
         organizationId: user?.organizationId!,
@@ -211,11 +217,11 @@ export default function OrganizationSettings() {
   useEffect(() => {
     if (!isLoadingTypes) {
       if (!existingIncidentTypes?.length) {
-        setIncidentTypes([{ 
-          name: "", 
-          description: "", 
+        setIncidentTypes([{
+          name: "",
+          description: "",
           active: true,
-          organizationId: user?.organizationId! 
+          organizationId: user?.organizationId!
         }]);
       } else {
         setIncidentTypes(
@@ -261,6 +267,42 @@ export default function OrganizationSettings() {
     );
   }
 
+  // Add new state for invitations form
+  const [invitationForm, setInvitationForm] = useState({
+    email: "",
+    role: "team_member" as const,
+  });
+
+  // Add the invitation mutation
+  const sendInvitationMutation = useMutation({
+    mutationFn: async (invitation: InsertInvitation) => {
+      const res = await apiRequest("POST", "/api/invitations", invitation);
+      if (!res.ok) {
+        throw new Error("Failed to send invitation");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invitations"] });
+      toast({ title: "Invitation sent successfully" });
+      setInvitationForm({ email: "", role: "team_member" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to send invitation",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Get existing invitations
+  const { data: invitations } = useQuery({
+    queryKey: ["/api/invitations"],
+    enabled: !!user?.organizationId,
+  });
+
+
   return (
     <DashboardLayout>
       <div className="space-y-6">
@@ -273,6 +315,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="sso">SSO</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="incidents">Incident Types</TabsTrigger>
+            <TabsTrigger value="team">Team Invitations</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
@@ -716,6 +759,106 @@ export default function OrganizationSettings() {
                   <Save className="h-4 w-4 mr-2" />
                   Save Incident Types
                 </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="team">
+            <Card>
+              <CardHeader>
+                <CardTitle>Team Invitations</CardTitle>
+                <CardDescription>
+                  Invite and manage team members for your organization
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={invitationForm.email}
+                        onChange={(e) => setInvitationForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="teammate@example.com"
+                      />
+                    </div>
+                    <div className="w-48">
+                      <Label htmlFor="role">Role</Label>
+                      <Select
+                        value={invitationForm.role}
+                        onValueChange={(role) => setInvitationForm(prev => ({ ...prev, role: role as any }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="team_member">Team Member</SelectItem>
+                          <SelectItem value="business_unit_manager">Business Unit Manager</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="auditor">Auditor</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        onClick={() => {
+                          if (!user?.organizationId) return;
+                          sendInvitationMutation.mutate({
+                            email: invitationForm.email,
+                            role: invitationForm.role,
+                            organizationId: user.organizationId,
+                          });
+                        }}
+                        disabled={sendInvitationMutation.isPending || !invitationForm.email}
+                      >
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Send Invitation
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Role</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Sent At</TableHead>
+                          <TableHead>Expires</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {invitations?.map((invitation) => (
+                          <TableRow key={invitation.id}>
+                            <TableCell>{invitation.email}</TableCell>
+                            <TableCell className="capitalize">
+                              {invitation.role.replace(/_/g, " ")}
+                            </TableCell>
+                            <TableCell className="capitalize">
+                              {invitation.status}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(invitation.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(invitation.expiresAt).toLocaleDateString()}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {!invitations?.length && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center text-muted-foreground">
+                              No invitations sent yet
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -21,6 +21,17 @@ export const organizations = pgTable("organizations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const invitations = pgTable("invitations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  email: text("email").notNull(),
+  role: text("role", { enum: Object.values(UserRole) }).notNull(),
+  status: text("status").notNull().default('pending'), // pending, accepted, expired
+  token: text("token").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id),
@@ -173,6 +184,7 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
 export type Incident = typeof incidents.$inferSelect;
 export type IncidentType = typeof incidentTypes.$inferSelect;
+export type Invitation = typeof invitations.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
 
 // Add at the appropriate location in the schema
@@ -351,6 +363,18 @@ export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type UpdateIncident = z.infer<typeof updateIncidentSchema>;
 export type UpdateBusinessUnit = z.infer<typeof updateBusinessUnitSchema>;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export const insertInvitationSchema = createInsertSchema(invitations)
+  .pick({
+    email: true,
+    role: true,
+    organizationId: true,
+  })
+  .extend({
+    role: z.enum(Object.values(UserRole)),
+    email: z.string().email("Invalid email address"),
+  });
+
+export type InsertInvitation = z.infer<typeof insertInvitationSchema>;
 
 // Add these lines after the existing incident schema
 export const updateIncidentStatusSchema = z.object({
@@ -379,4 +403,4 @@ export type EmissionDetails = {
   category?: string;
 };
 
-export type { InsertIncidentType };
+export type { InsertIncidentType, InsertInvitation };
