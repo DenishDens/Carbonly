@@ -83,7 +83,7 @@ export function ChatInterface() {
   });
 
   // Get chat messages from React Query cache
-  const { data: messages = [], refetch: refetchMessages } = useQuery<Message[]>({
+  const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/chat/messages"],
     enabled: isOpen,
     initialData: [],
@@ -237,11 +237,17 @@ export function ChatInterface() {
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
+                  <DropdownMenuContent 
+                    align="end" 
+                    className="w-[300px] z-[100]"
+                    sideOffset={5}
+                  >
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
-                        onSelect={() => handlePromptSelect(prompt)}
+                        onClick={() => {
+                          handlePromptSelect(prompt);
+                        }}
                       >
                         {prompt}
                       </DropdownMenuItem>
@@ -251,24 +257,6 @@ export function ChatInterface() {
                 <Button type="submit" disabled={chatMutation.isPending}>
                   Send
                 </Button>
-                {/* Predictions dropdown */}
-                {showPredictions && predictions.length > 0 && (
-                  <div className="absolute top-full left-0 right-16 mt-1 bg-popover border rounded-md shadow-lg">
-                    {predictions.map((prediction, index) => (
-                      <button
-                        key={index}
-                        className="w-full text-left px-3 py-2 hover:bg-muted"
-                        onClick={() => {
-                          setInput(prediction);
-                          setShowPredictions(false);
-                          handlePromptSelect(prediction);
-                        }}
-                      >
-                        {prediction}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
             </form>
           </CardContent>
