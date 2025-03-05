@@ -47,31 +47,20 @@ ChartJS.register(
   Legend
 );
 
-// Smart prompts focused on environmental engineering and incident analysis
+// Update the SMART_PROMPTS to focus on incident-related queries
 const SMART_PROMPTS = [
-  "Show me critical incidents",
-  "How many open incidents do we have?",
-  "What's the most common incident type?",
-  "Show incidents by severity",
-  "Which business unit has the most incidents?",
-  "Show me a pie chart by incident types",
-  "What's our incident resolution rate?",
-  // Environmental engineering specific prompts
-  "Show me Scope 1 emissions trend",
-  "Compare emissions across business units",
-  "What's our biggest emission source?",
-  "Calculate emission intensity per unit",
-  "Show water usage patterns",
-  "Analyze waste management metrics",
-  "Compare energy efficiency across sites",
-  "Show air quality compliance status",
-  "Predict monthly emission trends",
+  "Show me critical incidents from the last 30 days",
+  "What's our current incident resolution rate?",
+  "Show me incidents by severity",
+  "Which business unit has the most critical incidents?",
+  "What's our average resolution time?",
+  "Show open vs resolved incidents",
+  "Show me incident trends",
   // Natural language queries
-  "How are we doing with environmental incidents this month?",
+  "How are we handling incidents this month?",
   "Which areas need immediate attention?",
-  "What's the status of our emission reduction efforts?",
-  "Are there any concerning trends in our data?",
-  "Give me a summary of recent environmental impacts"
+  "Are there any concerning patterns in our incidents?",
+  "Give me a summary of recent incidents"
 ];
 
 interface Message {
@@ -89,6 +78,8 @@ export function ChatInterface() {
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Get user's accessible business units
   const { data: businessUnits } = useQuery({
@@ -105,18 +96,29 @@ export function ChatInterface() {
 
   const chatMutation = useMutation({
     mutationFn: async (message: string) => {
-      const res = await apiRequest("POST", "/api/chat", {
-        message,
-        businessUnits: businessUnits?.map(unit => ({
-          id: unit.id,
-          name: unit.name
-        })) || [],
-        context: {
-          userRole: user?.role,
-          organizationId: user?.organizationId
+      setError(null);
+      setIsProcessing(true);
+      try {
+        const res = await apiRequest("POST", "/api/chat", {
+          message,
+          context: {
+            userRole: user?.role,
+            organizationId: user?.organizationId
+          }
+        });
+
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || 'Failed to get response from chat service');
         }
-      });
-      return res.json();
+
+        return res.json();
+      } catch (err) {
+        console.error('Chat error:', err);
+        throw err;
+      } finally {
+        setIsProcessing(false);
+      }
     },
     onSuccess: (response) => {
       const newMessages = [
@@ -131,7 +133,8 @@ export function ChatInterface() {
       queryClient.setQueryData(["/api/chat/messages"], newMessages);
       setInput("");
     },
-    onError: (error) => {
+    onError: (error: Error) => {
+      setError(error.message || "Failed to process your request. Please try again.");
       const errorMessage = { 
         role: "assistant", 
         content: "I'm sorry, I encountered an error processing your request. Please try again." 
@@ -159,7 +162,7 @@ export function ChatInterface() {
     if (!isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze environmental data and incidents. Try asking about incident trends, emission patterns, or use one of the suggested prompts below.`
+        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze incident data from the last 30 days. Try asking about incident trends or use one of the suggested prompts below.`
       };
       queryClient.setQueryData(["/api/chat/messages"], [greeting]);
     }
@@ -193,21 +196,19 @@ export function ChatInterface() {
 
   return (
     <div className="fixed bottom-6 right-6 z-[999]">
-      {!isOpen && (
+      {!isOpen ? (
         <Button
           onClick={handleOpen}
           className="rounded-full h-12 w-12 p-0 shadow-lg"
         >
           <MessageSquare className="h-6 w-6" />
         </Button>
-      )}
-
-      {isOpen && (
+      ) : (
         <Card className="w-[400px] shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>AI Assistant</CardTitle>
-              <CardDescription>Ask about your environmental data</CardDescription>
+              <CardDescription>Ask about incident data</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -233,37 +234,37 @@ export function ChatInterface() {
                   {message.chart && renderChart(message.chart)}
                 </div>
               ))}
-              {chatMutation.isPending && (
+              {(chatMutation.isPending || isProcessing) && (
                 <div className="flex items-center gap-2 text-muted-foreground mr-8 mb-4 p-4 rounded-lg bg-muted">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Thinking...
+                  Processing...
+                </div>
+              )}
+              {error && (
+                <div className="text-destructive mr-8 mb-4 p-4 rounded-lg bg-destructive/10">
+                  {error}
                 </div>
               )}
             </ScrollArea>
             <form onSubmit={handleSubmit} className="mt-4">
-              <div className="flex gap-2 relative">
+              <div className="flex gap-2">
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about your data..."
-                  disabled={chatMutation.isPending}
+                  placeholder="Ask about incidents..."
+                  disabled={chatMutation.isPending || isProcessing}
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button 
                       variant="outline" 
                       size="icon"
-                      disabled={chatMutation.isPending}
+                      disabled={chatMutation.isPending || isProcessing}
                     >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent 
-                    align="end" 
-                    className="w-[300px]"
-                    style={{ zIndex: 9999 }}
-                    sideOffset={5}
-                  >
+                  <DropdownMenuContent align="end" className="w-[300px]">
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
@@ -276,13 +277,11 @@ export function ChatInterface() {
                 </DropdownMenu>
                 <Button 
                   type="submit" 
-                  disabled={chatMutation.isPending}
+                  disabled={chatMutation.isPending || isProcessing}
                 >
-                  {chatMutation.isPending ? (
+                  {chatMutation.isPending || isProcessing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Send'
-                  )}
+                  ) : 'Send'}
                 </Button>
               </div>
             </form>
