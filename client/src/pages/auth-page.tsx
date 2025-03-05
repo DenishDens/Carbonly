@@ -94,7 +94,7 @@ function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const form = useForm({
     defaultValues: {
-      username: "",
+      email: "",
       password: "",
     },
   });
@@ -136,12 +136,12 @@ function LoginForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="username">Email</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="username"
+          id="email"
           type="email"
           placeholder="name@company.com"
-          {...form.register("username")}
+          {...form.register("email")}
         />
       </div>
       <div className="space-y-2">
