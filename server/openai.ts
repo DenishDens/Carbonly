@@ -50,10 +50,11 @@ export async function getChatResponse(message: string, context: {
     console.time('totalProcessing');
     console.time('getData');
 
-    // Fetch data concurrently
-    const [incidents, businessUnits] = await Promise.all([
+    // Fetch data concurrently - now including materials
+    const [incidents, businessUnits, materials] = await Promise.all([
       storage.getIncidents(context.organizationId),
-      storage.getBusinessUnits(context.organizationId)
+      storage.getBusinessUnits(context.organizationId),
+      storage.getMaterials(context.organizationId)
     ]).catch(error => {
       console.error('Error fetching data:', error);
       throw new Error('Failed to fetch required data');
@@ -78,16 +79,29 @@ export async function getChatResponse(message: string, context: {
     console.timeEnd('calculateMetrics');
     console.time('openaiCall');
 
-    // Determine if this is a material suggestion request
-    const isMaterialRequest = message.toLowerCase().includes('material') && 
-                              (message.toLowerCase().includes('uom') || 
-                               message.toLowerCase().includes('emission factor'));
+    // Detect the type of query
+    const isMaterialRequest = message.toLowerCase().includes('material') || 
+                             message.toLowerCase().includes('emission factor') ||
+                             message.toLowerCase().includes('carbon') ||
+                             message.toLowerCase().includes('co2') ||
+                             message.toLowerCase().includes('emission');
 
     // Use the appropriate system message based on request type
     const systemMessage = isMaterialRequest ? 
-      `You are an ESG data assistant specializing in material categorization, units of measure, and emission factors.
+      `You are an ESG data assistant specializing in material categorization, units of measure, and emission factors for the Material Library.
 
-For emission factor requests, use the following guidelines:
+The organization's Material Library contains the following materials:
+${JSON.stringify(materials.map(m => ({
+  code: m.materialCode,
+  name: m.name,
+  category: m.category,
+  uom: m.uom,
+  emissionFactor: m.emissionFactor + " kgCO2e per " + m.uom,
+  source: m.source
+})), null, 2)}
+
+For natural language queries about materials, respond with information from the Material Library.
+If asked about materials not in the library, provide general emission factor guidelines like:
 - Diesel: ~2.68 kgCO₂e per liter
 - Biodiesel B10 (10% bio): ~2.41 kgCO₂e per liter
 - Biodiesel B20 (20% bio): ~2.14 kgCO₂e per liter
@@ -95,13 +109,21 @@ For emission factor requests, use the following guidelines:
 - Electricity: varies by region, but typically ~0.42 kgCO₂e per kWh
 - Natural Gas: ~2.03 kgCO₂e per cubic meter
 
-For UOM suggestions, use:
+For UOM suggestions:
 - Liquid fuels: liters
 - Energy: kWh
 - Solid waste: metric_tons
 - Raw materials: kg or metric_tons
 
-Respond only with the exact numeric value or unit name, no explanations.` :
+Response Format (must be valid JSON):
+{
+  "message": "Clear answer to the user's question about materials or emissions",
+  "chart": {
+    "type": "line|bar|pie", 
+    "data": {...},
+    "options": {...}
+  }
+}` :
       `You are an incident management assistant. Analyze and respond to queries about incident data.
 
 Current Data Context (Last 30 Days):

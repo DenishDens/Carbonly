@@ -63,6 +63,15 @@ const SMART_PROMPTS = [
   "Give me a summary of recent incidents"
 ];
 
+// Added Material Library prompts
+const MATERIAL_PROMPTS = [
+  "What is the tensile strength of steel?",
+  "What are the properties of aluminum alloy 6061?",
+  "Find materials suitable for high-temperature applications.",
+  "Compare the density of copper and gold.",
+  "What are the common uses of titanium?"
+];
+
 interface Message {
   role: "user" | "assistant";
   content: string;
@@ -162,7 +171,7 @@ export function ChatInterface() {
     if (!isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze incident data from the last 30 days. Try asking about incident trends or use one of the suggested prompts below.`
+        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze incident data from the last 30 days and query the Material Library. Try asking about incident trends or material properties, or use one of the suggested prompts below.`
       };
       queryClient.setQueryData(["/api/chat/messages"], [greeting]);
     }
@@ -208,7 +217,7 @@ export function ChatInterface() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>AI Assistant</CardTitle>
-              <CardDescription>Ask about incident data</CardDescription>
+              <CardDescription>Ask about incident data or Material Library</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -251,7 +260,7 @@ export function ChatInterface() {
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about incidents..."
+                  placeholder="Ask about incidents or materials..."
                   disabled={chatMutation.isPending || isProcessing}
                 />
                 <DropdownMenu>
@@ -268,6 +277,15 @@ export function ChatInterface() {
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
+                        onClick={() => handlePromptSelect(prompt)}
+                      >
+                        {prompt}
+                      </DropdownMenuItem>
+                    ))}
+                    <DropdownMenuItem className="divider" /> {/*Added a divider*/}
+                    {MATERIAL_PROMPTS.map((prompt, index) => (
+                      <DropdownMenuItem
+                        key={prompt + index}
                         onClick={() => handlePromptSelect(prompt)}
                       >
                         {prompt}
