@@ -8,6 +8,12 @@ import { insertUserSchema, User as SelectUser, InsertUser } from "@shared/schema
 import { getQueryFn, apiRequest, queryClient } from "../lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 
+type LoginData = {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+};
+
 type AuthContextType = {
   user: SelectUser | null;
   isLoading: boolean;
@@ -17,14 +23,8 @@ type AuthContextType = {
   registerMutation: UseMutationResult<SelectUser, Error, InsertUser>;
 };
 
-// Fix: Change type to use email instead of username
-type LoginData = {
-  email: string;
-  password: string;
-  rememberMe?: boolean;
-};
-
 export const AuthContext = createContext<AuthContextType | null>(null);
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
   const {
@@ -38,17 +38,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: LoginData) => {
+      console.log('Sending login request with:', credentials);
       const res = await apiRequest("POST", "/api/login", credentials);
       if (!res.ok) {
         const error = await res.json();
+        console.error('Login failed:', error);
         throw new Error(error.message || "Login failed");
       }
-      return await res.json();
+      const data = await res.json();
+      console.log('Login response:', data);
+      return data;
     },
     onSuccess: (user: SelectUser) => {
+      console.log('Login successful, updating user data:', user);
       queryClient.setQueryData(["/api/user"], user);
     },
     onError: (error: Error) => {
+      console.error('Login mutation error:', error);
       toast({
         title: "Login failed",
         description: error.message,

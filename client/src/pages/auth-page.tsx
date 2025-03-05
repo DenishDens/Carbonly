@@ -12,24 +12,108 @@ import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { z } from "zod";
 
-const ENVIRONMENTAL_FACTS = [
-  {
-    title: "Did You Know?",
-    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
-    image: "🌳",
-  },
-  {
-    title: "Green Energy Impact",
-    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
-    image: "💨",
-  },
-  {
-    title: "Ocean Facts",
-    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
-    image: "🌊",
-  },
-];
+// Define login schema
+const loginSchema = z.object({
+  email: z.string().email("Invalid email format"),
+  password: z.string().min(1, "Password is required"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
+function LoginForm() {
+  const { loginMutation } = useAuth();
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    console.log('Form data before submission:', data);
+    if (!data.email || !data.password) {
+      toast({
+        title: "Validation Error",
+        description: "Email and password are required",
+        variant: "destructive",
+      });
+      return;
+    }
+    loginMutation.mutate({ ...data, rememberMe });
+  });
+
+  if (showResetPassword) {
+    return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="name@company.com"
+          {...form.register("email")}
+        />
+        {form.formState.errors.email && (
+          <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+        )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          {...form.register("password")}
+        />
+        {form.formState.errors.password && (
+          <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
+        )}
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+            />
+            <label
+              htmlFor="remember"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Remember me
+            </label>
+          </div>
+          <Button
+            type="button"
+            variant="link"
+            className="text-sm"
+            onClick={() => setShowResetPassword(true)}
+          >
+            Forgot password?
+          </Button>
+        </div>
+      </div>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loginMutation.isPending}
+      >
+        {loginMutation.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        Sign In
+      </Button>
+    </form>
+  );
+}
 
 function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
@@ -83,83 +167,6 @@ function ResetPasswordForm({ onBack }: { onBack: () => void }) {
           Send Reset Link
         </Button>
       </div>
-    </form>
-  );
-}
-
-function LoginForm() {
-  const { loginMutation } = useAuth();
-  const [ssoLoading, setSSOLoading] = useState(false);
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const form = useForm({
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = form.handleSubmit((data) => {
-    console.log('Submitting login data:', data); 
-    loginMutation.mutate({ ...data, rememberMe });
-  });
-
-  if (showResetPassword) {
-    return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
-  }
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="name@company.com"
-          {...form.register("email", { required: true })}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          {...form.register("password", { required: true })}
-        />
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="remember"
-              checked={rememberMe}
-              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
-            />
-            <label
-              htmlFor="remember"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Remember me
-            </label>
-          </div>
-          <Button
-            type="button"
-            variant="link"
-            className="text-sm"
-            onClick={() => setShowResetPassword(true)}
-          >
-            Forgot password?
-          </Button>
-        </div>
-      </div>
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={loginMutation.isPending}
-      >
-        {loginMutation.isPending && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        )}
-        Sign In
-      </Button>
     </form>
   );
 }
@@ -240,6 +247,24 @@ export default function AuthPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
+
+  const ENVIRONMENTAL_FACTS = [
+    {
+      title: "Did You Know?",
+      fact: "A single tree can absorb up to 48 pounds of CO2 per year",
+      image: "🌳",
+    },
+    {
+      title: "Green Energy Impact",
+      fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
+      image: "💨",
+    },
+    {
+      title: "Ocean Facts",
+      fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
+      image: "🌊",
+    },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col">
