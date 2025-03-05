@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -41,229 +42,205 @@ export default function ProfilePage() {
         description: error.message,
         variant: "destructive",
       });
-    },
-  });
-
-  const resetPasswordMutation = useMutation({
-    mutationFn: async (data: { oldPassword: string; newPassword: string }) => {
-      const res = await apiRequest("POST", "/api/user/reset-password", data);
-      return res.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Password updated",
-        description: "Your password has been updated successfully.",
-      });
-      setIsChangingPassword(false);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Password update failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleProfilePictureChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setProfilePicture(file);
     }
   };
-
-  const handleProfileUpdate = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formElements = e.currentTarget.elements;
-    
-    // Extract form data as JSON instead of FormData
-    const data = {
-      firstName: (formElements.namedItem('firstName') as HTMLInputElement)?.value,
-      lastName: (formElements.namedItem('lastName') as HTMLInputElement)?.value,
-      email: (formElements.namedItem('email') as HTMLInputElement)?.value
-    };
-    
-    // Handle profile picture separately if needed
-    if (profilePicture) {
-      // Note: For file uploads, you would need a multipart/form-data approach
-      // This is simplified for now to fix the immediate JSON parsing issue
-      console.log("Profile picture will be handled separately");
-    }
-    
-    try {
-      await updateProfileMutation.mutateAsync(data);
-    } catch (error) {
-      console.error("Profile update error:", error);
-    }
-  };
-</old_str>
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    // Password reset implementation
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setProfilePicture(e.target.files[0]);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    resetPasswordMutation.mutate({
-      oldPassword: formData.get("oldPassword") as string,
-      newPassword: formData.get("newPassword") as string,
+    
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const email = formData.get('email') as string;
+
+    updateProfileMutation.mutate({
+      firstName,
+      lastName,
+      email
     });
   };
 
-  if (!user) return null;
+  if (!user) {
+    return null;
+  }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile Settings</CardTitle>
-          <CardDescription>
-            Manage your personal information and profile picture
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleProfileUpdate} className="space-y-6">
-            <div className="flex items-center space-x-4">
-              <Avatar className="h-20 w-20">
-                <AvatarImage
-                  src={
-                    profilePicture
-                      ? URL.createObjectURL(profilePicture)
-                      : user.profilePicture
-                  }
-                />
+    <div className="container mx-auto py-10">
+      <h1 className="text-3xl font-bold mb-8">Profile Settings</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Personal Information</CardTitle>
+              <CardDescription>
+                Update your personal details here.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName">First Name</Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      defaultValue={user.firstName || ""}
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      defaultValue={user.lastName || ""}
+                      required
+                    />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    defaultValue={user.email || ""}
+                    required
+                  />
+                </div>
+                
+                <Button type="submit" disabled={updateProfileMutation.isPending}>
+                  {updateProfileMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>Change Password</CardTitle>
+              <CardDescription>
+                Update your password to keep your account secure.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsChangingPassword(!isChangingPassword)}
+              >
+                {isChangingPassword ? "Cancel" : "Change Password"}
+              </Button>
+              
+              {isChangingPassword && (
+                <form onSubmit={handlePasswordReset} className="mt-6 space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="currentPassword">Current Password</Label>
+                    <Input
+                      id="currentPassword"
+                      name="currentPassword"
+                      type="password"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="newPassword">New Password</Label>
+                    <Input
+                      id="newPassword"
+                      name="newPassword"
+                      type="password"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                    <Input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      required
+                    />
+                  </div>
+                  
+                  <Button type="submit">Update Password</Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile Picture</CardTitle>
+              <CardDescription>
+                Upload a profile picture to personalize your account.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center">
+              <Avatar className="h-24 w-24 mb-4">
+                <AvatarImage src={user.avatarUrl || ""} />
                 <AvatarFallback>
-                  {user.firstName?.[0]?.toUpperCase() ||
-                    user.email?.[0]?.toUpperCase()}
+                  {user.firstName?.charAt(0) || ""}
+                  {user.lastName?.charAt(0) || ""}
                 </AvatarFallback>
               </Avatar>
-              <div>
-                <Label htmlFor="picture">Profile Picture</Label>
-                <Input
-                  id="picture"
+              
+              <label htmlFor="avatar-upload">
+                <div className="flex items-center gap-2 cursor-pointer">
+                  <Upload className="h-4 w-4" />
+                  <span>Upload new image</span>
+                </div>
+                <input
+                  id="avatar-upload"
                   type="file"
                   accept="image/*"
-                  onChange={handleProfilePictureChange}
-                  className="mt-2"
+                  className="hidden"
+                  onChange={handleAvatarChange}
                 />
-              </div>
-            </div>
-
-            <div className="grid gap-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName">First Name</Label>
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    defaultValue={user.firstName}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="lastName">Last Name</Label>
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    defaultValue={user.lastName}
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  defaultValue={user.email}
-                  disabled={user.ssoEnabled}
-                />
-                {user.ssoEnabled && (
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Email is managed by SSO
+              </label>
+              
+              {profilePicture && (
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Selected: {profilePicture.name}
                   </p>
-                )}
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              disabled={updateProfileMutation.isPending}
-              className="w-full"
-            >
-              {updateProfileMutation.isPending && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      // Handle profile picture upload
+                    }}
+                  >
+                    Upload
+                  </Button>
+                </div>
               )}
-              Save Changes
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      {!user.ssoEnabled && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Password</CardTitle>
-            <CardDescription>
-              Change your password or reset it if you've forgotten it
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isChangingPassword ? (
-              <form onSubmit={handlePasswordReset} className="space-y-4">
-                <div>
-                  <Label htmlFor="oldPassword">Current Password</Label>
-                  <Input
-                    id="oldPassword"
-                    name="oldPassword"
-                    type="password"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="newPassword">New Password</Label>
-                  <Input
-                    id="newPassword"
-                    name="newPassword"
-                    type="password"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    required
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsChangingPassword(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={resetPasswordMutation.isPending}
-                  >
-                    {resetPasswordMutation.isPending && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Update Password
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setIsChangingPassword(true)}
-              >
-                Change Password
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
