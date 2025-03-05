@@ -1,7 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import type { Incident } from "@shared/schema";
-import { AlertTriangle, CircleDot, Clock } from "lucide-react";
+import { AlertTriangle, CircleDot, Clock, Edit } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useLocation } from "wouter";
 import {
   Bar,
   BarChart,
@@ -12,6 +14,7 @@ import {
 } from "recharts";
 
 export function IncidentDashboard() {
+  const [_, setLocation] = useLocation();
   const { data: incidents } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
   });
@@ -88,6 +91,46 @@ export function IncidentDashboard() {
             </p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Incidents List */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold">Recent Incidents</h2>
+        <div className="grid gap-4">
+          {incidents?.map((incident) => (
+            <Card key={incident.id}>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle className="text-lg font-medium">{incident.title}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{incident.location}</p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setLocation(`/incidents/${incident.id}`)}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Status:</span>
+                    <span className="text-sm font-medium">{incident.status}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Severity:</span>
+                    <span className="text-sm font-medium">{incident.severity}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">Type:</span>
+                    <span className="text-sm font-medium">{incident.type}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <Card>
