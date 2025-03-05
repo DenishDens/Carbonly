@@ -29,19 +29,6 @@ const navItems = [
   { title: "Reports", href: "/reports", icon: <BarChart className="h-4 w-4" /> },
 ];
 
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
-
-  React.useEffect(() => {
-    if (!isAuthenticated) {
-      setLocation("/auth");
-    }
-  }, [isAuthenticated, setLocation]);
-
-  return isAuthenticated ? children : null;
-}
-
 function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col min-h-screen">
@@ -54,12 +41,25 @@ function AuthenticatedLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
+
+  React.useEffect(() => {
+    if (!isAuthenticated && window.location.pathname !== '/auth') {
+      setLocation('/auth');
+    }
+  }, [isAuthenticated, setLocation]);
+
+  if (!isAuthenticated && window.location.pathname !== '/auth') {
+    return null;
+  }
+
   return (
     <Switch>
       <Route path="/auth" component={AuthPage} />
-      <Route path="*">
-        {() => (
-          <ProtectedRoute>
+      {isAuthenticated && (
+        <Route path="*">
+          {() => (
             <AuthenticatedLayout>
               <Switch>
                 <Route path="/" component={Dashboard} />
@@ -80,9 +80,9 @@ function Router() {
                 <Route component={NotFound} />
               </Switch>
             </AuthenticatedLayout>
-          </ProtectedRoute>
-        )}
-      </Route>
+          )}
+        </Route>
+      )}
     </Switch>
   );
 }
