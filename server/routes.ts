@@ -610,9 +610,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     try {
       const { id } = req.params;
-      const incident = await storage.getIncidentById(id);
+      console.log("Fetching incident:", id); // Debug log
 
+      const incident = await storage.getIncidentById(id);
       if (!incident) {
+        console.log("Incident not found:", id); // Debug log
         return res.status(404).json({ message: "Incident not found" });
       }
 
@@ -620,9 +622,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const units = await storage.getBusinessUnits(req.user.organizationId);
       const hasAccess = units.some(unit => unit.id === incident.businessUnitId);
       if (!hasAccess) {
+        console.log("User does not have access to incident:", id); // Debug log
         return res.sendStatus(403);
       }
 
+      console.log("Successfully fetched incident:", incident); // Debug log
       res.json(incident);
     } catch (error) {
       console.error("Error fetching incident:", error);

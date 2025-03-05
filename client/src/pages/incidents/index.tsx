@@ -325,7 +325,9 @@ export default function IncidentsPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
                               console.log("Navigating to edit incident:", incident.id);
                               setLocation(`/incidents/${incident.id}/edit`);
                             }}

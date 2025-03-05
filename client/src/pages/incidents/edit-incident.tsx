@@ -33,8 +33,9 @@ export default function EditIncidentPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  console.log("Editing incident:", id); // Debug log
+  console.log("EditIncidentPage: Editing incident with ID:", id);
 
   // Get incident data
   const { data: incident, isLoading: isLoadingIncident } = useQuery({
@@ -65,7 +66,7 @@ export default function EditIncidentPage() {
   // Update form when incident data is loaded
   useEffect(() => {
     if (incident) {
-      console.log("Setting form values:", incident); // Debug log
+      console.log("Setting form values:", incident);
       form.reset({
         ...incident,
         incidentDate: new Date(incident.incidentDate).toISOString().slice(0, 16),
@@ -76,19 +77,24 @@ export default function EditIncidentPage() {
   const updateIncident = useMutation({
     mutationFn: async (data: any) => {
       if (!id) throw new Error("No incident ID provided");
-      console.log("Updating incident with data:", data); // Debug log
+      setIsSubmitting(true);
+      console.log("Updating incident:", id, "with data:", data);
 
-      const formattedData = {
-        ...data,
-        incidentDate: new Date(data.incidentDate).toISOString(),
-      };
+      try {
+        const formattedData = {
+          ...data,
+          incidentDate: new Date(data.incidentDate).toISOString(),
+        };
 
-      const res = await apiRequest("PATCH", `/api/incidents/${id}`, formattedData);
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.message || "Failed to update incident");
+        const res = await apiRequest("PATCH", `/api/incidents/${id}`, formattedData);
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.message || "Failed to update incident");
+        }
+        return res.json();
+      } finally {
+        setIsSubmitting(false);
       }
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
@@ -106,7 +112,7 @@ export default function EditIncidentPage() {
   });
 
   if (!id || !user?.organizationId) {
-    console.log("Missing required data, redirecting"); // Debug log
+    console.log("Missing required data, redirecting to incidents page");
     setLocation("/incidents");
     return null;
   }
@@ -121,7 +127,7 @@ export default function EditIncidentPage() {
     );
   }
 
-  console.log("Rendering edit form with data:", incident); // Debug log
+  console.log("Rendering edit form with data:", incident);
 
   return (
     <DashboardLayout>
@@ -266,16 +272,20 @@ export default function EditIncidentPage() {
             />
 
             <div className="flex gap-4 justify-end">
-              <Button variant="outline" onClick={() => setLocation("/incidents")}>
+              <Button 
+                variant="outline" 
+                onClick={() => setLocation("/incidents")}
+                type="button"
+              >
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                disabled={updateIncident.isPending}
+                disabled={isSubmitting || updateIncident.isPending}
               >
-                {updateIncident.isPending ? (
+                {(isSubmitting || updateIncident.isPending) && (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+                )}
                 Update Incident
               </Button>
             </div>
