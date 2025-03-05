@@ -12,97 +12,24 @@ import { useAuth } from "@/hooks/use-auth";
 import { Leaf, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
-import { z } from "zod";
 
-const loginSchema = z.object({
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-
-function LoginForm() {
-  const { loginMutation } = useAuth();
-  const [showResetPassword, setShowResetPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const { toast } = useToast();
-
-  const form = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const onSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const formData = form.getValues();
-    console.log('Attempting login with:', { email: formData.email, hasPassword: !!formData.password });
-
-    if (!formData.email || !formData.password) {
-      toast({
-        title: "Validation Error",
-        description: "Both email and password are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await loginMutation.mutateAsync({
-        email: formData.email,
-        password: formData.password,
-        rememberMe,
-      });
-    } catch (error) {
-      console.error('Login error:', error);
-      toast({
-        title: "Login Failed",
-        description: error instanceof Error ? error.message : "Invalid email or password",
-        variant: "destructive",
-      });
-    }
-  };
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="name@company.com"
-          {...form.register("email", { required: true })}
-        />
-        {form.formState.errors.email && (
-          <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
-        )}
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          {...form.register("password", { required: true })}
-        />
-        {form.formState.errors.password && (
-          <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
-        )}
-      </div>
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={loginMutation.isPending}
-      >
-        {loginMutation.isPending && (
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-        )}
-        Sign In
-      </Button>
-    </form>
-  );
-}
+const ENVIRONMENTAL_FACTS = [
+  {
+    title: "Did You Know?",
+    fact: "A single tree can absorb up to 48 pounds of CO2 per year",
+    image: "🌳",
+  },
+  {
+    title: "Green Energy Impact",
+    fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
+    image: "💨",
+  },
+  {
+    title: "Ocean Facts",
+    fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
+    image: "🌊",
+  },
+];
 
 function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   const { toast } = useToast();
@@ -160,9 +87,132 @@ function ResetPasswordForm({ onBack }: { onBack: () => void }) {
   );
 }
 
+function LoginForm() {
+  const { loginMutation } = useAuth();
+  const [ssoLoading, setSSOLoading] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
+  const form = useForm({
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = form.handleSubmit((data) => {
+    loginMutation.mutate({ ...data, rememberMe });
+  });
+
+  const handleSSOLogin = async () => {
+    try {
+      setSSOLoading(true);
+      const domain = window.location.hostname;
+      const response = await fetch(`/api/auth/sso`, {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ domain })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "SSO authentication failed");
+      }
+
+      // The SAML redirect will happen automatically
+    } catch (error) {
+      console.error("SSO login error:", error);
+    } finally {
+      setSSOLoading(false);
+    }
+  };
+
+  if (showResetPassword) {
+    return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
+  }
+
+  return (
+    <form onSubmit={onSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="username">Email</Label>
+        <Input
+          id="username"
+          type="email"
+          placeholder="name@company.com"
+          {...form.register("username")}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          {...form.register("password")}
+        />
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="remember"
+              checked={rememberMe}
+              onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+            />
+            <label
+              htmlFor="remember"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Remember me
+            </label>
+          </div>
+          <Button
+            type="button"
+            variant="link"
+            className="text-sm"
+            onClick={() => setShowResetPassword(true)}
+          >
+            Forgot password?
+          </Button>
+        </div>
+      </div>
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={loginMutation.isPending}
+      >
+        {loginMutation.isPending && (
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+        )}
+        Sign In
+      </Button>
+
+      <div className="relative my-6">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="bg-background px-2 text-muted-foreground">
+            Or continue with
+          </span>
+        </div>
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handleSSOLogin}
+        disabled={ssoLoading}
+      >
+        {ssoLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Sign in with SSO
+      </Button>
+    </form>
+  );
+}
+
 function RegisterForm() {
   const { registerMutation } = useAuth();
-  const { toast } = useToast();
   const form = useForm({
     resolver: zodResolver(insertOrganizationSchema),
     defaultValues: {
@@ -171,56 +221,28 @@ function RegisterForm() {
     },
   });
 
-  const onSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    const formData = form.getValues();
-    console.log('Registration form data:', formData);
-
-    if (!formData.email || !formData.password) {
-      toast({
-        title: "Validation Error",
-        description: "Both email and password are required",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await registerMutation.mutateAsync(formData);
-    } catch (error) {
-      console.error('Registration error:', error);
-      toast({
-        title: "Registration Failed",
-        description: error instanceof Error ? error.message : "Please try again",
-        variant: "destructive",
-      });
-    }
-  };
+  const onSubmit = form.handleSubmit((data) => {
+    registerMutation.mutate(data);
+  });
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="register-email">Email</Label>
+        <Label htmlFor="email">Email</Label>
         <Input
-          id="register-email"
+          id="email"
           type="email"
           placeholder="name@company.com"
-          {...form.register("email", { required: true })}
+          {...form.register("email")}
         />
-        {form.formState.errors.email && (
-          <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
-        )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="register-password">Password</Label>
+        <Label htmlFor="password">Password</Label>
         <Input
-          id="register-password"
+          id="password"
           type="password"
-          {...form.register("password", { required: true })}
+          {...form.register("password")}
         />
-        {form.formState.errors.password && (
-          <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
-        )}
         <p className="text-sm text-muted-foreground">
           At least 8 characters long
         </p>
@@ -265,24 +287,6 @@ export default function AuthPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  const ENVIRONMENTAL_FACTS = [
-    {
-      title: "Did You Know?",
-      fact: "A single tree can absorb up to 48 pounds of CO2 per year",
-      image: "🌳",
-    },
-    {
-      title: "Green Energy Impact",
-      fact: "Wind turbines can reduce carbon emissions by up to 3,000 tons annually",
-      image: "💨",
-    },
-    {
-      title: "Ocean Facts",
-      fact: "Oceans absorb about 30% of CO2 released in the atmosphere",
-      image: "🌊",
-    },
-  ];
 
   return (
     <div className="min-h-screen flex flex-col">

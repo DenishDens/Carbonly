@@ -25,7 +25,6 @@ import { Form, FormField, FormItem, FormLabel, FormMessage } from "@/components/
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useAuth } from "@/hooks/use-auth";
 
 const formSchema = z.object({
   businessUnitId: z.string().min(1, "Please select a business unit"),
@@ -36,7 +35,6 @@ type FormData = z.infer<typeof formSchema>;
 export default function Dashboard() {
   const { toast } = useToast();
   const [file, setFile] = useState<File>();
-  const { user } = useAuth();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -90,10 +88,7 @@ export default function Dashboard() {
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Welcome back, {user?.firstName || 'User'}</h1>
-        <p className="text-muted-foreground">
-          Monitor and manage your organization's carbon emissions
-        </p>
+        <h1 className="text-3xl font-bold">Dashboard</h1>
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>

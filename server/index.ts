@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes.js";
-import { setupVite, serveStatic, log } from "./vite.js";
+import { registerRoutes } from "./routes";
+import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 app.use(express.json());
@@ -85,11 +85,9 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    // Primary port is 3000 as per .replit configuration
-    let port = 3000;
-    const alternativePorts = [5000, 8080, 8000, 5173];
+    let port = 5000; // ALWAYS serve the app on port 5000
 
-    const startServer = (portToUse: number, fallbackPorts: number[] = []) => {
+    const startServer = (portToUse: number) => {
       server.listen({
         port: portToUse,
         host: "0.0.0.0",
@@ -97,23 +95,12 @@ app.use((req, res, next) => {
       }, () => {
         log(`Server started successfully, serving on port ${portToUse}`);
       }).on('error', (error: any) => {
-        if (error.code === 'EADDRINUSE') {
-          if (fallbackPorts.length > 0) {
-            const nextPort = fallbackPorts[0];
-            log(`Port ${portToUse} is in use, trying port ${nextPort}...`);
-            startServer(nextPort, fallbackPorts.slice(1));
-          } else {
-            log(`All ports are in use. Please free up one of these ports: ${port}, ${alternativePorts.join(', ')}`);
-            process.exit(1);
-          }
-        } else {
-          log(`Error starting server: ${error.message}`);
-          throw error;
-        }
+        log(`Error starting server: ${error.message}`);
+        throw error;
       });
     };
 
-    startServer(port, alternativePorts);
+    startServer(port);
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);
     console.error('Full error details:', error);

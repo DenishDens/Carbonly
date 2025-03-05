@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import { MainNav } from "@/components/main-nav";
 import { ChatInterface } from "@/components/chat-interface";
 import { useAuth } from "@/hooks/use-auth";
-import { LogOut, Leaf, Settings, User } from "lucide-react";
+import { LogOut, Menu, Leaf, Settings, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -18,6 +19,7 @@ import { Footer } from "@/components/footer";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, logoutMutation } = useAuth();
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -30,18 +32,30 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                 Carbonly.ai
               </h1>
             </a>
-            <MainNav />
+            <div className="hidden md:flex">
+              <MainNav />
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="md:hidden"
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
           <div className="flex flex-1 items-center justify-end space-x-2 md:space-x-4">
             <nav className="flex items-center space-x-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Avatar className="h-8 w-8 cursor-pointer">
-                    <AvatarImage src={user?.profilePicture} alt={user?.email} />
-                    <AvatarFallback>
-                      {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user?.profilePicture} alt={user?.email} />
+                      <AvatarFallback>
+                        {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuLabel>
@@ -76,6 +90,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
         </div>
+
+        {showMobileMenu && (
+          <div className="border-b md:hidden">
+            <div className="container py-3">
+              <MainNav className="flex flex-col space-y-2" />
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 container mx-auto px-3 md:px-4 py-4 md:py-8">

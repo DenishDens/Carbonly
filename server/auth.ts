@@ -4,8 +4,8 @@ import { Express } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
-import { storage } from "./storage.js";
-import { User as SelectUser, insertOrganizationSchema } from "@shared/schema.js";
+import { storage } from "./storage";
+import { User as SelectUser, insertOrganizationSchema } from "@shared/schema";
 
 declare global {
   namespace Express {
@@ -37,7 +37,6 @@ export function setupAuth(app: Express) {
     cookie: {
       secure: process.env.NODE_ENV === "production",
       sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
   };
 
@@ -47,35 +46,27 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy(
-      {
-        usernameField: "email",
-        passwordField: "password",
-      },
-      async (email, password, done) => {
-        try {
-          const user = await storage.getUserByEmail(email);
+    new LocalStrategy(async (username, password, done) => {
+      try {
+        const email = username;
+        const user = await storage.getUserByEmail(email);
 
-          if (!user) {
-            return done(null, false, { message: "Invalid email or password" });
-          }
-
-          if (!user.password || !(await comparePasswords(password, user.password))) {
-            return done(null, false, { message: "Invalid email or password" });
-          }
-
-          return done(null, user);
-        } catch (err) {
-          return done(err);
+        if (!user) {
+          return done(null, false, { message: "User not found" });
         }
+
+        if (user.password && !(await comparePasswords(password, user.password))) {
+          return done(null, false, { message: "Invalid password" });
+        }
+
+        return done(null, user);
+      } catch (err) {
+        return done(err);
       }
-    )
+    }),
   );
 
-  passport.serializeUser((user, done) => {
-    done(null, (user as SelectUser).id);
-  });
-
+  passport.serializeUser((user, done) => done(null, user.id));
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
@@ -83,40 +74,6 @@ export function setupAuth(app: Express) {
     } catch (err) {
       done(err);
     }
-  });
-
-  app.post("/api/login", (req, res, next) => {
-    console.log('Login request received:', { 
-      email: req.body.email,
-      hasPassword: !!req.body.password 
-    });
-
-    if (!req.body.email || !req.body.password) {
-      console.log('Missing credentials:', { 
-        hasEmail: !!req.body.email, 
-        hasPassword: !!req.body.password 
-      });
-      return res.status(400).json({ message: "Email and password are required" });
-    }
-
-    passport.authenticate("local", (err, user, info) => {
-      if (err) {
-        console.error('Authentication error:', err);
-        return next(err);
-      }
-      if (!user) {
-        console.log('Authentication failed:', info);
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-      req.login(user, (err) => {
-        if (err) {
-          console.error('Login error:', err);
-          return next(err);
-        }
-        console.log('Login successful for user:', user.email);
-        res.status(200).json(user);
-      });
-    })(req, res, next);
   });
 
   app.post("/api/register", async (req, res, next) => {
@@ -134,7 +91,6 @@ export function setupAuth(app: Express) {
         name: userData.email.split('@')[0], // Simple org name from email
         ssoEnabled: false,
         ssoSettings: null,
-        slug: userData.email.split('@')[0].toLowerCase(),
         createdAt: new Date(),
       });
 
@@ -156,6 +112,10 @@ export function setupAuth(app: Express) {
     } catch (error) {
       next(error);
     }
+  });
+
+  app.post("/api/login", passport.authenticate("local"), (req, res) => {
+    res.status(200).json(req.user);
   });
 
   app.post("/api/logout", (req, res, next) => {
