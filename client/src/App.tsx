@@ -29,21 +29,22 @@ const navItems = [
   { title: "Reports", href: "/reports", icon: <BarChart className="h-4 w-4" /> },
 ];
 
-function Router() {
+function AppContent() {
   const { isAuthenticated } = useAuth();
-  const [, setLocation] = useLocation();
+  const [location] = useLocation();
 
-  React.useEffect(() => {
-    if (!isAuthenticated && window.location.pathname !== '/auth') {
-      setLocation('/auth');
-    }
-  }, [isAuthenticated, setLocation]);
-
-  if (!isAuthenticated) {
-    return <Route path="/auth" component={AuthPage} />;
+  // If not authenticated and not on auth page, show auth page
+  if (!isAuthenticated && location !== '/auth') {
+    return <AuthPage />;
   }
 
-  return (
+  // If on auth page and authenticated, no need to show anything as useAuth will redirect
+  if (isAuthenticated && location === '/auth') {
+    return null;
+  }
+
+  // Show authenticated layout
+  return isAuthenticated ? (
     <div className="flex flex-col min-h-screen">
       <Navbar items={navItems} />
       <main className="flex-1 container py-6">
@@ -67,14 +68,14 @@ function Router() {
         </Switch>
       </main>
     </div>
-  );
+  ) : null;
 }
 
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router />
+        <AppContent />
         <Toaster />
       </AuthProvider>
     </QueryClientProvider>
