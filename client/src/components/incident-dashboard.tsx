@@ -100,9 +100,9 @@ export function IncidentDashboard() {
         </div>
         <div className="grid gap-4">
           {incidents?.map((incident) => (
-            <Card key={incident.id} className="relative">
+            <Card key={incident.id}>
               <CardHeader>
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-center">
                   <div>
                     <CardTitle className="text-lg font-medium">
                       {incident.title}
@@ -113,11 +113,10 @@ export function IncidentDashboard() {
                   </div>
                   <Button
                     variant="outline"
-                    size="sm"
-                    className="absolute top-4 right-4"
                     onClick={() => setLocation(`/incidents/${incident.id}`)}
+                    className="flex items-center gap-2"
                   >
-                    <Edit className="h-4 w-4 mr-1" />
+                    <Edit className="h-4 w-4" />
                     Edit
                   </Button>
                 </div>
