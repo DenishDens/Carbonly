@@ -47,23 +47,29 @@ export function setupAuth(app: Express) {
   app.use(passport.session());
 
   passport.use(
-    new LocalStrategy({ usernameField: 'email' }, async (email, password, done) => {
-      try {
-        const user = await storage.getUserByEmail(email);
+    new LocalStrategy(
+      {
+        usernameField: "email",
+        passwordField: "password",
+      },
+      async (email, password, done) => {
+        try {
+          const user = await storage.getUserByEmail(email);
 
-        if (!user) {
-          return done(null, false, { message: "User not found" });
+          if (!user) {
+            return done(null, false, { message: "Invalid email or password" });
+          }
+
+          if (!user.password || !(await comparePasswords(password, user.password))) {
+            return done(null, false, { message: "Invalid email or password" });
+          }
+
+          return done(null, user);
+        } catch (err) {
+          return done(err);
         }
-
-        if (!user.password || !(await comparePasswords(password, user.password))) {
-          return done(null, false, { message: "Invalid password" });
-        }
-
-        return done(null, user);
-      } catch (err) {
-        return done(err);
       }
-    }),
+    )
   );
 
   passport.serializeUser((user, done) => {
@@ -77,6 +83,23 @@ export function setupAuth(app: Express) {
     } catch (err) {
       done(err);
     }
+  });
+
+  app.post("/api/login", (req, res, next) => {
+    if (!req.body.email || !req.body.password) {
+      return res.status(400).json({ message: "Email and password are required" });
+    }
+
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: info?.message || "Authentication failed" });
+      }
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(200).json(user);
+      });
+    })(req, res, next);
   });
 
   app.post("/api/register", async (req, res, next) => {
@@ -116,19 +139,6 @@ export function setupAuth(app: Express) {
     } catch (error) {
       next(error);
     }
-  });
-
-  app.post("/api/login", (req, res, next) => {
-    passport.authenticate("local", (err, user, info) => {
-      if (err) return next(err);
-      if (!user) {
-        return res.status(401).json({ message: info?.message || "Authentication failed" });
-      }
-      req.login(user, (err) => {
-        if (err) return next(err);
-        res.status(200).json(user);
-      });
-    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
