@@ -1205,7 +1205,7 @@ export default function OrganizationSettings() {
                       </Select>
                     </div>
                     <div>
-                      <Label>Emission Factor (CO₂e/unit)</Label>
+                      <Label>Emission Factors (kgCO2e per unit)</Label>
                       <div className="flex gap-2">
                         <Input
                           type="number"
