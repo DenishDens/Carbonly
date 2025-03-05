@@ -96,7 +96,7 @@ Focus on:
 
 Provide specific numbers and suggest improvements.
 
-Response Format:
+Response Format (must be valid JSON):
 {
   "message": "Clear analysis with specific metrics",
   "chart": {

@@ -554,6 +554,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Add endpoint to update existing material
+  app.patch("/api/materials/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id } = req.params;
+      console.log("Updating material:", id, "with data:", req.body);
+
+      // Get the existing material
+      const materials = await storage.getMaterials(req.user.organizationId);
+      const material = materials.find(m => m.id === id);
+      
+      if (!material) {
+        return res.status(404).json({ message: "Material not found" });
+      }
+
+      // Validate input
+      const { materialCode, name, category, uom, emissionFactor, source } = req.body;
+      
+      if (materialCode) {
+        // Validate material code format
+        if (!/^[A-Z0-9-]{2,10}$/.test(materialCode)) {
+          return res.status(400).json({ 
+            message: "Invalid material code. Must be 2-10 characters, uppercase letters, numbers, and hyphens only." 
+          });
+        }
+        
+        // Check for duplicate material code (if changed)
+        if (materialCode !== material.materialCode) {
+          const duplicate = materials.find(
+            (m) => m.id !== id && m.materialCode.toLowerCase() === materialCode.toLowerCase()
+          );
+          
+          if (duplicate) {
+            return res.status(400).json({ 
+              message: "Material code already exists. Please use a unique code." 
+            });
+          }
+        }
+      }
+      
+      // Convert emissionFactor to decimal if provided
+      let emissionFactorDecimal = material.emissionFactor;
+      if (emissionFactor) {
+        const parsedFactor = parseFloat(emissionFactor);
+        if (isNaN(parsedFactor)) {
+          return res.status(400).json({ message: "Invalid emission factor value" });
+        }
+        emissionFactorDecimal = parsedFactor.toString();
+      }
+
+      // Update the material
+      const updatedMaterial = await storage.updateMaterial({
+        ...material,
+        materialCode: materialCode || material.materialCode,
+        name: name || material.name,
+        category: category || material.category,
+        uom: uom || material.uom,
+        emissionFactor: emissionFactorDecimal,
+        source: source || material.source,
+        lastUpdated: new Date(),
+      });
+
+      console.log("Updated material:", updatedMaterial);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "UPDATE",
+        entityType: "material",
+        entityId: id,
+        changes: { before: material, after: updatedMaterial },
+      });
+
+      res.json(updatedMaterial);
+    } catch (error) {
+      console.error("Error updating material:", error);
+      res.status(500).json({ 
+        message: "Failed to update material",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+  
+  // Add endpoint to delete material
+  app.delete("/api/materials/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id } = req.params;
+      console.log("Deleting material:", id);
+
+      // Get the existing material
+      const materials = await storage.getMaterials(req.user.organizationId);
+      const material = materials.find(m => m.id === id);
+      
+      if (!material) {
+        return res.status(404).json({ message: "Material not found" });
+      }
+
+      // Delete the material
+      await storage.deleteMaterial(id);
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user.id,
+        organizationId: req.user.organizationId,
+        actionType: "DELETE",
+        entityType: "material",
+        entityId: id,
+        changes: { before: material },
+      });
+
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error deleting material:", error);
+      res.status(500).json({ 
+        message: "Failed to delete material",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
 
   // Add endpoint for emission factor suggestions
   app.get("/api/materials/suggest", async (req, res) => {
@@ -571,7 +695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         Name: ${name}
         Unit of Measure: ${uom}
 
-        Respond with a number only, representing CO₂e per unit. Use industry standard values.`,
+        Respond with a valid JSON object in this format: {"message": "numeric_value_only"}. The numeric value should represent CO₂e per unit using industry standard values.`,
         { organizationId: req.user.organizationId }
       );
 
@@ -585,6 +709,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting emission factor suggestion:", error);
       res.status(500).json({ message: "Failed to get emission factor suggestion" });
+    }
+  });
+  
+  // Add UOM suggestion endpoint
+  app.get("/api/materials/suggest-uom", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { name } = req.query;
+      if (!name) {
+        return res.status(400).json({ message: "Material name is required" });
+      }
+
+      // Get suggestion from OpenAI
+      const response = await getChatResponse(
+        `Based on the material name "${name}", suggest the most appropriate unit of measure (UOM).
+        Common UOMs include:
+        - liters, gallons, cubic_meters (for liquids/gases)
+        - metric_tons, kg, lbs (for mass)
+        - kwh, mwh (for energy)
+        - square_meters, square_feet (for area)
+        - person_days (for labor)
+        
+        Respond with a valid JSON object in this format: {"message": "uom_value_only"}, where uom_value_only is one of the common UOMs listed above.`,
+        { organizationId: req.user.organizationId }
+      );
+
+      // Extract the UOM from the response
+      const suggestedUom = response.message.trim();
+      
+      res.json({ uom: suggestedUom });
+    } catch (error) {
+      console.error("Error getting UOM suggestion:", error);
+      res.status(500).json({ message: "Failed to get UOM suggestion" });
     }
   });
 

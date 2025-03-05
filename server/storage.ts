@@ -79,6 +79,7 @@ export interface IStorage {
   getMaterialById(id: string): Promise<Material | undefined>;
   createMaterial(material: Omit<Material, "id" | "createdAt" | "lastUpdated">): Promise<Material>;
   updateMaterial(material: Material): Promise<Material>;
+  deleteMaterial(id: string): Promise<void>;
   getMaterialsByCategory(organizationId: string, category: string): Promise<Material[]>;
 }
 
@@ -443,6 +444,10 @@ export class DatabaseStorage implements IStorage {
       .where(eq(materials.id, material.id))
       .returning();
     return updatedMaterial;
+  }
+
+  async deleteMaterial(id: string): Promise<void> {
+    await db.delete(materials).where(eq(materials.id, id));
   }
 
   async getMaterialsByCategory(organizationId: string, category: string): Promise<Material[]> {

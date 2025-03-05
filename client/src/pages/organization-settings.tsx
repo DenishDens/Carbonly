@@ -50,6 +50,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { PencilIcon, TrashIcon } from "lucide-react"; // Import necessary icons
+
 
 type InsertIncidentType = {
   name: string;
@@ -94,6 +96,8 @@ export default function OrganizationSettings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  const [editingMaterial, setEditingMaterial] = useState<Material | null>(null); // State for editing materials
+
 
   const getEmissionFactorSuggestion = useMutation({
     mutationFn: async ({ name, uom }: { name: string; uom: string }) => {
@@ -353,88 +357,104 @@ export default function OrganizationSettings() {
     enabled: !!user?.organizationId,
   });
 
+  const materialsQuery = useQuery<Material[]>({
+    queryKey: ["/api/materials"],
+    enabled: !!user?.organizationId,
+  });
+  const { data: materials, isLoading: isLoadingMaterials } = materialsQuery;
 
-  const createMaterialMutation = useMutation({
-    mutationFn: async (material: typeof newMaterial) => {
-      if (!material.name.trim()) {
-        throw new Error("Material name is required");
-      }
-      // Check for duplicate material code
-      const materialsData = await queryClient.fetchQuery({
-        queryKey: ["/api/materials"],
-        queryFn: async () => {
-          const res = await apiRequest("GET", "/api/materials");
-          if (!res.ok) throw new Error("Failed to fetch materials");
-          return res.json();
-        },
-      });
+  const createMaterial = useMutation({
+    mutationFn: async (data: any) => {
+      const method = editingMaterial ? "PATCH" : "POST";
+      const endpoint = editingMaterial
+        ? `/api/materials/${editingMaterial.id}`
+        : "/api/materials";
 
-      // Check if material code already exists
-      const duplicate = materialsData.find(
-        (m: any) => m.materialCode.toLowerCase() === material.materialCode.toLowerCase()
-      );
-
-      if (duplicate) {
-        throw new Error("Material code already exists. Please use a unique code.");
-      }
-
-      //Simplified UOM detection -  Replace with more robust logic if needed.
-      let detectedUOM = material.uom;
-      if (!detectedUOM && material.name.toLowerCase().includes("liter") || material.name.toLowerCase().includes("l")) {
-        detectedUOM = "liters";
-      } else if (!detectedUOM && material.name.toLowerCase().includes("gallon") || material.name.toLowerCase().includes("gal")) {
-        detectedUOM = "gallons";
-      } else if (!detectedUOM && material.name.toLowerCase().includes("kg") || material.name.toLowerCase().includes("kilogram")) {
-        detectedUOM = "kg";
-      } else if (!detectedUOM && material.name.toLowerCase().includes("ton") ) {
-        detectedUOM = "metric_tons";
-      } else if (!detectedUOM && material.name.toLowerCase().includes("kwh") || material.name.toLowerCase().includes("kilowatt hour")) {
-        detectedUOM = "kwh";
-      }
-
-
-      if (!detectedUOM) {
-        throw new Error("Unit of measure is required or could not be auto-detected. Please specify a UOM.");
-      }
-      if (!material.emissionFactor || isNaN(parseFloat(material.emissionFactor))) {
-        throw new Error("Valid emission factor is required");
-      }
-
-      const materialToCreate = {...material, uom: detectedUOM};
-
-      const res = await apiRequest("POST", "/api/materials", materialToCreate);
+      const res = await apiRequest(method, endpoint, data);
       if (!res.ok) {
-        const error = await res.text();
-        throw new Error(`Failed to create material: ${error}`);
+        const error = await res.json();
+        throw new Error(error.message || `Failed to ${editingMaterial ? 'update' : 'create'} material`);
       }
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/materials"] });
-      toast({ title: "Material added successfully" });
+      toast({
+        title: editingMaterial ? "Material updated" : "Material added",
+        description: editingMaterial
+          ? "The material has been updated in your library"
+          : "The material has been added to your library",
+      });
       setNewMaterial({
         materialCode: "",
         name: "",
-        category: "Fuel",
+        category: "",
         uom: "",
-        emissionFactor: "0.0",
+        emissionFactor: "",
         source: "Default",
-        organizationId: user?.organizationId!,
       });
+      setEditingMaterial(null);
+      materialsQuery.refetch();
+      setActiveTab("materials");
     },
     onError: (error: Error) => {
       toast({
-        title: "Failed to add material",
+        title: editingMaterial ? "Failed to update material" : "Failed to add material",
         description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const { data: materials, isLoading: isLoadingMaterials } = useQuery<Material[]>({
-    queryKey: ["/api/materials"],
-    enabled: !!user?.organizationId,
+  // Add mutation for deleting materials
+  const deleteMaterial = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest("DELETE", `/api/materials/${id}`);
+      if (!res.ok) {
+        throw new Error("Failed to delete material");
+      }
+      return true;
+    },
+    onSuccess: () => {
+      toast({
+        title: "Material deleted",
+        description: "The material has been removed from your library",
+      });
+      materialsQuery.refetch();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to delete material",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
   });
+
+  const handleSubmitMaterial = (e: React.FormEvent) => {
+    e.preventDefault();
+    createMaterial.mutate(newMaterial);
+  };
+
+  // Handle edit material
+  const handleEditMaterial = (material: Material) => {
+    setEditingMaterial(material);
+    setNewMaterial({
+      materialCode: material.materialCode,
+      name: material.name,
+      category: material.category,
+      uom: material.uom,
+      emissionFactor: material.emissionFactor.toString(),
+      source: material.source,
+    });
+    setActiveTab("materials"); //Keep on the same tab
+  };
+
+  // Handle delete material with confirmation
+  const handleDeleteMaterial = (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete "${name}"? This action cannot be undone.`)) {
+      deleteMaterial.mutate(id);
+    }
+  };
 
   const handleCsvImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -987,7 +1007,7 @@ export default function OrganizationSettings() {
                       id="csv-import"
                     />
                     <Button
-                      variant="outline"
+                                            variant="outline"
                       onClick={() => document.getElementById("csv-import")?.click()}
                     >
                       <Upload className="h-4 w-4 mr-2" />
@@ -1004,14 +1024,17 @@ export default function OrganizationSettings() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <form onSubmit={handleSubmitMaterial}>
                   <div className="grid gap-4 md:grid-cols-3">
                     <div>
                       <Label>Material Code</Label>
                       <Input
                         value={newMaterial.materialCode}
-                        onChange={(e) => setNewMaterial({ ...newMaterial, materialCode: e.target.value })}
+                        onChange={(e) => setNewMaterial({ ...newMaterial, materialCode: e.target.value.toUpperCase() })}
                         placeholder="e.g., FUEL001"
+                        pattern="[A-Z0-9-]{2,10}"
+                        title="2-10 characters, uppercase letters, numbers, and hyphens only"
+                        disabled={!!editingMaterial} // Disable editing of material code for existing materials
                       />
                     </div>
                     <div>
@@ -1126,65 +1149,109 @@ export default function OrganizationSettings() {
                       </Select>
                     </div>
                   </div>
-                  <Button
-                    onClick={() => {
-                      if (!user?.organizationId) {
-                        toast({
-                          title: "Organization required",
-                          description: "You must be part of an organization to add materials",
-                          variant: "destructive",
-                        });
-                        return;
+                  <div className="flex justify-end gap-2 mt-4">
+                    {editingMaterial && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingMaterial(null);
+                          setNewMaterial({
+                            materialCode: "",
+                            name: "",
+                            category: "",
+                            uom: "",
+                            emissionFactor: "",
+                            source: "Default",
+                          });
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      type="submit"
+                      disabled={
+                        createMaterial.isPending ||
+                        !newMaterial.materialCode ||
+                        !newMaterial.name ||
+                        !newMaterial.category ||
+                        !newMaterial.uom ||
+                        !newMaterial.emissionFactor ||
+                        !newMaterial.source
                       }
-                      createMaterialMutation.mutate(newMaterial);
-                    }}
-                    disabled={createMaterialMutation.isPending || !newMaterial.name.trim() || !newMaterial.uom || !newMaterial.emissionFactor}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Material
-                  </Button>
-                </div>
+                    >
+                      {createMaterial.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          {editingMaterial ? "Updating..." : "Adding..."}
+                        </>
+                      ) : (
+                        editingMaterial ? "Update Material" : "Add Material"
+                      )}
+                    </Button>
+                  </div>
+                </form>
 
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-28">Code</TableHead>
-                        <TableHead className="w-48">Material Name</TableHead>
-                        <TableHead className="w-32">Category</TableHead>
-                        <TableHead className="w-32">UOM</TableHead>
-                        <TableHead className="w-32 text-right">Emission Factor</TableHead>
+                        <TableHead>Code</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>UOM</TableHead>
+                        <TableHead>Emission Factor</TableHead>
                         <TableHead>Source</TableHead>
-                        <TableHead>Last Updated</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {materials
-                        ?.filter(material =>
-                          searchQuery
-                            ? material.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              material.materialCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              material.category.toLowerCase().includes(searchQuery.toLowerCase())
-                            : true
-                        )
-                        .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-                        .map((material) => (
-                          <TableRow key={material.id}>
-                            <TableCell className="font-mono">{material.materialCode}</TableCell>
-                            <TableCell>{material.name}</TableCell>
-                            <TableCell>{material.category}</TableCell>
-                            <TableCell className="font-mono">
-                              {material.uom.replace(/_/g, ' ')}
-                            </TableCell>
-                            <TableCell className="text-right font-mono">
-                              {parseFloat(material.emissionFactor).toFixed(4)}
-                            </TableCell>
-                            <TableCell>{material.source}</TableCell>
-                            <TableCell>{new Date(material.lastUpdated).toLocaleDateString()}</TableCell>
-                            <TableCell className="capitalize">{material.approvalStatus}</TableCell>
-                          </TableRow>
-                        ))}
+                      {materials?.map((material) => (
+                        <TableRow key={material.id}>
+                          <TableCell className="font-mono">{material.materialCode}</TableCell>
+                          <TableCell>{material.name}</TableCell>
+                          <TableCell>{material.category}</TableCell>
+                          <TableCell>{material.uom}</TableCell>
+                          <TableCell>{material.emissionFactor}</TableCell>
+                          <TableCell>{material.source}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                material.approvalStatus === "approved"
+                                  ? "default"
+                                  : material.approvalStatus === "pending"
+                                    ? "outline"
+                                    : "destructive"
+                              }
+                            >
+                              {material.approvalStatus}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEditMaterial(material)}
+                                title="Edit material"
+                              >
+                                <PencilIcon className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDeleteMaterial(material.id, material.name)}
+                                title="Delete material"
+                                className="text-destructive hover:text-destructive"
+                              >
+                                <TrashIcon className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                       {!materials?.length && (
                         <TableRow>
                           <TableCell colSpan={8} className="text-center text-muted-foreground">
