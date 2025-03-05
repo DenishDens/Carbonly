@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { MessageSquare, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,8 +70,8 @@ interface Message {
 
 export function ChatInterface() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [predictions, setPredictions] = useState<string[]>([]);
   const [showPredictions, setShowPredictions] = useState(false);
@@ -80,6 +80,13 @@ export function ChatInterface() {
   const { data: businessUnits } = useQuery({
     queryKey: ["/api/business-units"],
     enabled: !!user,
+  });
+
+  // Get chat messages from React Query cache
+  const { data: messages = [], refetch: refetchMessages } = useQuery<Message[]>({
+    queryKey: ["/api/chat/messages"],
+    enabled: isOpen,
+    initialData: [],
   });
 
   const chatMutation = useMutation({
@@ -94,14 +101,16 @@ export function ChatInterface() {
       return res.json();
     },
     onSuccess: (response) => {
-      setMessages((prev) => [...prev, 
+      const newMessages = [
+        ...messages,
         { role: "user", content: input },
         { 
           role: "assistant", 
           content: response.message,
           chart: response.chart
         }
-      ]);
+      ];
+      queryClient.setQueryData(["/api/chat/messages"], newMessages);
       setInput("");
       setPredictions([]);
     },
@@ -166,7 +175,7 @@ export function ChatInterface() {
         role: "assistant",
         content: `Hi ${user?.firstName || 'there'}! 👋 How can I help you analyze your environmental data?`
       };
-      setMessages([greeting]);
+      queryClient.setQueryData(["/api/chat/messages"], [greeting]);
     }
     setIsOpen(true);
   };
@@ -228,11 +237,11 @@ export function ChatInterface() {
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[300px]">
+                  <DropdownMenuContent align="end">
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
-                        onClick={() => handlePromptSelect(prompt)}
+                        onSelect={() => handlePromptSelect(prompt)}
                       >
                         {prompt}
                       </DropdownMenuItem>
