@@ -11,9 +11,15 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { MessageSquare, X } from "lucide-react";
+import { MessageSquare, X, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 // Updated smart prompts focused on incidents and environmental data
 const SMART_PROMPTS = [
@@ -134,23 +140,7 @@ export function ChatInterface() {
                 </div>
               ))}
             </ScrollArea>
-            <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-              <div className="flex flex-wrap gap-2">
-                {SMART_PROMPTS.map((prompt) => (
-                  <Button
-                    key={prompt}
-                    variant="outline"
-                    size="sm"
-                    className="text-sm"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handlePromptSelect(prompt);
-                    }}
-                  >
-                    {prompt}
-                  </Button>
-                ))}
-              </div>
+            <form onSubmit={handleSubmit} className="mt-4">
               <div className="flex gap-2">
                 <Input
                   value={input}
@@ -158,6 +148,23 @@ export function ChatInterface() {
                   placeholder="Ask about your data..."
                   disabled={chatMutation.isPending}
                 />
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="icon">
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-[300px]">
+                    {SMART_PROMPTS.map((prompt) => (
+                      <DropdownMenuItem
+                        key={prompt}
+                        onClick={() => handlePromptSelect(prompt)}
+                      >
+                        {prompt}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button type="submit" disabled={chatMutation.isPending}>
                   Send
                 </Button>
