@@ -87,7 +87,7 @@ export default function OrganizationSettings() {
   const [newMaterial, setNewMaterial] = useState<Omit<Material, "id" | "createdAt" | "lastUpdated" | "approvalStatus">>({
     materialCode: "",
     name: "",
-    category: "",
+    category: "Select Category",
     uom: "",
     emissionFactor: "0.0",
     source: "Default",

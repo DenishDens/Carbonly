@@ -199,7 +199,7 @@ export async function getUomSuggestion(materialName: string) {
 
     // Extract just the UOM if it's in the valid list
     for (const uom of validUOMs) {
-      if (content.includes(uom)) {
+      if (content.toLowerCase().includes(uom)) {
         return uom;
       }
     }
@@ -208,7 +208,7 @@ export async function getUomSuggestion(materialName: string) {
     return "liters";
   } catch (error) {
     console.error("Error getting UOM suggestion:", error);
-    throw new Error("Failed to get UOM suggestion");
+    return "liters"; // Return default instead of throwing error
   }
 }
 

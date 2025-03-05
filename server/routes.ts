@@ -1213,14 +1213,14 @@ Respond with a valid JSON object in this format: {"message": "uom_value_only"}, 
     try {
       const { materialName } = req.body;
       if (!materialName) {
-        return res.status(400).json({ error: "Material name is required" });
+        return res.status(400).json({ uom: "liters" });
       }
 
       const suggestion = await getUomSuggestion(materialName);
-      res.json({ suggestion });
+      res.json({ uom: suggestion });
     } catch (error) {
       console.error("Error in UOM suggestion endpoint:", error);
-      res.status(500).json({ error: "Failed to get UOM suggestion" });
+      res.status(500).json({ uom: "liters" });
     }
   });
 
