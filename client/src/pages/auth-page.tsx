@@ -189,6 +189,7 @@ function ResetPasswordForm({ onBack }: { onBack: () => void }) {
 
 function RegisterForm() {
   const { registerMutation } = useAuth();
+  const { toast } = useToast();
   const form = useForm({
     resolver: zodResolver(insertOrganizationSchema),
     defaultValues: {
@@ -197,28 +198,56 @@ function RegisterForm() {
     },
   });
 
-  const onSubmit = form.handleSubmit((data) => {
-    registerMutation.mutate(data);
-  });
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const formData = form.getValues();
+    console.log('Registration form data:', formData);
+
+    if (!formData.email || !formData.password) {
+      toast({
+        title: "Validation Error",
+        description: "Both email and password are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await registerMutation.mutateAsync(formData);
+    } catch (error) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Registration Failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="register-email">Email</Label>
         <Input
-          id="email"
+          id="register-email"
           type="email"
           placeholder="name@company.com"
-          {...form.register("email")}
+          {...form.register("email", { required: true })}
         />
+        {form.formState.errors.email && (
+          <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
+        )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
+        <Label htmlFor="register-password">Password</Label>
         <Input
-          id="password"
+          id="register-password"
           type="password"
-          {...form.register("password")}
+          {...form.register("password", { required: true })}
         />
+        {form.formState.errors.password && (
+          <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
+        )}
         <p className="text-sm text-muted-foreground">
           At least 8 characters long
         </p>

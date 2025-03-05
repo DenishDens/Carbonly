@@ -1,3 +1,4 @@
+import * as React from "react";
 import { createContext, ReactNode, useContext } from "react";
 import {
   useQuery,
@@ -79,17 +80,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const registerMutation = useMutation({
     mutationFn: async (credentials: InsertUser) => {
-      const res = await apiRequest("POST", "/api/register", credentials);
-      if (!res.ok) {
-        const error = await res.json();
+      console.log('Sending registration request:', {
+        email: credentials.email,
+        hasPassword: !!credentials.password
+      });
+
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(credentials),
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error('Registration failed:', error);
         throw new Error(error.message || "Registration failed");
       }
-      return await res.json();
+
+      const data = await response.json();
+      console.log('Registration response:', data);
+      return data;
     },
     onSuccess: (user: SelectUser) => {
+      console.log('Registration successful, updating user data:', user);
       queryClient.setQueryData(["/api/user"], user);
+      toast({
+        title: "Success",
+        description: "Account created successfully",
+      });
     },
     onError: (error: Error) => {
+      console.error('Registration mutation error:', error);
       toast({
         title: "Registration failed",
         description: error.message,
