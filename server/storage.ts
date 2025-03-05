@@ -65,6 +65,7 @@ export interface IStorage {
   //Incident Type operations
   getIncidentTypes(organizationId: string): Promise<IncidentType[]>;
   createIncidentType(type: Omit<IncidentType, "id" | "createdAt">): Promise<IncidentType>;
+  updateIncidentType(type: IncidentType): Promise<IncidentType>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -331,6 +332,15 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     return newType;
+  }
+
+  async updateIncidentType(type: IncidentType): Promise<IncidentType> {
+    const [updatedType] = await db
+      .update(incidentTypes)
+      .set(type)
+      .where(eq(incidentTypes.id, type.id))
+      .returning();
+    return updatedType;
   }
 }
 

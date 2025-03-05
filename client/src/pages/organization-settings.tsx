@@ -166,20 +166,10 @@ export default function OrganizationSettings() {
     },
   });
 
-  const manageIncidentTypesMutation = useMutation({
-    mutationFn: async (types: typeof incidentTypes) => {
-      const res = await apiRequest("POST", "/api/incident-types", types);
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
-      toast({ title: "Incident types updated" });
-    },
-  });
-
+  // Update the incident types query
   const { data: existingIncidentTypes } = useQuery<IncidentType[]>({
     queryKey: ["/api/incident-types"],
-    enabled: user?.role === "super_admin" || user?.role === "admin", //Added admin check
+    enabled: user?.role === "super_admin" || user?.role === "admin",
   });
 
   // Load existing incident types when component mounts
@@ -189,12 +179,32 @@ export default function OrganizationSettings() {
         existingIncidentTypes.map(type => ({
           name: type.name,
           description: type.description || "",
-          active: type.active,
+          active: type.active || false,
         }))
       );
     }
   }, [existingIncidentTypes]);
 
+  const manageIncidentTypesMutation = useMutation({
+    mutationFn: async (types: typeof incidentTypes) => {
+      const res = await apiRequest("POST", "/api/incident-types", { types });
+      if (!res.ok) {
+        throw new Error("Failed to update incident types");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
+      toast({ title: "Incident types updated" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to update incident types",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
   // Update the access check logic
   if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
