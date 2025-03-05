@@ -20,15 +20,41 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Chart as ChartJS,
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+} from 'chart.js';
+import { Line, Bar, Pie } from 'react-chartjs-2';
 
-// Updated smart prompts focused on incidents and environmental data
+// Register ChartJS components
+ChartJS.register(
+  ArcElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+// Smart prompts focused on incidents and environmental data
 const SMART_PROMPTS = [
   "Show me critical incidents",
   "How many open incidents do we have?",
   "What's the most common incident type?",
   "Show incidents by severity",
   "Which business unit has the most incidents?",
-  "Analyze recent environmental trends",
+  "Show me a pie chart by incident types",
   "What's our incident resolution rate?"
 ];
 
@@ -66,7 +92,14 @@ export function ChatInterface() {
       return res.json();
     },
     onSuccess: (response) => {
-      setMessages((prev) => [...prev, response]);
+      setMessages((prev) => [...prev, 
+        { role: "user", content: input },
+        { 
+          role: "assistant", 
+          content: response.message,
+          chart: response.chart
+        }
+      ]);
       setInput("");
     },
   });
@@ -74,9 +107,6 @@ export function ChatInterface() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
-
-    const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
     chatMutation.mutate(input);
   };
 
@@ -84,6 +114,31 @@ export function ChatInterface() {
     setInput(prompt);
     const event = new Event('submit') as unknown as React.FormEvent;
     handleSubmit(event);
+  };
+
+  const renderChart = (chart: Message['chart']) => {
+    if (!chart) return null;
+
+    const ChartComponent = {
+      line: Line,
+      bar: Bar,
+      pie: Pie
+    }[chart.type];
+
+    if (!ChartComponent) return null;
+
+    return (
+      <div className="mt-4 h-[300px] w-full">
+        <ChartComponent
+          data={chart.data}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            ...chart.options
+          }}
+        />
+      </div>
+    );
   };
 
   // Show greeting when chat is opened
@@ -99,7 +154,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', zIndex: 9999 }}>
+    <div className="fixed bottom-6 right-6 z-50">
       {!isOpen && (
         <Button
           onClick={handleOpen}
@@ -110,7 +165,7 @@ export function ChatInterface() {
       )}
 
       {isOpen && (
-        <Card className={cn("w-[400px] transition-all duration-200", "opacity-100 translate-y-0 shadow-lg")}>
+        <Card className="w-[400px] shadow-lg">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>AI Assistant</CardTitle>
@@ -137,6 +192,7 @@ export function ChatInterface() {
                   )}
                 >
                   {message.content}
+                  {message.chart && renderChart(message.chart)}
                 </div>
               ))}
             </ScrollArea>

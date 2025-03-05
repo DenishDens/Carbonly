@@ -94,8 +94,19 @@ export async function getChatResponse(message: string, context: {
     const incidentStats = calculateIncidentStats(incidents);
     const businessUnitStats = calculateBusinessUnitStats(businessUnits, incidents);
 
-    console.log("Chat context - Business units:", businessUnits.length);
-    console.log("Chat context - Incidents:", incidents.length);
+    // For pie chart queries, prepare data
+    const incidentsByType = incidents.reduce((acc, incident) => {
+      acc[incident.type] = (acc[incident.type] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    console.log("Chat context:", {
+      businessUnits: businessUnits.length,
+      incidents: incidents.length,
+      incidentStats,
+      businessUnitStats,
+      incidentsByType
+    });
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -106,13 +117,18 @@ export async function getChatResponse(message: string, context: {
 You help users understand their emission data and incidents across their business units.
 
 Current Context:
-- User has access to ${businessUnits.length} business units
+- Organization has ${businessUnits.length} business units
 - There are ${incidents.length} total incidents
 - Incident Status: ${JSON.stringify(incidentStats)}
 - Business Units: ${JSON.stringify(businessUnitStats)}
+- Incident Types: ${JSON.stringify(incidentsByType)}
 
-Focus on providing actionable insights and highlighting important trends in the data.
-When discussing incidents or data, only reference the business units the user has access to.`,
+When responding:
+1. Always return a JSON object with { message: string, chart?: { type: string, data: any } }
+2. For charts, use one of: 'pie', 'bar', 'line'
+3. Format chart data according to Chart.js structure
+4. Use colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+5. When showing incident types, use the incidentsByType data provided above`
         },
         {
           role: "user",
@@ -127,7 +143,23 @@ When discussing incidents or data, only reference the business units the user ha
       throw new Error("Failed to get response from OpenAI");
     }
 
-    return JSON.parse(content) as ChatResponse;
+    const parsedResponse = JSON.parse(content);
+
+    // If it's a pie chart request and we didn't get chart data, add it
+    if (message.toLowerCase().includes('pie chart') && !parsedResponse.chart) {
+      parsedResponse.chart = {
+        type: 'pie',
+        data: {
+          labels: Object.keys(incidentsByType),
+          datasets: [{
+            data: Object.values(incidentsByType),
+            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF'],
+          }]
+        }
+      };
+    }
+
+    return parsedResponse;
   } catch (error: any) {
     console.error("Error getting chat response:", error);
     throw new Error(`Failed to process chat message: ${error.message}`);
@@ -135,24 +167,17 @@ When discussing incidents or data, only reference the business units the user ha
 }
 
 function calculateIncidentStats(incidents: Incident[]) {
-  const stats = {
-    open: 0,
-    in_progress: 0,
-    resolved: 0,
+  return {
+    open: incidents.filter(i => i.status === 'open').length,
+    in_progress: incidents.filter(i => i.status === 'in_progress').length,
+    resolved: incidents.filter(i => i.status === 'resolved').length,
     by_severity: {
-      critical: 0,
-      high: 0,
-      medium: 0,
-      low: 0
+      critical: incidents.filter(i => i.severity === 'critical').length,
+      high: incidents.filter(i => i.severity === 'high').length,
+      medium: incidents.filter(i => i.severity === 'medium').length,
+      low: incidents.filter(i => i.severity === 'low').length
     }
   };
-
-  incidents.forEach(incident => {
-    stats[incident.status]++;
-    stats.by_severity[incident.severity]++;
-  });
-
-  return stats;
 }
 
 function calculateBusinessUnitStats(businessUnits: BusinessUnit[], incidents: Incident[]) {
