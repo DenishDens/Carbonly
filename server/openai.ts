@@ -279,11 +279,11 @@ export async function getEmissionFactorSuggestion(materialName: string, uom: str
       if (materialName.toLowerCase().includes("electricity")) return "0.42";
       if (materialName.toLowerCase().includes("natural gas")) return "0.18";
       return "1.0"; // Default fallback
-    }ch[0];
     }
-
-    // Default if no valid number found
-    return "1.0";
+  } catch (error) {
+    console.error("Error getting emission factor suggestion:", error);
+    return "1.0"; // Default fallback on error
+  }
   } catch (error) {
     console.error("Error getting emission factor suggestion:", error);
     throw new Error("Failed to get emission factor suggestion");
