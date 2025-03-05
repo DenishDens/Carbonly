@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation } from "@tanstack/react-query";
@@ -44,7 +43,6 @@ export default function ProfilePage() {
       });
     }
   });
-  };
 
   const handlePasswordReset = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -60,7 +58,7 @@ export default function ProfilePage() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
     const firstName = formData.get('firstName') as string;
     const lastName = formData.get('lastName') as string;
     const email = formData.get('email') as string;
@@ -73,13 +71,23 @@ export default function ProfilePage() {
   };
 
   if (!user) {
-    return null;
+    return (
+      <div className="container mx-auto py-10">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-muted-foreground">
+              Please sign in to view your profile
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-3xl font-bold mb-8">Profile Settings</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-2">
           <Card>
@@ -101,7 +109,7 @@ export default function ProfilePage() {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="lastName">Last Name</Label>
                     <Input
@@ -112,7 +120,7 @@ export default function ProfilePage() {
                     />
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
                   <Input
@@ -123,7 +131,7 @@ export default function ProfilePage() {
                     required
                   />
                 </div>
-                
+
                 <Button type="submit" disabled={updateProfileMutation.isPending}>
                   {updateProfileMutation.isPending ? (
                     <>
@@ -137,7 +145,7 @@ export default function ProfilePage() {
               </form>
             </CardContent>
           </Card>
-          
+
           <Card className="mt-8">
             <CardHeader>
               <CardTitle>Change Password</CardTitle>
@@ -152,7 +160,7 @@ export default function ProfilePage() {
               >
                 {isChangingPassword ? "Cancel" : "Change Password"}
               </Button>
-              
+
               {isChangingPassword && (
                 <form onSubmit={handlePasswordReset} className="mt-6 space-y-6">
                   <div className="space-y-2">
@@ -164,7 +172,7 @@ export default function ProfilePage() {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="newPassword">New Password</Label>
                     <Input
@@ -174,7 +182,7 @@ export default function ProfilePage() {
                       required
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="confirmPassword">Confirm New Password</Label>
                     <Input
@@ -184,14 +192,14 @@ export default function ProfilePage() {
                       required
                     />
                   </div>
-                  
+
                   <Button type="submit">Update Password</Button>
                 </form>
               )}
             </CardContent>
           </Card>
         </div>
-        
+
         <div>
           <Card>
             <CardHeader>
@@ -208,7 +216,7 @@ export default function ProfilePage() {
                   {user.lastName?.charAt(0) || ""}
                 </AvatarFallback>
               </Avatar>
-              
+
               <label htmlFor="avatar-upload">
                 <div className="flex items-center gap-2 cursor-pointer">
                   <Upload className="h-4 w-4" />
@@ -222,7 +230,7 @@ export default function ProfilePage() {
                   onChange={handleAvatarChange}
                 />
               </label>
-              
+
               {profilePicture && (
                 <div className="mt-4">
                   <p className="text-sm text-muted-foreground mb-2">
