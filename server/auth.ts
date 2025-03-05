@@ -1,11 +1,12 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
-import { Express } from "express";
+import { Express, Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
 import { User as SelectUser } from "@shared/schema";
+import cors from 'cors';
 
 declare global {
   namespace Express {
@@ -46,6 +47,15 @@ export function setupAuth(app: Express) {
 
   // Trust first proxy if we're behind one
   app.set("trust proxy", 1);
+
+  // Add CORS middleware
+  app.use(cors({
+    origin: "*", // or a specific origin for production
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true // Allow cookies
+  }));
+
+
   app.use(session(sessionSettings));
   app.use(passport.initialize());
   app.use(passport.session());
@@ -115,6 +125,7 @@ export function setupAuth(app: Express) {
       // Create organization first (single user = single org for now)
       const organization = await storage.createOrganization({
         name: email.split('@')[0], // Use email username as org name
+        createdAt: new Date(),
       });
 
       // Create user with the new organization
@@ -147,13 +158,19 @@ export function setupAuth(app: Express) {
       }
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(200).json(user);
+
+        // If remember me is selected, set session to expire in 30 days
+        if (req.body.rememberMe) {
+          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        }
+
+        res.json(user);
       });
     })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
-    console.log("Logging out user");
+    console.log("Logging out user:", req.user);
     req.logout((err) => {
       if (err) return next(err);
       res.sendStatus(200);

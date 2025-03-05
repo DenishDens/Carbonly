@@ -8,8 +8,7 @@ import { insertBusinessUnitSchema } from "@shared/schema";
 import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
 import {getStorageClient} from './storageClient'
-import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema"; //Import schema
-
+import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema";
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -23,19 +22,24 @@ interface FileUploadRequest extends Express.Request {
   };
 }
 
-  // Add Replit Auth middleware to check authentication
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Set up authentication
+  setupAuth(app);
+
+  // Add Replit Auth middleware
   app.use((req, res, next) => {
     // Check if Replit auth headers are present
     if (req.path.startsWith('/api/user') || req.path.startsWith('/api/auth')) {
       const replitUserId = req.headers['x-replit-user-id'];
       const replitUserName = req.headers['x-replit-user-name'];
-      
+
       if (replitUserId && replitUserName) {
         // Set a user object that can be used by the existing code
         req.user = {
           id: replitUserId as string,
-          name: replitUserName as string,
           email: `${replitUserName}@replit.user`,
+          firstName: replitUserName as string,
+          lastName: '',
           role: 'user',
           organizationId: replitUserId as string // Use the Replit user ID as the org ID
         };
@@ -43,10 +47,6 @@ interface FileUploadRequest extends Express.Request {
     }
     next();
   });
-
-
-export async function registerRoutes(app: Express): Promise<Server> {
-  setupAuth(app);
 
   // Business Units endpoints
   app.get("/api/business-units", async (req, res) => {
