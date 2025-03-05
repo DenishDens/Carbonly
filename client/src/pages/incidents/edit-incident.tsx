@@ -76,10 +76,15 @@ export default function EditIncidentPage() {
       };
 
       const res = await apiRequest("PATCH", `/api/incidents/${incidentId}`, formattedData);
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to update incident");
+      }
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/incidents"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/incidents/${incidentId}`] });
       toast({ title: "Incident updated successfully" });
       setLocation("/incidents");
     },
@@ -109,7 +114,7 @@ export default function EditIncidentPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Edit Incident</h1>
         </div>

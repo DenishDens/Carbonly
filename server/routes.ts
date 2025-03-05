@@ -292,6 +292,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
 
+
   // Organization Settings
   app.get("/api/organization", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
@@ -598,6 +599,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Add single incident GET endpoint after the existing /api/incidents endpoint
+  app.get("/api/incidents/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const { id } = req.params;
+      const incident = await storage.getIncidentById(id);
+
+      if (!incident) {
+        return res.status(404).json({ message: "Incident not found" });
+      }
+
+      // Verify business unit belongs to user's organization
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      const hasAccess = units.some(unit => unit.id === incident.businessUnitId);
+      if (!hasAccess) {
+        return res.sendStatus(403);
+      }
+
+      res.json(incident);
+    } catch (error) {
+      console.error("Error fetching incident:", error);
+      res.status(500).json({ message: "Failed to fetch incident" });
+    }
+  });
   // Add SSO routes here
   app.post("/api/organization/sso", async (req, res) => {
     if (!req.isAuthenticated() || req.user.role !== "super_admin") {

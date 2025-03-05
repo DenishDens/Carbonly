@@ -98,7 +98,7 @@ export default function OrganizationSettings() {
 
   const { data: organization } = useQuery<Organization>({
     queryKey: ["/api/organization"],
-    enabled: user?.role === "super_admin",
+    enabled: user?.role === "super_admin" || user?.role === "admin", //Added admin check
   });
 
   const updateSlugMutation = useMutation({
@@ -179,7 +179,7 @@ export default function OrganizationSettings() {
 
   const { data: existingIncidentTypes } = useQuery<IncidentType[]>({
     queryKey: ["/api/incident-types"],
-    enabled: user?.role === "super_admin",
+    enabled: user?.role === "super_admin" || user?.role === "admin", //Added admin check
   });
 
   // Load existing incident types when component mounts
@@ -197,7 +197,7 @@ export default function OrganizationSettings() {
 
 
   // Update the access check logic
-  if (!user || (user.role !== "super_admin" && user.role !== "org_admin")) {
+  if (!user || (user.role !== "admin" && user.role !== "super_admin")) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
