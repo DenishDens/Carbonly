@@ -11,7 +11,8 @@ import { Input } from "@/components/ui/input";
         <Input type="number" step="0.01" {...field} />
       </FormControl>
       <FormDescription>
-        Enter the emission factor as kilograms of CO2 equivalent per unit of measure
+        Enter the emission factor as kilograms of CO2 equivalent (kgCO2e) per unit of measure.
+        The AI will suggest appropriate values based on industry standards.
       </FormDescription>
       <FormMessage />
     </FormItem>

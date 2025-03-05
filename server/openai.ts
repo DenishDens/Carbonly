@@ -235,18 +235,43 @@ export async function getUomSuggestion(materialName: string) {
 
 export async function getEmissionFactorSuggestion(materialName: string, uom: string) {
   try {
+    // Fast-path for common materials to avoid OpenAI calls
+    const lowerName = materialName.toLowerCase();
+    
     // For biodiesel specifically, provide a valid emission factor without using OpenAI
-    if (materialName.toLowerCase().includes("biodiesel") || 
-        materialName.toLowerCase().includes("bio diesel")) {
+    if (lowerName.includes("biodiesel") || lowerName.includes("bio diesel")) {
+      console.log(`Using predefined emission factor for ${materialName}: 2.18 kgCO2e per liter`);
       return "2.18"; // Standard biodiesel emission factor (kgCO2e/liter)
     }
+    
+    // Other common materials with standard emission factors
+    if (lowerName.includes("diesel") && !lowerName.includes("biodiesel")) {
+      return "2.68"; // Diesel (kgCO2e/liter)
+    }
+    if (lowerName.includes("gasoline") || lowerName.includes("petrol")) {
+      return "2.31"; // Gasoline/Petrol (kgCO2e/liter)
+    }
+    if (lowerName.includes("electricity")) {
+      return "0.42"; // Electricity grid average (kgCO2e/kWh)
+    }
+    if (lowerName.includes("natural gas")) {
+      return "0.18"; // Natural gas (kgCO2e/kWh)
+    }
+    if (lowerName.includes("coal")) {
+      return "2.42"; // Coal (kgCO2e/kg)
+    }
 
+    // For other materials, use OpenAI
+    console.log(`Requesting AI suggestion for emission factor for: ${materialName} (${uom})`);
+    
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that provides accurate emission factor estimations."
+          content: `You are an expert in greenhouse gas emission factors for various materials.
+          Provide accurate emission factors based on EPiC database values and industry standards.
+          Always express emission factors in kgCO2e per unit of measure.`
         },
         {
           role: "user",
@@ -259,25 +284,25 @@ export async function getEmissionFactorSuggestion(materialName: string, uom: str
           - Natural gas: 0.18-0.2 kgCO2e/kWh
           - Electricity (country average): 0.1-0.5 kgCO2e/kWh
           - Coal: 2-3 kgCO2e/kg
+          - Steel: 1.5-2.5 kgCO2e/kg
+          - Cement: 0.8-1.2 kgCO2e/kg
+          - Waste (general): 0.5-2.0 kgCO2e/kg
           Respond with just the number and nothing else - no explanations, no HTML, no text.`
         }
       ],
-      temperature: 0.7,
+      temperature: 0.3, // Lower temperature for more consistent responses
       max_tokens: 50,
     });
 
     const content = response.choices[0].message.content?.trim() || "";
+    console.log(`AI suggested emission factor: ${content}`);
 
     // Extract just the number from the response
     const match = content.match(/\d+(\.\d+)?/);
     if (match) {
       return match[0];
     } else {
-      // Fallback values based on material type
-      if (materialName.toLowerCase().includes("diesel")) return "2.68";
-      if (materialName.toLowerCase().includes("gasoline")) return "2.31";
-      if (materialName.toLowerCase().includes("electricity")) return "0.42";
-      if (materialName.toLowerCase().includes("natural gas")) return "0.18";
+      console.log(`No valid emission factor found in response, using fallback`);
       return "1.0"; // Default fallback
     }
   } catch (error) {

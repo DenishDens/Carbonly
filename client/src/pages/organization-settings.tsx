@@ -119,7 +119,7 @@ export default function OrganizationSettings() {
       }));
       toast({
         title: "AI Suggestion",
-        description: "Emission factor updated based on AI suggestion",
+        description: `Emission factor updated to ${data.emissionFactor} ${data.unit}`,
       });
     },
     onError: (error: Error) => {
