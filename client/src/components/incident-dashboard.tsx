@@ -38,7 +38,7 @@ export function IncidentDashboard() {
   }));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 p-4">
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -101,18 +101,14 @@ export function IncidentDashboard() {
         <div className="grid gap-4">
           {incidents?.map((incident) => (
             <Card key={incident.id}>
-              <CardHeader>
-                <div className="flex justify-between items-center">
+              <CardContent className="p-6">
+                <div className="flex justify-between items-start mb-4">
                   <div>
-                    <CardTitle className="text-lg font-medium">
-                      {incident.title}
-                    </CardTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {incident.location}
-                    </p>
+                    <h3 className="text-lg font-semibold">{incident.title}</h3>
+                    <p className="text-sm text-muted-foreground">{incident.location}</p>
                   </div>
                   <Button
-                    variant="outline"
+                    variant="secondary"
                     onClick={() => setLocation(`/incidents/${incident.id}`)}
                     className="flex items-center gap-2"
                   >
@@ -120,20 +116,18 @@ export function IncidentDashboard() {
                     Edit
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid gap-2">
+                <div className="grid gap-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Status:</span>
-                    <span className="text-sm font-medium">{incident.status}</span>
+                    <span className="text-sm font-medium">Status</span>
+                    <span className="text-sm">{incident.status}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Severity:</span>
-                    <span className="text-sm font-medium">{incident.severity}</span>
+                    <span className="text-sm font-medium">Severity</span>
+                    <span className="text-sm">{incident.severity}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Type:</span>
-                    <span className="text-sm font-medium">{incident.type}</span>
+                    <span className="text-sm font-medium">Type</span>
+                    <span className="text-sm">{incident.type}</span>
                   </div>
                 </div>
               </CardContent>
