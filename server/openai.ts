@@ -84,6 +84,7 @@ Categorize the data appropriately based on the source:
 export async function getChatResponse(message: string, context: {
   organizationId: string;
   businessUnitId?: string;
+  userRole?: string;
 }): Promise<ChatResponse> {
   try {
     // Fetch all data
@@ -117,23 +118,28 @@ You help environmental engineers and managers understand their environmental dat
 Current Context:
 ${JSON.stringify(stats, null, 2)}
 
+User Role: ${context.userRole || 'user'}
+
 Guidelines:
 1. For incident queries:
    - Show exact numbers and percentages
    - Include severity breakdowns
    - Highlight critical incidents first
+   - Compare with historical data
 
 2. For emission analysis:
    - Compare against industry benchmarks
    - Show month-over-month trends
    - Highlight unusual patterns
    - Calculate intensity metrics
+   - Provide scope-specific analysis
 
 3. For environmental metrics:
    - Focus on compliance thresholds
    - Show resource efficiency
    - Identify optimization opportunities
    - Compare against targets
+   - Analyze by business unit
 
 4. Always provide actionable insights:
    - Suggest potential improvements
@@ -141,12 +147,19 @@ Guidelines:
    - Compare with best practices
    - Identify cost-saving opportunities
 
+5. Natural Language Understanding:
+   - Interpret user intent beyond keywords
+   - Consider context from previous queries
+   - Provide relevant follow-up suggestions
+   - Handle ambiguous queries with clarification
+
 Response Format:
 {
   "message": "Clear analysis with specific metrics and recommendations",
   "chart": {
     "type": "line|bar|pie",
-    "data": {...}
+    "data": {...},
+    "options": {...}
   }
 }`
         },
@@ -182,7 +195,8 @@ Response Format:
 function shouldAddChart(message: string): boolean {
   const chartTriggers = [
     'chart', 'graph', 'trend', 'compare', 'show me',
-    'visualization', 'pattern', 'distribution'
+    'visualization', 'pattern', 'distribution', 'how many',
+    'what is the breakdown', 'analyze', 'display'
   ];
   return chartTriggers.some(trigger => 
     message.toLowerCase().includes(trigger)
@@ -254,9 +268,19 @@ function calculateIncidentTrends(incidents: Incident[]) {
     return acc;
   }, {} as Record<string, number>);
 
+  // Calculate month-over-month change
+  const months = Object.keys(monthlyIncidents).sort();
+  const trend = months.map((month, i) => {
+    if (i === 0) return 0;
+    const prev = monthlyIncidents[months[i - 1]] || 0;
+    const curr = monthlyIncidents[month] || 0;
+    return ((curr - prev) / prev) * 100;
+  });
+
   return {
     monthly: monthlyIncidents,
-    trend: Object.values(monthlyIncidents)
+    trend,
+    change: trend[trend.length - 1] || 0
   };
 }
 
@@ -268,9 +292,19 @@ function calculateEmissionTrends(emissions: any[]) {
     return acc;
   }, {} as Record<string, number>);
 
+  // Calculate month-over-month change
+  const months = Object.keys(monthlyEmissions).sort();
+  const trend = months.map((month, i) => {
+    if (i === 0) return 0;
+    const prev = monthlyEmissions[months[i - 1]] || 0;
+    const curr = monthlyEmissions[month] || 0;
+    return ((curr - prev) / prev) * 100;
+  });
+
   return {
     monthly: monthlyEmissions,
-    trend: Object.values(monthlyEmissions)
+    trend,
+    change: trend[trend.length - 1] || 0
   };
 }
 
@@ -280,7 +314,8 @@ function calculatePerformanceScore(incidents: Incident[]) {
   let score = 100;
 
   incidents.forEach(incident => {
-    score -= weights[incident.severity as keyof typeof weights];
+    const severity = incident.severity as keyof typeof weights;
+    score -= weights[severity];
     if (incident.status === 'open') score -= 2;
   });
 
@@ -288,8 +323,10 @@ function calculatePerformanceScore(incidents: Incident[]) {
 }
 
 function generateAppropriateChart(message: string, context: any) {
-  // Auto-generate appropriate chart based on user query and data context
-  if (message.toLowerCase().includes('pie chart')) {
+  const messageLower = message.toLowerCase();
+
+  // Determine the type of chart based on the query
+  if (messageLower.includes('breakdown') || messageLower.includes('distribution') || messageLower.includes('by type')) {
     return {
       type: 'pie',
       data: {
@@ -298,38 +335,72 @@ function generateAppropriateChart(message: string, context: any) {
           data: Object.values(context.incidents.severity.by_severity),
           backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
         }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: 'right'
+          }
+        }
       }
     };
   }
 
-  if (message.toLowerCase().includes('trend')) {
-    if (message.toLowerCase().includes('incident')) {
-      return {
-        type: 'line',
-        data: {
-          labels: Object.keys(context.incidents.trends.monthly),
-          datasets: [{
-            label: 'Incidents',
-            data: Object.values(context.incidents.trends.monthly),
-            borderColor: '#36A2EB',
-            tension: 0.1
-          }]
+  if (messageLower.includes('trend') || messageLower.includes('over time')) {
+    const isEmission = messageLower.includes('emission');
+    const data = isEmission ? context.emissions.trends : context.incidents.trends;
+
+    return {
+      type: 'line',
+      data: {
+        labels: Object.keys(data.monthly),
+        datasets: [{
+          label: isEmission ? 'Emissions' : 'Incidents',
+          data: Object.values(data.monthly),
+          borderColor: '#36A2EB',
+          tension: 0.1,
+          fill: false
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: 'top'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
         }
-      };
-    } else if (message.toLowerCase().includes('emission')) {
-      return {
-        type: 'line',
-        data: {
-          labels: Object.keys(context.emissions.trends.monthly),
-          datasets: [{
-            label: 'Emissions',
-            data: Object.values(context.emissions.trends.monthly),
-            borderColor: '#36A2EB',
-            tension: 0.1
-          }]
+      }
+    };
+  }
+
+  if (messageLower.includes('compare') || messageLower.includes('across')) {
+    return {
+      type: 'bar',
+      data: {
+        labels: context.businessUnits.map((bu: any) => bu.name),
+        datasets: [{
+          label: 'Incidents',
+          data: context.businessUnits.map((bu: any) => bu.incidents),
+          backgroundColor: '#36A2EB'
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            position: 'top'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true
+          }
         }
-      };
-    }
+      }
+    };
   }
 
   return null;

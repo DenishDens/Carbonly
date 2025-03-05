@@ -20,6 +20,32 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Line, Bar, Pie } from "react-chartjs-2";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  BarElement,
+} from 'chart.js';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
 // Smart prompts focused on environmental engineering and incident analysis
 const SMART_PROMPTS = [
@@ -39,7 +65,13 @@ const SMART_PROMPTS = [
   "Analyze waste management metrics",
   "Compare energy efficiency across sites",
   "Show air quality compliance status",
-  "Predict monthly emission trends"
+  "Predict monthly emission trends",
+  // Natural language queries
+  "How are we doing with environmental incidents this month?",
+  "Which areas need immediate attention?",
+  "What's the status of our emission reduction efforts?",
+  "Are there any concerning trends in our data?",
+  "Give me a summary of recent environmental impacts"
 ];
 
 interface Message {
@@ -78,7 +110,11 @@ export function ChatInterface() {
         businessUnits: businessUnits?.map(unit => ({
           id: unit.id,
           name: unit.name
-        })) || []
+        })) || [],
+        context: {
+          userRole: user?.role,
+          organizationId: user?.organizationId
+        }
       });
       return res.json();
     },
@@ -115,8 +151,7 @@ export function ChatInterface() {
   const handlePromptSelect = (prompt: string) => {
     if (chatMutation.isPending) return;
     setInput(prompt);
-    const event = new Event('submit') as unknown as React.FormEvent;
-    handleSubmit(event);
+    chatMutation.mutate(prompt);
   };
 
   // Show greeting when chat is opened
@@ -124,7 +159,7 @@ export function ChatInterface() {
     if (!isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || 'there'}! 👋 How can I help you analyze your environmental data?`
+        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze environmental data and incidents. Try asking about incident trends, emission patterns, or use one of the suggested prompts below.`
       };
       queryClient.setQueryData(["/api/chat/messages"], [greeting]);
     }
@@ -156,7 +191,6 @@ export function ChatInterface() {
     );
   };
 
-
   return (
     <div className="fixed bottom-6 right-6 z-[999]">
       {!isOpen && (
@@ -173,7 +207,7 @@ export function ChatInterface() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>AI Assistant</CardTitle>
-              <CardDescription>Ask about your data</CardDescription>
+              <CardDescription>Ask about your environmental data</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -184,7 +218,7 @@ export function ChatInterface() {
             </Button>
           </CardHeader>
           <CardContent>
-            <ScrollArea className="h-[300px] pr-4">
+            <ScrollArea className="h-[400px] pr-4">
               {messages.map((message, index) => (
                 <div
                   key={index}
