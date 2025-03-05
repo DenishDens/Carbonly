@@ -9,6 +9,7 @@ import passport from "passport";
 import { Strategy as SamlStrategy } from "passport-saml";
 import {getStorageClient} from './storageClient'
 import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema";
+import crypto from 'crypto';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -1269,6 +1270,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/invitation", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    // Check if user has permission to manage users
+    const { Permission, canPerformAction } = require('./utils/permissions');
+    if (!canPerformAction(req.user, Permission.MANAGE_USERS)) {
+      return res.status(403).json({ message: "You don't have permission to invite users" });
+    }
+
+    // Validate the role assignment - only admins can create other admins
+    if (req.body.role === 'admin' && req.user.role !== 'admin') {
+      return res.status(403).json({ message: "Only admins can create other admin users" });
+    }
+
+    const invitation = await storage.createInvitation({
+      email: req.body.email,
+      role: req.body.role,
+      businessUnitId: req.body.businessUnitId, // Allow assigning to a specific business unit
+      organizationId: req.user.organizationId,
+      token: crypto.randomUUID(),
+      status: 'pending',
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+    });
+
+    res.json(invitation);
+  });
+
+
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -1307,4 +1336,4 @@ const handleGoogleDriveCallback = async (code: string, businessUnitId: string, b
 const processEPiCDatabase = async (filePath: string, organizationId: string): Promise<{ success: boolean; message: string; }> => {
   //Implementation for processing EPiC Database (This function is not provided in the original code and needs to be implemented separately)
   return { success: true, message: "Successfully processed EPiC Database" };
-};
+}
