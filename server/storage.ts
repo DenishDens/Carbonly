@@ -3,8 +3,8 @@ import { db } from "./db";
 import { eq } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users } from "@shared/schema";
-import type { Organization, User } from "@shared/schema";
+import { organizations, users, businessUnits } from "@shared/schema";
+import type { Organization, User, BusinessUnit } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -19,6 +19,9 @@ export interface IStorage {
   // Organization operations
   getOrganizationById(id: string): Promise<Organization | undefined>;
   createOrganization(org: Omit<Organization, "id" | "createdAt">): Promise<Organization>;
+
+  // Business unit operations
+  getBusinessUnits(organizationId: string): Promise<BusinessUnit[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -62,9 +65,14 @@ export class DatabaseStorage implements IStorage {
     }).returning();
     return newOrg;
   }
+
+  // Business unit operations
+  async getBusinessUnits(organizationId: string): Promise<BusinessUnit[]> {
+    return db.select().from(businessUnits).where(eq(businessUnits.organizationId, organizationId));
+  }
 }
 
-//Helper function - needs implementation based on your requirements.
+// Helper function - needs implementation based on your requirements.
 const generateProjectEmail = (id: string, organizationId: string): string => {
   // Generate a consistent, encrypted-looking project email
   const projectId = id.slice(0, 8); // Take first 8 chars of UUID
