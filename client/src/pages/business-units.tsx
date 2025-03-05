@@ -32,7 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Building2, Edit, Trash2, Settings, Users } from "lucide-react";
-import type { BusinessUnit, User, Team } from "@shared/schema";
+import type { BusinessUnit, User } from "@shared/schema";
 import { InviteUsersDialog } from "@/components/invite-users-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IntegrationCard } from "@/components/integration-wizard/integration-card";
@@ -69,13 +69,11 @@ const PROTOCOLS = [
 const UnitForm = ({ 
   data, 
   onSubmit,
-  users,
-  teams 
+  users
 }: { 
   data?: BusinessUnit; 
   onSubmit: (data: any) => void;
   users: User[];
-  teams: Team[];
 }) => {
   const form = useForm({
     resolver: zodResolver(data ? updateBusinessUnitSchema : insertBusinessUnitSchema),
@@ -88,7 +86,6 @@ const UnitForm = ({
       category: "",
       status: "active",
       managerId: "none",
-      teamId: "none", 
       protocolSettings: {
         version: "org",
         emissionFactors: {
@@ -224,32 +221,6 @@ const UnitForm = ({
                   {users?.map((user) => (
                     <SelectItem key={user.id} value={user.id}>
                       {user.firstName} {user.lastName} ({user.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="teamId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Team (Optional)</FormLabel>
-              <Select onValueChange={field.onChange} value={field.value || "none"}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select team (optional)" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="none">No Team</SelectItem>
-                  {teams?.map((team) => (
-                    <SelectItem key={team.id} value={team.id}>
-                      {team.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -515,10 +486,6 @@ export default function BusinessUnits() {
     queryKey: ["/api/users"],
   });
 
-  const { data: teams } = useQuery<Team[]>({
-    queryKey: ["/api/teams"],
-  });
-
   const createBusinessUnit = useMutation({
     mutationFn: async (data: BusinessUnit) => {
       const res = await apiRequest("POST", "/api/business-units", data);
@@ -590,7 +557,6 @@ export default function BusinessUnits() {
               <UnitForm 
                 onSubmit={createBusinessUnit.mutate} 
                 users={users || []} 
-                teams={teams || []}
               />
               <DialogFooter>
               </DialogFooter>
@@ -679,7 +645,6 @@ export default function BusinessUnits() {
                 data={editingUnit} 
                 onSubmit={(data) => updateBusinessUnit.mutate({...editingUnit, ...data})}
                 users={users || []}
-                teams={teams || []}
               />
               <DialogFooter>
               </DialogFooter>
