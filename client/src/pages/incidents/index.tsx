@@ -323,13 +323,12 @@ export default function IncidentsPage() {
                       <TableCell className="text-right space-x-2">
                         {canEdit && (
                           <Button
-                            variant="outline"
-                            size="sm"
+                            variant="ghost"
+                            size="icon"
                             onClick={() => setLocation(`/incidents/${incident.id}/edit`)}
-                            className="bg-background hover:bg-muted"
+                            className="hover:bg-muted"
                           >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
+                            <Edit className="h-4 w-4" />
                           </Button>
                         )}
                         {incident.status !== 'resolved' && (

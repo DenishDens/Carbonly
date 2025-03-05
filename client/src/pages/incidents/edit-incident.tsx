@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { insertIncidentSchema } from "@shared/schema";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation } from "wouter";
+import { useLocation, useParams } from "wouter";
 import {
   Form,
   FormControl,
@@ -27,19 +27,16 @@ import {
 import { Loader2 } from "lucide-react";
 import { DashboardLayout } from "@/components/dashboard-layout";
 
-export default function EditIncidentPage({ params }: { params: { id: string } }) {
+export default function EditIncidentPage() {
   const [_, setLocation] = useLocation();
+  const params = useParams();
   const { toast } = useToast();
-  const incidentId = params.id;
+  const incidentId = params?.id;
 
   // Get incident data
   const { data: incident, isLoading: isLoadingIncident } = useQuery({
     queryKey: [`/api/incidents/${incidentId}`],
-    queryFn: async () => {
-      const res = await fetch(`/api/incidents/${incidentId}`);
-      if (!res.ok) throw new Error("Failed to fetch incident");
-      return res.json();
-    },
+    enabled: !!incidentId,
   });
 
   // Get business units
@@ -94,6 +91,11 @@ export default function EditIncidentPage({ params }: { params: { id: string } })
       });
     },
   });
+
+  if (!incidentId) {
+    setLocation("/incidents");
+    return null;
+  }
 
   if (isLoadingIncident) {
     return (
