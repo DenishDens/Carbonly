@@ -142,6 +142,16 @@ export const incidents = pgTable("incidents", {
   resolvedAt: timestamp("resolved_at"),
 });
 
+// Add incident type configuration
+export const incidentTypes = pgTable("incident_types", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  active: boolean("active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export type Organization = typeof organizations.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type Team = typeof teams.$inferSelect;
@@ -150,7 +160,9 @@ export type Emission = typeof emissions.$inferSelect;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
 export type Incident = typeof incidents.$inferSelect;
+export type IncidentType = typeof incidentTypes.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
+export type InsertIncidentType = Omit<IncidentType, "id" | "createdAt">;
 
 export const insertOrganizationSchema = z.object({
   email: z.string().email(),
@@ -252,6 +264,7 @@ export const insertEmissionSchema = createInsertSchema(emissions)
     date: z.string(), // Accept string date that will be converted to Date
   });
 
+// Update the insertIncidentSchema to use dynamic types
 export const insertIncidentSchema = createInsertSchema(incidents)
   .pick({
     businessUnitId: true,
@@ -268,7 +281,7 @@ export const insertIncidentSchema = createInsertSchema(incidents)
   .extend({
     severity: z.enum(['low', 'medium', 'high', 'critical']),
     status: z.enum(['open', 'in_progress', 'resolved', 'closed']),
-    type: z.enum(['spill', 'leak', 'equipment_failure', 'power_outage', 'other']),
+    type: z.string(), // Changed from enum to string to support custom types
     incidentDate: z.string().transform((val) => {
       const date = new Date(val);
       if (isNaN(date.getTime())) {
@@ -276,6 +289,7 @@ export const insertIncidentSchema = createInsertSchema(incidents)
       }
       return date;
     }),
+    resolutionComments: z.string().optional(),
     environmentalImpact: z.object({
       impactType: z.string(),
       estimatedEmissions: z.number(),

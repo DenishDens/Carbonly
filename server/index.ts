@@ -85,7 +85,7 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    const port = 3000;
+    const port = process.env.NODE_ENV === "development" ? 3000 : (process.env.PORT || 5000);
     server.listen({
       port,
       host: "0.0.0.0",

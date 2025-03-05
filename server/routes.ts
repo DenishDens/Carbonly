@@ -10,7 +10,6 @@ import { Strategy as SamlStrategy } from "passport-saml";
 import {getStorageClient} from './storageClient'
 import {insertIncidentSchema, updateIncidentSchema} from "@shared/schema"; //Import schema
 
-
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -547,6 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         id,
         updatedAt: new Date(),
         resolvedAt: data.status === "resolved" ? new Date() : incident.resolvedAt,
+        resolutionDetails: data.resolutionComments || incident.resolutionDetails,
       });
 
       // Create audit log
@@ -563,6 +563,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating incident:", error);
       res.status(500).json({ message: "Failed to update incident" });
+    }
+  });
+
+  // Add these new endpoints to manage incident types
+  app.get("/api/incident-types", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const types = await storage.getIncidentTypes(req.user.organizationId);
+      res.json(types);
+    } catch (error) {
+      console.error("Error fetching incident types:", error);
+      res.status(500).json({ message: "Failed to fetch incident types" });
+    }
+  });
+
+  app.post("/api/incident-types", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+
+    try {
+      const type = await storage.createIncidentType({
+        ...req.body,
+        organizationId: req.user.organizationId,
+      });
+      res.json(type);
+    } catch (error) {
+      console.error("Error creating incident type:", error);
+      res.status(500).json({ message: "Failed to create incident type" });
     }
   });
 

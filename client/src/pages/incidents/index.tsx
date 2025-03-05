@@ -8,6 +8,7 @@ import {
   CardFooter,
 } from "@/components/ui/card";
 import { CreateIncidentDialog } from "./create-incident";
+import { CloseIncidentDialog } from "@/components/close-incident-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQuery } from "@tanstack/react-query";
@@ -44,6 +45,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Dialog,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function IncidentsPage() {
   const [showNewIncident, setShowNewIncident] = useState(false);
@@ -54,6 +59,7 @@ export default function IncidentsPage() {
     severity: 'all',
     status: 'all',
   });
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
 
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
@@ -64,7 +70,7 @@ export default function IncidentsPage() {
     queryKey: ["/api/business-units"],
   });
 
-  // Search and filter logic
+  // Filter and search logic
   const filteredIncidents = incidents?.filter(incident => {
     // Apply filters
     if (filters.type !== 'all' && incident.type !== filters.type) return false;
@@ -259,6 +265,7 @@ export default function IncidentsPage() {
                   <TableHead>Severity</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Reported On</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -291,6 +298,27 @@ export default function IncidentsPage() {
                       </TableCell>
                       <TableCell>
                         {formatDate(incident.createdAt)}
+                      </TableCell>
+                      <TableCell>
+                        {incident.status !== 'resolved' && (
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setSelectedIncidentId(incident.id)}
+                              >
+                                Close
+                              </Button>
+                            </DialogTrigger>
+                            {selectedIncidentId === incident.id && (
+                              <CloseIncidentDialog
+                                incidentId={incident.id}
+                                onClose={() => setSelectedIncidentId(null)}
+                              />
+                            )}
+                          </Dialog>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

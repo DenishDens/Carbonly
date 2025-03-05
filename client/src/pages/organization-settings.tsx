@@ -22,8 +22,11 @@ import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Building2, Upload, Save, Key } from "lucide-react";
-import type { Organization } from "@shared/schema";
+import { Building2, Upload, Key, Plus, Filter, ChevronDown, ChevronUp, Search, AlertTriangle, Save } from "lucide-react"; // Consolidated imports
+import { SiXero } from "react-icons/si";
+import { FaMicrosoft } from "react-icons/fa";
+import { cn } from "@/lib/utils";
+import type { Organization, IncidentType } from "@shared/schema";
 import { IntegrationWizard } from "@/components/integration-wizard/integration-wizard";
 import { IntegratedDataView } from "@/components/integrated-data-view";
 import {
@@ -39,9 +42,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { SiXero } from "react-icons/si";
-import { FaMicrosoft } from "react-icons/fa";
-import { cn } from "@/lib/utils";
+
 
 export default function OrganizationSettings() {
   const { user } = useAuth();
@@ -88,6 +89,12 @@ export default function OrganizationSettings() {
   const [activeTab, setActiveTab] = useState("general");
   const [showIntegrationWizard, setShowIntegrationWizard] = useState(false);
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<"xero" | "myob" | "onedrive">();
+
+  const [incidentTypes, setIncidentTypes] = useState<{
+    name: string;
+    description: string;
+    active: boolean;
+  }[]>([]);
 
   const { data: organization } = useQuery<Organization>({
     queryKey: ["/api/organization"],
@@ -159,6 +166,23 @@ export default function OrganizationSettings() {
     },
   });
 
+  const manageIncidentTypesMutation = useMutation({
+    mutationFn: async (types: typeof incidentTypes) => {
+      const res = await apiRequest("POST", "/api/incident-types", types);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/incident-types"] });
+      toast({ title: "Incident types updated" });
+    },
+  });
+
+  const { data: existingIncidentTypes } = useQuery<IncidentType[]>({
+    queryKey: ["/api/incident-types"],
+    enabled: user?.role === "super_admin",
+  });
+
+
   // Only super admins can access this page
   if (user?.role !== "super_admin") {
     return (
@@ -187,6 +211,7 @@ export default function OrganizationSettings() {
             <TabsTrigger value="protocol">Protocol</TabsTrigger>
             <TabsTrigger value="sso">SSO</TabsTrigger>
             <TabsTrigger value="integrations">Integrations</TabsTrigger>
+            <TabsTrigger value="incidents">Incident Types</TabsTrigger>
           </TabsList>
 
           <TabsContent value="general">
@@ -550,6 +575,88 @@ export default function OrganizationSettings() {
               <IntegratedDataView />
             </div>
           </TabsContent>
+
+          <TabsContent value="incidents">
+            <Card>
+              <CardHeader>
+                <CardTitle>Incident Types</CardTitle>
+                <CardDescription>
+                  Configure incident types for reporting and tracking
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  {incidentTypes.map((type, index) => (
+                    <div key={index} className="flex gap-4 items-start">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Type name"
+                          value={type.name}
+                          onChange={(e) => {
+                            const newTypes = [...incidentTypes];
+                            newTypes[index].name = e.target.value;
+                            setIncidentTypes(newTypes);
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Description"
+                          value={type.description}
+                          onChange={(e) => {
+                            const newTypes = [...incidentTypes];
+                            newTypes[index].description = e.target.value;
+                            setIncidentTypes(newTypes);
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center">
+                        <Switch
+                          checked={type.active}
+                          onCheckedChange={(checked) => {
+                            const newTypes = [...incidentTypes];
+                            newTypes[index].active = checked;
+                            setIncidentTypes(newTypes);
+                          }}
+                        />
+                        <span className="ml-2">Active</span>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => {
+                          setIncidentTypes(types => types.filter((_, i) => i !== index));
+                        }}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIncidentTypes([
+                        ...incidentTypes,
+                        { name: "", description: "", active: true }
+                      ]);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Incident Type
+                  </Button>
+                </div>
+
+                <Button
+                  onClick={() => manageIncidentTypesMutation.mutate(incidentTypes)}
+                  disabled={manageIncidentTypesMutation.isPending}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Incident Types
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
         </Tabs>
 
         <Dialog open={showIntegrationWizard} onOpenChange={setShowIntegrationWizard}>
