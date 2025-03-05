@@ -320,13 +320,21 @@ export default function OrganizationSettings() {
   });
 
   const createMaterialMutation = useMutation({
-    mutationFn: async (material: Material) => {
-      const res = await apiRequest("POST", "/api/materials", {
-        ...material,
-        organizationId: user?.organizationId,
-      });
+    mutationFn: async (material: typeof newMaterial) => {
+      if (!material.name.trim()) {
+        throw new Error("Material name is required");
+      }
+      if (!material.uom) {
+        throw new Error("Unit of measure is required");
+      }
+      if (!material.emissionFactor || isNaN(parseFloat(material.emissionFactor))) {
+        throw new Error("Valid emission factor is required");
+      }
+
+      const res = await apiRequest("POST", "/api/materials", material);
       if (!res.ok) {
-        throw new Error("Failed to create material");
+        const error = await res.text();
+        throw new Error(`Failed to create material: ${error}`);
       }
       return res.json();
     },
@@ -337,8 +345,9 @@ export default function OrganizationSettings() {
         name: "",
         category: "Fuel",
         uom: "",
-        emissionFactor: "",
+        emissionFactor: "0.0",
         source: "Default",
+        organizationId: user?.organizationId!,
       });
     },
     onError: (error: Error) => {
@@ -893,8 +902,18 @@ export default function OrganizationSettings() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => createMaterialMutation.mutate(newMaterial)}
-                    disabled={createMaterialMutation.isPending}
+                    onClick={() => {
+                      if (!user?.organizationId) {
+                        toast({
+                          title: "Organization required",
+                          description: "You must be part of an organization to add materials",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      createMaterialMutation.mutate(newMaterial);
+                    }}
+                    disabled={createMaterialMutation.isPending || !newMaterial.name.trim() || !newMaterial.uom || !newMaterial.emissionFactor}
                   >
                     <Plus className="h-4 w-4 mr-2" />
                     Add Material
@@ -958,7 +977,7 @@ export default function OrganizationSettings() {
                         id="email"
                         type="email"
                         value={invitationForm.email}
-                        onChange={(e) => setInvitationForm(prev => ({ ...prev, email: e.target.value }))}
+                        onChange={(e) => setInvitationForm(prev=> ({ ...prev, email: e.target.value }))}
                         placeholder="teammate@example.com"
                       />
                     </div>

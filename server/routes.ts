@@ -472,7 +472,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      console.log("Fetching materials for organization:", req.user.organizationId);
       const materials = await storage.getMaterials(req.user.organizationId);
+      console.log("Retrieved materials:", materials);
       res.json(materials);
     } catch (error) {
       console.error("Error fetching materials:", error);
@@ -484,10 +486,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      console.log("Creating material with data:", req.body);
+
+      // Validate required fields
+      const { name, category, uom, emissionFactor, source } = req.body;
+      if (!name || !category || !uom || !emissionFactor || !source) {
+        return res.status(400).json({ 
+          message: "Missing required fields", 
+          required: ["name", "category", "uom", "emissionFactor", "source"] 
+        });
+      }
+
+      // Convert emissionFactor to decimal
+      const emissionFactorDecimal = parseFloat(emissionFactor);
+      if (isNaN(emissionFactorDecimal)) {
+        return res.status(400).json({ message: "Invalid emission factor value" });
+      }
+
       const material = await storage.createMaterial({
-        ...req.body,
+        name,
+        category,
+        uom,
+        emissionFactor: emissionFactorDecimal.toString(),
+        source,
         organizationId: req.user.organizationId,
+        approvalStatus: "pending",
       });
+
+      console.log("Created material:", material);
 
       // Create audit log
       await storage.createAuditLog({
@@ -502,11 +528,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(material);
     } catch (error) {
       console.error("Error creating material:", error);
-      res.status(500).json({ message: "Failed to create material" });
+      res.status(500).json({ 
+        message: "Failed to create material",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
-  // Add these endpoints after the existing routes
+  // Add these new endpoints after the existing routes
   app.get("/api/incidents", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
@@ -855,7 +884,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ authUrl });
     } catch (error) {
       console.error("Google Drive auth error:", error);
-      res.status(500).json({ message: "Failed to start authentication" });
+            res.status(500).json({ message: "Failed to start authentication" });
     }
   });
 
