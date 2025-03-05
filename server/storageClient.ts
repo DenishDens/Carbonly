@@ -2,7 +2,7 @@ import { Storage } from "@google-cloud/storage";
 import { Client as OneDriveClient } from "@microsoft/microsoft-graph-client";
 import { ClientSecretCredential } from "@azure/identity";
 import { spfi, SPFx } from "@pnp/sp";
-import "@pnp/sp/webs";
+import "@pnp/sp/webs/index.js";
 import "@pnp/sp/files";
 import "@pnp/sp/folders";
 
