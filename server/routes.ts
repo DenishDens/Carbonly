@@ -466,12 +466,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
-      // Get all business units for the organization first
+      // First get business units for the organization
       const units = await storage.getBusinessUnits(req.user.organizationId);
       const unitIds = units.map(u => u.id);
+      console.log("Business unit IDs:", unitIds);
 
-      // Get incidents only for those business units
+      // Get all incidents
       const incidents = await storage.getIncidents(req.user.organizationId);
+      console.log("Raw incidents:", incidents);
+
+      // Filter to only include incidents from business units in this org
       const filteredIncidents = incidents.filter(incident =>
         unitIds.includes(incident.businessUnitId)
       );
@@ -571,6 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      // Get incident types for this organization
       const types = await storage.getIncidentTypes(req.user.organizationId);
       res.json(types);
     } catch (error) {

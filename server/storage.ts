@@ -3,8 +3,8 @@ import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents } from "@shared/schema";
-import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident } from "@shared/schema";
+import { organizations, users, businessUnits, emissions, processingTransactions, auditLogs, teams, incidents, incidentTypes } from "@shared/schema";
+import type { Organization, User, BusinessUnit, Emission, ProcessingTransaction, AuditLog, InsertAuditLog, Team, Incident, IncidentType } from "@shared/schema";
 import crypto from 'crypto';
 
 const MemoryStore = createMemoryStore(session);
@@ -56,11 +56,15 @@ export interface IStorage {
     endDate?: Date;
   }): Promise<AuditLog[]>;
 
-  // Add new incident methods
+  // Incident operations
   getIncidents(organizationId: string): Promise<Incident[]>;
   getIncidentById(id: string): Promise<Incident | undefined>;
   createIncident(incident: Omit<Incident, "id">): Promise<Incident>;
   updateIncident(incident: Incident): Promise<Incident>;
+
+  //Incident Type operations
+  getIncidentTypes(organizationId: string): Promise<IncidentType[]>;
+  createIncidentType(type: Omit<IncidentType, "id" | "createdAt">): Promise<IncidentType>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -302,6 +306,25 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return updatedIncident;
   }
+
+  async getIncidentTypes(organizationId: string): Promise<IncidentType[]> {
+    return db
+      .select()
+      .from(incidentTypes)
+      .where(eq(incidentTypes.organizationId, organizationId))
+      .orderBy(incidentTypes.name);
+  }
+
+  async createIncidentType(type: Omit<IncidentType, "id" | "createdAt">): Promise<IncidentType> {
+    const [newType] = await db
+      .insert(incidentTypes)
+      .values({
+        ...type,
+        createdAt: new Date(),
+      })
+      .returning();
+    return newType;
+  }
 }
 
 //Helper function - needs implementation based on your requirements.
@@ -311,7 +334,6 @@ const generateProjectEmail = (id: string, organizationId: string): string => {
   const orgId = organizationId.slice(0, 4); // Take first 4 chars of org UUID
   return `project-${projectId}-${orgId}@carbontrack.io`; // Use a consistent domain
 }
-
 
 // Export a single instance
 export const storage = new DatabaseStorage();

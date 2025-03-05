@@ -328,3 +328,5 @@ export type EmissionDetails = {
   notes?: string;
   category?: string;
 };
+
+export type { InsertIncidentType };
