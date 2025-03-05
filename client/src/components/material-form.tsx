@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
       </FormControl>
       <FormDescription>
         Enter the emission factor as kilograms of CO2 equivalent (kgCO2e) per unit of measure.
-        The AI will suggest appropriate values based on industry standards.
+        The AI will suggest appropriate values based on industry standards from sources like EPA, GHG Protocol, and IPCC.
       </FormDescription>
       <FormMessage />
     </FormItem>

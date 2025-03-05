@@ -139,12 +139,12 @@ export default function OrganizationSettings() {
           "GET",
           `/api/materials/suggest-uom?name=${encodeURIComponent(name)}`
         );
-        
+
         if (!res.ok) {
           console.warn("UOM suggestion API returned non-OK status:", res.status);
           return { uom: "liters" }; // Default fallback
         }
-        
+
         const text = await res.text();
         try {
           // Try to parse as JSON
@@ -207,7 +207,7 @@ export default function OrganizationSettings() {
         ...prev,
         category: suggestedCategory,
       }));
-      
+
       // Get UOM suggestion from AI
       const timeoutId = setTimeout(() => {
         getUomSuggestion.mutate({
@@ -620,7 +620,6 @@ export default function OrganizationSettings() {
             <TabsTrigger value="general">General</TabsTrigger>
             <TabsTrigger value="protocol">Protocol</TabsTrigger>
             <TabsTrigger value="sso">SSO</TabsTrigger>
-            <TabsTrigger value="integrations">Integrations</TabsTrigger>
             <TabsTrigger value="materials">Material Library</TabsTrigger>
             <TabsTrigger value="incidents">Incident Types</TabsTrigger>
             <TabsTrigger value="team">Team Invitations</TabsTrigger>
@@ -919,158 +918,6 @@ export default function OrganizationSettings() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="integrations">
-            <div className="space-y-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Third-Party Integrations</CardTitle>
-                  <CardDescription>
-                    Connect your accounting and document management systems
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card className="cursor-pointer hover:bg-accent" onClick={() => {
-                      setSelectedIntegrationType("xero");
-                      setShowIntegrationWizard(true);
-                    }}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-2">
-                          <SiXero className="h-8 w-8" />
-                          <div>
-                            <h3 className="font-semibold">Xero</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Connect your Xero account
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="cursor-pointer hover:bg-accent" onClick={() => {
-                      setSelectedIntegrationType("myob");
-                      setShowIntegrationWizard(true);
-                    }}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="h-8 w-8" />
-                          <div>
-                            <h3 className="font-semibold">MYOB</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Connect your MYOB account
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    <Card className="cursor-pointer hover:bg-accent" onClick={() => {
-                      setSelectedIntegrationType("onedrive");
-                      setShowIntegrationWizard(true);
-                    }}>
-                      <CardContent className="pt-6">
-                        <div className="flex items-center gap-2">
-                          <FaMicrosoft className="h-8 w-8" />
-                          <div>
-                            <h3 className="font-semibold">OneDrive</h3>
-                            <p className="text-sm text-muted-foreground">
-                              Connect your OneDrive folders
-                            </p>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <IntegratedDataView />
-            </div>
-          </TabsContent>
-
-          <TabsContent value="incidents">
-            <Card>
-              <CardHeader>
-                <CardTitle>Incident Types</CardTitle>
-                <CardDescription>
-                  Configure incident types for reporting and tracking
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-4">
-                  {incidentTypes.map((type, index) => (
-                    <div key={index} className="flex gap-4 items-start">
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Type name"
-                          value={type.name}
-                          onChange={(e) => {
-                            const newTypes = [...incidentTypes];
-                            newTypes[index].name = e.target.value;
-                            setIncidentTypes(newTypes);
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <Input
-                          placeholder="Description"
-                          value={type.description}
-                          onChange={(e) => {
-                            const newTypes = [...incidentTypes];
-                            newTypes[index].description = e.target.value;
-                            setIncidentTypes(newTypes);
-                          }}
-                        />
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch
-                          checked={type.active}
-                          onCheckedChange={(checked) => {
-                            const newTypes = [...incidentTypes];
-                            newTypes[index].active = checked;
-                            setIncidentTypes(newTypes);
-                          }}
-                        />
-                        <span className="text-sm">Active</span>
-                        {incidentTypes.length > 1 && (
-                          <Button
-                            variant="destructive"
-                            size="icon"
-                            onClick={() => {
-                              setIncidentTypes(types => types.filter((_, i) => i !== index));
-                            }}
-                          >
-                            <AlertTriangle className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setIncidentTypes([
-                        ...incidentTypes,
-                        { name: "", description: "", active: true, organizationId: user?.organizationId! }
-                      ]);
-                    }}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Incident Type
-                  </Button>
-                </div>
-
-                <Button
-                  onClick={handleSaveIncidentTypes}
-                  disabled={manageIncidentTypesMutation.isPending}
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Incident Types
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           <TabsContent value="materials">
             <Card>
               <CardHeader>
@@ -1097,8 +944,8 @@ export default function OrganizationSettings() {
                       className="hidden"
                       id="csv-import"
                     />
-                                        <Button
-                                            variant="outline"
+                    <Button
+                      variant="outline"
                       onClick={() => document.getElementById("csv-import")?.click()}
                     >
                       <Upload className="h-4 w-4 mr-2" />
@@ -1294,7 +1141,6 @@ export default function OrganizationSettings() {
                         <TableHead>UOM</TableHead>
                         <TableHead>Emission Factor</TableHead>
                         <TableHead>Source</TableHead>
-                        <TableHead>Status</TableHead>
                         <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1307,19 +1153,6 @@ export default function OrganizationSettings() {
                           <TableCell>{material.uom}</TableCell>
                           <TableCell>{material.emissionFactor}</TableCell>
                           <TableCell>{material.source}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                material.approvalStatus === "approved"
-                                  ? "default"
-                                  : material.approvalStatus === "pending"
-                                    ? "outline"
-                                    : "destructive"
-                              }
-                            >
-                              {material.approvalStatus}
-                            </Badge>
-                          </TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button
@@ -1345,7 +1178,7 @@ export default function OrganizationSettings() {
                       ))}
                       {!materials?.length && (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center text-muted-foreground">
+                          <TableCell colSpan={7} className="text-center text-muted-foreground">
                             No materials added yet
                           </TableCell>
                         </TableRow>
@@ -1377,6 +1210,89 @@ export default function OrganizationSettings() {
                     </Button>
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="incidents">
+            <Card>
+              <CardHeader>
+                <CardTitle>Incident Types</CardTitle>
+                <CardDescription>
+                  Configure incident types for reporting and tracking
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-4">
+                  {incidentTypes.map((type, index) => (
+                    <div key={index} className="flex gap-4 items-start">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Type name"
+                          value={type.name}
+                          onChange={(e) => {
+                            const newTypes = [...incidentTypes];
+                            newTypes[index].name = e.target.value;
+                            setIncidentTypes(newTypes);
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Description"
+                          value={type.description}
+                          onChange={(e) => {
+                            const newTypes = [...incidentTypes];
+                            newTypes[index].description = e.target.value;
+                            setIncidentTypes(newTypes);
+                          }}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={type.active}
+                          onCheckedChange={(checked) => {
+                            const newTypes = [...incidentTypes];
+                            newTypes[index].active = checked;
+                            setIncidentTypes(newTypes);
+                          }}
+                        />
+                        <span className="text-sm">Active</span>
+                        {incidentTypes.length > 1 && (
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => {
+                              setIncidentTypes(types => types.filter((_, i) => i !== index));
+                            }}
+                          >
+                            <AlertTriangle className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setIncidentTypes([
+                        ...incidentTypes,
+                        { name: "", description: "", active: true, organizationId: user?.organizationId! }
+                      ]);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Incident Type
+                  </Button>
+                </div>
+
+                <Button
+                  onClick={handleSaveIncidentTypes}
+                  disabled={manageIncidentTypesMutation.isPending}
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Incident Types
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

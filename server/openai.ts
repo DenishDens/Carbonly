@@ -233,78 +233,43 @@ export async function getUomSuggestion(materialName: string) {
   }
 }
 
-export async function getEmissionFactorSuggestion(materialName: string, uom: string) {
-  try {
-    // Fast-path for common materials to avoid OpenAI calls
-    const lowerName = materialName.toLowerCase();
-    
-    // For biodiesel specifically, provide a valid emission factor without using OpenAI
-    if (lowerName.includes("biodiesel") || lowerName.includes("bio diesel")) {
-      console.log(`Using predefined emission factor for ${materialName}: 2.18 kgCO2e per liter`);
-      return "2.18"; // Standard biodiesel emission factor (kgCO2e/liter)
-    }
-    
-    // Other common materials with standard emission factors
-    if (lowerName.includes("diesel") && !lowerName.includes("biodiesel")) {
-      return "2.68"; // Diesel (kgCO2e/liter)
-    }
-    if (lowerName.includes("gasoline") || lowerName.includes("petrol")) {
-      return "2.31"; // Gasoline/Petrol (kgCO2e/liter)
-    }
-    if (lowerName.includes("electricity")) {
-      return "0.42"; // Electricity grid average (kgCO2e/kWh)
-    }
-    if (lowerName.includes("natural gas")) {
-      return "0.18"; // Natural gas (kgCO2e/kWh)
-    }
-    if (lowerName.includes("coal")) {
-      return "2.42"; // Coal (kgCO2e/kg)
-    }
+export async function getEmissionFactorSuggestion(
+  materialName: string,
+  uom: string
+): Promise<string> {
+  if (!materialName || !uom) {
+    return "1.0"; // Default value
+  }
 
-    // For other materials, use OpenAI
-    console.log(`Requesting AI suggestion for emission factor for: ${materialName} (${uom})`);
-    
+  try {
+    // Try to get a suggestion based on the material name and unit of measure
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content: `You are an expert in greenhouse gas emission factors for various materials.
-          Provide accurate emission factors based on EPiC database values and industry standards.
-          Always express emission factors in kgCO2e per unit of measure.`
+          content:
+            "You are an expert in carbon accounting and emission factors for the Material Library. Your task is to suggest appropriate emission factors in kgCO2e per unit based on the material name and unit of measure provided. The Material Library stores emission factors for various materials used in carbon accounting across Scope 1, 2, and 3 emissions. Only return the numeric value of the emission factor.",
         },
         {
           role: "user",
-          content: `Provide a realistic emission factor (in kgCO2e per unit) for the material "${materialName}" with unit of measure "${uom}".
-          Respond with only a single decimal number representing kgCO2e per unit (e.g., 2.53 for 2.53 kgCO2e per liter of diesel). 
-          For common materials, provide values within these ranges:
-          - Diesel fuel: 2.5-3.2 kgCO2e/liter
-          - Biodiesel: 2.1-2.3 kgCO2e/liter
-          - Gasoline: 2.2-2.5 kgCO2e/liter
-          - Natural gas: 0.18-0.2 kgCO2e/kWh
-          - Electricity (country average): 0.1-0.5 kgCO2e/kWh
-          - Coal: 2-3 kgCO2e/kg
-          - Steel: 1.5-2.5 kgCO2e/kg
-          - Cement: 0.8-1.2 kgCO2e/kg
-          - Waste (general): 0.5-2.0 kgCO2e/kg
-          Respond with just the number and nothing else - no explanations, no HTML, no text.`
-        }
+          content: `Material: ${materialName}\nUnit of Measure: ${uom}\n\nWhat would be an appropriate emission factor for this material in kgCO2e per ${uom}? Consider industry standards from sources like EPA, GHG Protocol, and IPCC when applicable.`,
+        },
       ],
-      temperature: 0.3, // Lower temperature for more consistent responses
-      max_tokens: 50,
+      temperature: 0.3,
+      max_tokens: 15,
     });
 
-    const content = response.choices[0].message.content?.trim() || "";
-    console.log(`AI suggested emission factor: ${content}`);
-
-    // Extract just the number from the response
-    const match = content.match(/\d+(\.\d+)?/);
-    if (match) {
-      return match[0];
-    } else {
-      console.log(`No valid emission factor found in response, using fallback`);
-      return "1.0"; // Default fallback
+    const suggestion = response.choices[0]?.message?.content?.trim();
+    if (suggestion) {
+      // Extract just the number from the response
+      const match = suggestion.match(/(\d+\.?\d*)/);
+      if (match && match[0]) {
+        return match[0];
+      }
     }
+
+    return "1.0"; // Default fallback
   } catch (error) {
     console.error("Error getting emission factor suggestion:", error);
     throw new Error("Failed to get emission factor suggestion");
