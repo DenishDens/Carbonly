@@ -867,11 +867,44 @@ export default function OrganizationSettings() {
                           <SelectValue placeholder="Select UOM" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                          <SelectItem value="select">Select a unit...</SelectItem>
+                          <SelectItem value="separator" disabled>
+                            ── Volume ──
+                          </SelectItem>
                           <SelectItem value="liters">Liters (L)</SelectItem>
-                          <SelectItem value="metric_tons">Metric Tons (t)</SelectItem>
-                          <SelectItem value="kwh">Kilowatt Hours (kWh)</SelectItem>
+                          <SelectItem value="gallons">Gallons (gal)</SelectItem>
                           <SelectItem value="cubic_meters">Cubic Meters (m³)</SelectItem>
+                          <SelectItem value="cubic_feet">Cubic Feet (ft³)</SelectItem>
+
+                          <SelectItem value="separator" disabled>
+                            ── Mass ──
+                          </SelectItem>
+                          <SelectItem value="kg">Kilograms (kg)</SelectItem>
+                          <SelectItem value="metric_tons">Metric Tons (t)</SelectItem>
+                          <SelectItem value="pounds">Pounds (lbs)</SelectItem>
+                          <SelectItem value="short_tons">Short Tons (ST)</SelectItem>
+
+                          <SelectItem value="separator" disabled>
+                            ── Energy ──
+                          </SelectItem>
+                          <SelectItem value="kwh">Kilowatt Hours (kWh)</SelectItem>
+                          <SelectItem value="mwh">Megawatt Hours (MWh)</SelectItem>
+                          <SelectItem value="therm">Therms</SelectItem>
+                          <SelectItem value="mmbtu">Million BTU (MMBTU)</SelectItem>
+
+                          <SelectItem value="separator" disabled>
+                            ── Distance ──
+                          </SelectItem>
+                          <SelectItem value="kilometers">Kilometers (km)</SelectItem>
+                          <SelectItem value="miles">Miles (mi)</SelectItem>
+
+                          <SelectItem value="separator" disabled>
+                            ── Area ──
+                          </SelectItem>
+                          <SelectItem value="square_meters">Square Meters (m²)</SelectItem>
+                          <SelectItem value="square_feet">Square Feet (ft²)</SelectItem>
+                          <SelectItem value="hectares">Hectares (ha)</SelectItem>
+                          <SelectItem value="acres">Acres</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -939,14 +972,17 @@ export default function OrganizationSettings() {
                         <TableRow key={material.id}>
                           <TableCell>{material.name}</TableCell>
                           <TableCell>{material.category}</TableCell>
-                          <TableCell>{material.uom}</TableCell>
-                          <TableCell>{material.emissionFactor}</TableCell>
+                          <TableCell>
+                            {/* Format UOM display */}
+                            {material.uom.replace(/_/g, ' ')}
+                          </TableCell>
+                          <TableCell>{parseFloat(material.emissionFactor).toFixed(4)}</TableCell>
                           <TableCell>{material.source}</TableCell>
                           <TableCell>{new Date(material.lastUpdated).toLocaleDateString()}</TableCell>
                           <TableCell className="capitalize">{material.approvalStatus}</TableCell>
                         </TableRow>
                       ))}
-                      {!materials?.length && (
+                                            {!materials?.length && (
                         <TableRow>
                           <TableCell colSpan={7} className="text-center text-muted-foreground">
                             No materials added yet
