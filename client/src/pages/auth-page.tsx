@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
 import { z } from "zod";
 
-// Define login schema
 const loginSchema = z.object({
   email: z.string().email("Invalid email format"),
   password: z.string().min(1, "Password is required"),
@@ -36,18 +35,35 @@ function LoginForm() {
     },
   });
 
-  const onSubmit = form.handleSubmit((data) => {
-    console.log('Form data before submission:', data);
-    if (!data.email || !data.password) {
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const formData = form.getValues();
+    console.log('Form data:', formData);
+
+    if (!formData.email || !formData.password) {
       toast({
         title: "Validation Error",
-        description: "Email and password are required",
+        description: "Both email and password are required",
         variant: "destructive",
       });
       return;
     }
-    loginMutation.mutate({ ...data, rememberMe });
-  });
+
+    try {
+      await loginMutation.mutateAsync({
+        email: formData.email,
+        password: formData.password,
+        rememberMe,
+      });
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login Failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
 
   if (showResetPassword) {
     return <ResetPasswordForm onBack={() => setShowResetPassword(false)} />;
@@ -61,7 +77,7 @@ function LoginForm() {
           id="email"
           type="email"
           placeholder="name@company.com"
-          {...form.register("email")}
+          {...form.register("email", { required: true })}
         />
         {form.formState.errors.email && (
           <p className="text-sm text-red-500">{form.formState.errors.email.message}</p>
@@ -72,7 +88,7 @@ function LoginForm() {
         <Input
           id="password"
           type="password"
-          {...form.register("password")}
+          {...form.register("password", { required: true })}
         />
         {form.formState.errors.password && (
           <p className="text-sm text-red-500">{form.formState.errors.password.message}</p>
