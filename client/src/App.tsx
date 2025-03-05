@@ -18,6 +18,8 @@ import Teams from "@/pages/teams";
 import ElectricityData from "@/pages/electricity-data";
 import Incidents from "@/pages/incidents";
 import EditIncident from "@/pages/incidents/edit-incident";
+import ProfilePage from "@/pages/profile"; // Assuming this component exists
+
 
 function Router() {
   return (
@@ -42,6 +44,7 @@ function Router() {
       <ProtectedRoute path="/teams" component={Teams} />
       <ProtectedRoute path="/audit-logs" component={AuditLogViewer} />
       <ProtectedRoute path="/settings" component={OrganizationSettings} />
+      <ProtectedRoute path="/profile" component={ProfilePage} /> {/* Added route for profile page */}
       <Route component={NotFound} />
     </Switch>
   );
