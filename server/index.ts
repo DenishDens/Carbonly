@@ -85,9 +85,10 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    let port = 5000; // ALWAYS serve the app on port 5000
-
-    const startServer = (portToUse: number) => {
+    let port = 5000; // Try to serve the app on port 5000 first
+    const alternativePorts = [3000, 8080, 8000, 5173]; // Fallback ports
+    
+    const startServer = (portToUse: number, fallbackPorts: number[] = []) => {
       server.listen({
         port: portToUse,
         host: "0.0.0.0",
@@ -95,12 +96,23 @@ app.use((req, res, next) => {
       }, () => {
         log(`Server started successfully, serving on port ${portToUse}`);
       }).on('error', (error: any) => {
-        log(`Error starting server: ${error.message}`);
-        throw error;
+        if (error.code === 'EADDRINUSE') {
+          if (fallbackPorts.length > 0) {
+            const nextPort = fallbackPorts[0];
+            log(`Port ${portToUse} is in use, trying port ${nextPort}...`);
+            startServer(nextPort, fallbackPorts.slice(1));
+          } else {
+            log(`All ports are in use. Please free up one of these ports: ${port}, ${alternativePorts.join(', ')}`);
+            process.exit(1);
+          }
+        } else {
+          log(`Error starting server: ${error.message}`);
+          throw error;
+        }
       });
     };
 
-    startServer(port);
+    startServer(port, alternativePorts);
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);
     console.error('Full error details:', error);
