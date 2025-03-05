@@ -86,7 +86,7 @@ export async function getChatResponse(message: string, context: {
   businessUnitId?: string;
 }): Promise<ChatResponse> {
   try {
-    // Fetch all business units for context
+    // Fetch all data
     const businessUnits = await storage.getBusinessUnits(context.organizationId);
     const incidents = await storage.getIncidents(context.organizationId);
     const emissions = await storage.getEmissions(context.organizationId);
@@ -145,18 +145,30 @@ Current Context:
 ${JSON.stringify(analysisContext, null, 2)}
 
 Guidelines:
-1. Always analyze trends and patterns in the data
+1. Provide direct answers to questions about numbers, statistics, and trends
 2. When a specific business unit is mentioned, focus on that unit's data
-3. Provide actionable insights and recommendations
-4. Use appropriate visualizations for data presentation
-5. Be proactive in highlighting potential issues or opportunities
+3. For numerical questions, always include the exact numbers in your response
+4. Only suggest charts when they add value or are explicitly requested
+5. Be concise and precise in your responses
 
-When responding:
-1. Always return a JSON object with { message: string, chart?: { type: string, data: any } }
-2. For charts, use one of: 'pie', 'bar', 'line'
-3. Format chart data according to Chart.js structure
-4. Use colors: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
-5. Make charts interactive and informative with proper labels and legends`
+Response Format:
+Always return a JSON object with:
+{
+  "message": "Your clear, direct answer with specific numbers and insights",
+  "chart": null  // Only include chart data if explicitly requested or highly relevant
+}
+
+Example responses:
+Q: "How many open incidents do we have for Gold Coast project?"
+A: {
+  "message": "The Gold Coast Highway Upgrade project currently has 3 open incidents."
+}
+
+Q: "Show me a pie chart of incident types"
+A: {
+  "message": "Here's a breakdown of incident types across all projects.",
+  "chart": { type: "pie", data: {...} }
+}`
         },
         {
           role: "user",
@@ -173,11 +185,14 @@ When responding:
 
     const parsedResponse = JSON.parse(content);
 
-    // Auto-generate appropriate chart if not provided
-    if (!parsedResponse.chart) {
-      if (message.toLowerCase().includes('chart') || message.toLowerCase().includes('trend')) {
-        parsedResponse.chart = generateAppropriateChart(message, analysisContext);
-      }
+    // Only auto-generate chart if not provided AND explicitly requested
+    if (!parsedResponse.chart && (
+      message.toLowerCase().includes('chart') || 
+      message.toLowerCase().includes('graph') ||
+      message.toLowerCase().includes('visualize') ||
+      message.toLowerCase().includes('show me')
+    )) {
+      parsedResponse.chart = generateAppropriateChart(message, analysisContext);
     }
 
     return parsedResponse;
