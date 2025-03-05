@@ -1,8 +1,7 @@
 import * as React from "react"
-import { Menu, Leaf } from "lucide-react"
+import { Leaf } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,7 +20,6 @@ interface NavbarProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 export function Navbar({ className, items = [], ...props }: NavbarProps) {
-  const [isOpen, setIsOpen] = React.useState(false)
   const [location] = useLocation()
   const { user } = useAuth()
 
@@ -33,8 +31,7 @@ export function Navbar({ className, items = [], ...props }: NavbarProps) {
           <span className="text-xl font-bold text-green-600">Carbonly.ai</span>
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
+        <nav className="flex items-center gap-6">
           {items.map((item, index) => (
             <Link
               key={index}
@@ -48,11 +45,10 @@ export function Navbar({ className, items = [], ...props }: NavbarProps) {
             </Link>
           ))}
 
-          {/* User Profile Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <span className="text-sm font-medium">{user?.name?.[0] || 'U'}</span>
+                <span className="text-sm font-medium">{user?.firstName?.[0] || 'U'}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -65,48 +61,6 @@ export function Navbar({ className, items = [], ...props }: NavbarProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         </nav>
-
-        {/* Mobile Navigation */}
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Toggle menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[240px] sm:w-[300px]">
-            <nav className="flex flex-col gap-4 mt-8">
-              {items.map((item, index) => (
-                <Link
-                  key={index}
-                  href={item.href}
-                  onClick={() => setIsOpen(false)}
-                  className={cn(
-                    "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
-                    location === item.href ? "bg-accent" : "transparent"
-                  )}
-                >
-                  {item.icon}
-                  {item.title}
-                </Link>
-              ))}
-              <Link
-                href="/profile"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
-              >
-                Profile
-              </Link>
-              <Link
-                href="/settings"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-accent"
-              >
-                Organization Settings
-              </Link>
-            </nav>
-          </SheetContent>
-        </Sheet>
       </div>
     </div>
   )

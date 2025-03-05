@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Switch, Route, useLocation } from "wouter";
+import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient.js";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -31,20 +31,14 @@ const navItems = [
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
-  const [location] = useLocation();
 
-  // If not authenticated and not on auth page, show auth page
-  if (!isAuthenticated && location !== '/auth') {
+  // If not authenticated, show auth page
+  if (!isAuthenticated) {
     return <AuthPage />;
   }
 
-  // If on auth page and authenticated, no need to show anything as useAuth will redirect
-  if (isAuthenticated && location === '/auth') {
-    return null;
-  }
-
   // Show authenticated layout
-  return isAuthenticated ? (
+  return (
     <div className="flex flex-col min-h-screen">
       <Navbar items={navItems} />
       <main className="flex-1 container py-6">
@@ -68,7 +62,7 @@ function AppContent() {
         </Switch>
       </main>
     </div>
-  ) : null;
+  );
 }
 
 export default function App() {
