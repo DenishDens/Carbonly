@@ -28,7 +28,7 @@ import {
 import { useForm } from "react-hook-form";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { BusinessUnit, FuelData, Emission } from "@shared/schema";
+import type { BusinessUnit, FuelData, Emission, Material } from "@shared/schema";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Loader2 } from "lucide-react";
@@ -38,31 +38,15 @@ const fuelFormSchema = z.object({
   businessUnitId: z.string({
     required_error: "Please select a business unit",
   }),
-  fuelType: z.enum(["diesel", "gasoline"], {
-    required_error: "Please select a fuel type",
+  materialId: z.string({
+    required_error: "Please select a material",
   }),
   amount: z.string().min(1, "Amount is required"),
-  unit: z.enum(["liters", "gallons"]),
   date: z.string().min(1, "Date is required"),
   notes: z.string().optional(),
   paidBySubcontractor: z.boolean().default(false),
   subcontractorName: z.string().optional(),
 });
-
-const FUEL_TYPES = [
-  { id: "diesel", label: "Diesel" },
-  { id: "gasoline", label: "Gasoline" },
-];
-
-const UNITS = [
-  { id: "liters", label: "Liters (L)" },
-  { id: "gallons", label: "Gallons (gal)" },
-];
-
-const EMISSION_FACTORS = {
-  diesel: 2.68,
-  gasoline: 2.31,
-};
 
 interface FuelFormProps {
   initialData?: Emission;
@@ -74,42 +58,48 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
   const queryClient = useQueryClient();
   const [calculatedEmissions, setCalculatedEmissions] = useState<string>();
 
+  // Fetch materials
+  const { data: materials, isLoading: loadingMaterials } = useQuery<Material[]>({
+    queryKey: ["/api/materials"],
+  });
+
   const form = useForm<z.infer<typeof fuelFormSchema>>({
     resolver: zodResolver(fuelFormSchema),
     defaultValues: initialData ? {
       businessUnitId: initialData.businessUnitId,
-      fuelType: initialData.details?.fuelType as "diesel" | "gasoline",
+      materialId: initialData.details?.materialId || "",
       amount: initialData.details?.rawAmount || "",
-      unit: initialData.details?.rawUnit as "liters" | "gallons",
       date: new Date(initialData.date).toISOString().split('T')[0],
       notes: initialData.details?.notes,
       paidBySubcontractor: initialData.details?.paidBySubcontractor || false,
       subcontractorName: initialData.details?.subcontractorName,
     } : {
-      unit: "liters",
       date: new Date().toISOString().split('T')[0],
       paidBySubcontractor: false,
     },
   });
 
   const amount = form.watch("amount");
-  const unit = form.watch("unit");
-  const fuelType = form.watch("fuelType");
+  const materialId = form.watch("materialId");
   const paidBySubcontractor = form.watch("paidBySubcontractor");
 
+  // Find selected material and calculate emissions
   useState(() => {
-    if (!amount || !unit || !fuelType) return;
+    if (!amount || !materialId) return;
 
-    const factor = EMISSION_FACTORS[fuelType];
-    if (!factor) return;
+    const material = materials?.find(m => m.id === materialId);
+    if (!material) return;
 
-    const liters = unit === "gallons" ? parseFloat(amount) * 3.78541 : parseFloat(amount);
-    const emissions = liters * factor;
+    const value = parseFloat(amount);
+    const emissions = value * parseFloat(material.emissionFactor);
     setCalculatedEmissions(emissions.toFixed(2));
-  }, [amount, unit, fuelType]);
+  }, [amount, materialId, materials]);
 
   const mutation = useMutation({
     mutationFn: async (data: z.infer<typeof fuelFormSchema>) => {
+      const material = materials?.find(m => m.id === data.materialId);
+      if (!material) throw new Error("Selected material not found");
+
       const endpoint = initialData ? `/api/emissions/${initialData.id}` : "/api/emissions";
       const method = initialData ? "PATCH" : "POST";
 
@@ -119,14 +109,14 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
         body: JSON.stringify({
           businessUnitId: data.businessUnitId,
           scope: "Scope 1",
-          emissionSource: `${data.fuelType} consumption`,
+          emissionSource: `${material.name} consumption`,
           amount: calculatedEmissions || "0",
           unit: "kgCO2e",
           date: new Date(data.date).toISOString(),
           details: {
+            materialId: data.materialId,
             rawAmount: data.amount,
-            rawUnit: data.unit,
-            fuelType: data.fuelType,
+            rawUnit: material.uom,
             category: "fuel",
             notes: data.notes,
             paidBySubcontractor: data.paidBySubcontractor,
@@ -162,7 +152,7 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
     queryKey: ["/api/business-units"],
   });
 
-  if (loadingUnits) {
+  if (loadingUnits || loadingMaterials) {
     return (
       <Card>
         <CardContent className="pt-6">
@@ -173,6 +163,9 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
       </Card>
     );
   }
+
+  // Get the selected material's unit of measure
+  const selectedMaterial = materials?.find(m => m.id === materialId);
 
   return (
     <Card>
@@ -212,20 +205,20 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
 
             <FormField
               control={form.control}
-              name="fuelType"
+              name="materialId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Fuel Type</FormLabel>
+                  <FormLabel>Material</FormLabel>
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select fuel type" />
+                        <SelectValue placeholder="Select material" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {FUEL_TYPES.map((type) => (
-                        <SelectItem key={type.id} value={type.id}>
-                          {type.label}
+                      {materials?.filter(m => m.category === "Fuel").map((material) => (
+                        <SelectItem key={material.id} value={material.id}>
+                          {material.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -250,30 +243,17 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="unit"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unit</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {UNITS.map((unit) => (
-                          <SelectItem key={unit.id} value={unit.id}>
-                            {unit.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Unit</FormLabel>
+                <FormControl>
+                  <Input 
+                    type="text" 
+                    value={selectedMaterial?.uom || ""} 
+                    disabled 
+                    className="bg-muted"
+                  />
+                </FormControl>
+              </FormItem>
             </div>
 
             <FormField
@@ -348,7 +328,7 @@ export function FuelForm({ initialData, onSuccess }: FuelFormProps) {
                 <p className="text-sm font-medium">Calculated Emissions</p>
                 <p className="text-2xl font-bold">{calculatedEmissions} kgCO2e</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Based on standard emission factors for {form.getValues("fuelType")} fuel
+                  Based on emission factor from selected material
                 </p>
               </div>
             )}
