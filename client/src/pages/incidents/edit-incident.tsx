@@ -35,20 +35,6 @@ export default function EditIncidentPage() {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  console.log("EditIncidentPage: Editing incident with ID:", id);
-
-  // Get incident data
-  const { data: incident, isLoading: isLoadingIncident } = useQuery({
-    queryKey: [`/api/incidents/${id}`],
-    enabled: !!id && !!user?.organizationId,
-  });
-
-  // Get business units
-  const { data: businessUnits } = useQuery({
-    queryKey: ["/api/business-units"],
-    enabled: !!user?.organizationId,
-  });
-
   const form = useForm({
     resolver: zodResolver(insertIncidentSchema),
     defaultValues: {
@@ -63,10 +49,21 @@ export default function EditIncidentPage() {
     },
   });
 
+  // Get incident data
+  const { data: incident, isLoading: isLoadingIncident } = useQuery({
+    queryKey: [`/api/incidents/${id}`],
+    enabled: !!id,
+  });
+
+  // Get business units
+  const { data: businessUnits } = useQuery({
+    queryKey: ["/api/business-units"],
+    enabled: !!user?.organizationId,
+  });
+
   // Update form when incident data is loaded
   useEffect(() => {
     if (incident) {
-      console.log("Setting form values:", incident);
       form.reset({
         ...incident,
         incidentDate: new Date(incident.incidentDate).toISOString().slice(0, 16),
@@ -78,7 +75,6 @@ export default function EditIncidentPage() {
     mutationFn: async (data: any) => {
       if (!id) throw new Error("No incident ID provided");
       setIsSubmitting(true);
-      console.log("Updating incident:", id, "with data:", data);
 
       try {
         const formattedData = {
@@ -111,9 +107,7 @@ export default function EditIncidentPage() {
     },
   });
 
-  if (!id || !user?.organizationId) {
-    console.log("Missing required data, redirecting to incidents page");
-    setLocation("/incidents");
+  if (!user?.organizationId) {
     return null;
   }
 
@@ -127,11 +121,24 @@ export default function EditIncidentPage() {
     );
   }
 
-  console.log("Rendering edit form with data:", incident);
+  if (!incident) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <h2 className="text-xl font-semibold">Incident not found</h2>
+            <Button className="mt-4" onClick={() => setLocation("/incidents")}>
+              Return to Incidents
+            </Button>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6"> {/* Removed p-6 */}
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold">Edit Incident</h1>
         </div>
@@ -261,10 +268,7 @@ export default function EditIncidentPage() {
                 <FormItem>
                   <FormLabel>Date and Time</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="datetime-local" 
-                      {...field}
-                    />
+                    <Input type="datetime-local" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -272,15 +276,15 @@ export default function EditIncidentPage() {
             />
 
             <div className="flex gap-4 justify-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => setLocation("/incidents")}
                 type="button"
               >
                 Cancel
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={isSubmitting || updateIncident.isPending}
               >
                 {(isSubmitting || updateIncident.isPending) && (

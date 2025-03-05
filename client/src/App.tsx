@@ -26,7 +26,14 @@ function Router() {
       <ProtectedRoute path="/" component={Dashboard} />
       <ProtectedRoute path="/business-units" component={BusinessUnits} />
       <ProtectedRoute path="/incidents" component={Incidents} />
-      <ProtectedRoute path="/incidents/:id/edit" component={EditIncident} />
+      <Route path="/incidents/:id/edit">
+        {(params) => (
+          <ProtectedRoute
+            path={`/incidents/${params.id}/edit`}
+            component={EditIncident}
+          />
+        )}
+      </Route>
       <ProtectedRoute path="/file-processing" component={FileProcessing} />
       <ProtectedRoute path="/data-processing/:category" component={CategoryProcessing} />
       <ProtectedRoute path="/data-processing/energy" component={ElectricityData} />

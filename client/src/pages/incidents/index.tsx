@@ -56,7 +56,7 @@ import { useToast } from "@/hooks/use-toast";
 
 export default function IncidentsPage() {
   const { user } = useAuth();
-  const [location, setLocation] = useLocation();
+  const [_, setLocation] = useLocation();
   const { toast } = useToast();
   const [showNewIncident, setShowNewIncident] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -97,9 +97,8 @@ export default function IncidentsPage() {
     return true;
   });
 
-  const handleEditClick = (id: string) => {
-    window.location.href = `/incidents/${id}/edit`;
-  };
+  const activeFiltersCount = Object.values(filters).filter(v => v !== 'all').length;
+  const canEdit = user?.role === "admin" || user?.role === "business_unit_manager";
 
   if (isLoading) {
     return (
@@ -110,9 +109,6 @@ export default function IncidentsPage() {
       </DashboardLayout>
     );
   }
-
-  const activeFiltersCount = Object.values(filters).filter(v => v !== 'all').length;
-  const canEdit = user?.role === "admin" || user?.role === "business_unit_manager";
 
   return (
     <DashboardLayout>
@@ -277,7 +273,12 @@ export default function IncidentsPage() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleEditClick(incident.id)}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              const editUrl = `/incidents/${incident.id}/edit`;
+                              setLocation(editUrl);
+                            }}
                             className="h-8 w-8 p-0"
                           >
                             <Edit className="h-4 w-4" />
