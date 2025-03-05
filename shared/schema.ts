@@ -174,7 +174,18 @@ export type ProcessingTransaction = typeof processingTransactions.$inferSelect;
 export type Incident = typeof incidents.$inferSelect;
 export type IncidentType = typeof incidentTypes.$inferSelect;
 export type InsertAuditLog = Omit<AuditLog, "id" | "createdAt">;
-export type InsertIncidentType = Omit<IncidentType, "id" | "createdAt">;
+
+// Add at the appropriate location in the schema
+export const insertIncidentTypeSchema = createInsertSchema(incidentTypes)
+  .pick({
+    name: true,
+    description: true,
+    active: true,
+    organizationId: true,
+  });
+
+export type InsertIncidentType = z.infer<typeof insertIncidentTypeSchema>;
+
 
 export const insertOrganizationSchema = z.object({
   email: z.string().email(),

@@ -44,6 +44,13 @@ import {
 } from "@/components/ui/tabs";
 
 
+type InsertIncidentType = {
+  name: string;
+  description: string;
+  active: boolean;
+  organizationId: string;
+}
+
 export default function OrganizationSettings() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -90,11 +97,7 @@ export default function OrganizationSettings() {
   const [showIntegrationWizard, setShowIntegrationWizard] = useState(false);
   const [selectedIntegrationType, setSelectedIntegrationType] = useState<"xero" | "myob" | "onedrive">();
 
-  const [incidentTypes, setIncidentTypes] = useState<{
-    name: string;
-    description: string;
-    active: boolean;
-  }[]>([]);
+  const [incidentTypes, setIncidentTypes] = useState<InsertIncidentType[]>([]);
 
   const { data: organization } = useQuery<Organization>({
     queryKey: ["/api/organization"],
@@ -173,7 +176,7 @@ export default function OrganizationSettings() {
   });
 
   const manageIncidentTypesMutation = useMutation({
-    mutationFn: async (types: typeof incidentTypes) => {
+    mutationFn: async (types: InsertIncidentType[]) => {
       // Filter out empty types before sending
       const validTypes = types.filter(type => type.name.trim() !== "").map(type => ({
         ...type,
@@ -208,18 +211,24 @@ export default function OrganizationSettings() {
   useEffect(() => {
     if (!isLoadingTypes) {
       if (!existingIncidentTypes?.length) {
-        setIncidentTypes([{ name: "", description: "", active: true }]);
+        setIncidentTypes([{ 
+          name: "", 
+          description: "", 
+          active: true,
+          organizationId: user?.organizationId! 
+        }]);
       } else {
         setIncidentTypes(
           existingIncidentTypes.map(type => ({
             name: type.name,
             description: type.description || "",
             active: type.active || true,
+            organizationId: type.organizationId
           }))
         );
       }
     }
-  }, [existingIncidentTypes, isLoadingTypes]);
+  }, [existingIncidentTypes, isLoadingTypes, user?.organizationId]);
 
   // Add validation before submission
   const handleSaveIncidentTypes = () => {
@@ -691,7 +700,7 @@ export default function OrganizationSettings() {
                     onClick={() => {
                       setIncidentTypes([
                         ...incidentTypes,
-                        { name: "", description: "", active: true }
+                        { name: "", description: "", active: true, organizationId: user?.organizationId! }
                       ]);
                     }}
                   >
