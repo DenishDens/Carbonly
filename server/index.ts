@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
+import { registerRoutes } from "./routes.js";
+import { setupVite, serveStatic, log } from "./vite.js";
 
 const app = express();
 app.use(express.json());
@@ -39,11 +39,6 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-
-      if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "…";
-      }
-
       log(logLine);
     }
   });
@@ -54,10 +49,7 @@ app.use((req, res, next) => {
 (async () => {
   try {
     log("Starting server initialization...");
-
-    // Check environment variables first
     checkEnvironmentVariables();
-
     log("Registering routes...");
     const server = await registerRoutes(app);
     log("Routes registered successfully");
@@ -70,7 +62,8 @@ app.use((req, res, next) => {
       res.status(status).json({ message });
     });
 
-    if (app.get("env") === "development") {
+    const isDev = app.get("env") === "development";
+    if (isDev) {
       log("Setting up Vite in development mode...");
       try {
         await setupVite(app, server);
@@ -85,22 +78,13 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    let port = 5000; // ALWAYS serve the app on port 5000
+    const port = 5000;  // Always use port 5000
+    const host = "0.0.0.0"; // Listen on all interfaces
 
-    const startServer = (portToUse: number) => {
-      server.listen({
-        port: portToUse,
-        host: "0.0.0.0",
-        reusePort: true,
-      }, () => {
-        log(`Server started successfully, serving on port ${portToUse}`);
-      }).on('error', (error: any) => {
-        log(`Error starting server: ${error.message}`);
-        throw error;
-      });
-    };
+    server.listen(port, host, () => {
+      log(`Server started successfully on http://${host}:${port}`);
+    });
 
-    startServer(port);
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);
     console.error('Full error details:', error);
