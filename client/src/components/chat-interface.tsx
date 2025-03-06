@@ -267,7 +267,7 @@ export function ChatInterface() {
                   <DropdownMenuContent
                     align="end"
                     className="w-[300px] bg-background border shadow-md"
-                    style={{ position: 'fixed' }}
+                    style={{ position: 'fixed', zIndex: 50 }}
                   >
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
