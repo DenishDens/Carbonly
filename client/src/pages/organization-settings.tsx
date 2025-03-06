@@ -75,6 +75,45 @@ export default function OrganizationSettings() {
     diesel: "0.0",
     gasoline: "0.0",
   });
+  
+  // State for emission categories toggles
+  const [scope1Categories, setScope1Categories] = useState({
+    stationaryCombustion: { name: "Stationary Combustion", enabled: true },
+    mobileCombustion: { name: "Mobile Combustion", enabled: true },
+    processEmissions: { name: "Process Emissions", enabled: true },
+    fugitiveEmissions: { name: "Fugitive Emissions", enabled: true },
+    onsiteFuelCombustion: { name: "Onsite Fuel Combustion", enabled: true },
+    flareGasEmissions: { name: "Flare Gas Emissions", enabled: false },
+    wastewaterTreatment: { name: "Wastewater Treatment", enabled: false },
+    landfillEmissions: { name: "Landfill Emissions", enabled: false },
+    agriculturalActivities: { name: "Agricultural Activities", enabled: false },
+  });
+  
+  const [scope2Categories, setScope2Categories] = useState({
+    purchasedElectricity: { name: "Purchased Electricity (Grid)", enabled: true },
+    purchasedHeatSteam: { name: "Purchased Heat or Steam", enabled: true },
+    purchasedCooling: { name: "Purchased Cooling", enabled: false },
+    transmissionDistribution: { name: "Transmission & Distribution Losses", enabled: false },
+    renewableEnergyCredits: { name: "Renewable Energy Credits", enabled: false },
+  });
+  
+  const [scope3Categories, setScope3Categories] = useState({
+    purchasedGoodsServices: { name: "Purchased Goods & Services", enabled: true },
+    capitalGoods: { name: "Capital Goods", enabled: true },
+    fuelEnergyRelated: { name: "Fuel & Energy-Related Activities", enabled: true },
+    upstreamTransportation: { name: "Upstream Transportation", enabled: true },
+    wasteGenerated: { name: "Waste Generated in Operations", enabled: true },
+    businessTravel: { name: "Business Travel", enabled: true },
+    employeeCommuting: { name: "Employee Commuting", enabled: true },
+    upstreamLeasedAssets: { name: "Upstream Leased Assets", enabled: false },
+    downstreamTransportation: { name: "Downstream Transportation", enabled: false },
+    processingSoldProducts: { name: "Processing of Sold Products", enabled: false },
+    useOfSoldProducts: { name: "Use of Sold Products", enabled: false },
+    endOfLifeTreatment: { name: "End-of-Life Treatment", enabled: false },
+    downstreamLeasedAssets: { name: "Downstream Leased Assets", enabled: false },
+    franchises: { name: "Franchises", enabled: false },
+    investments: { name: "Investments", enabled: false },
+  });
 
   const [ssoConfig, setSsoConfig] = useState({
     enabled: false,
@@ -292,11 +331,36 @@ export default function OrganizationSettings() {
     },
   });
 
+  // Update functions for emission categories
+  const updateScope1Category = (key: string, enabled: boolean) => {
+    setScope1Categories(prev => ({
+      ...prev,
+      [key]: { ...prev[key as keyof typeof prev], enabled }
+    }));
+  };
+  
+  const updateScope2Category = (key: string, enabled: boolean) => {
+    setScope2Categories(prev => ({
+      ...prev,
+      [key]: { ...prev[key as keyof typeof prev], enabled }
+    }));
+  };
+  
+  const updateScope3Category = (key: string, enabled: boolean) => {
+    setScope3Categories(prev => ({
+      ...prev,
+      [key]: { ...prev[key as keyof typeof prev], enabled }
+    }));
+  };
+
   const updateProtocolSettingsMutation = useMutation({
     mutationFn: async (data: {
       protocolVersion: string;
       defaultScope: string;
       emissionFactors: typeof emissionFactors;
+      scope1Categories?: typeof scope1Categories;
+      scope2Categories?: typeof scope2Categories;
+      scope3Categories?: typeof scope3Categories;
     }) => {
       const res = await apiRequest("PATCH", "/api/organization/protocol-settings", data);
       return res.json();
@@ -730,6 +794,61 @@ export default function OrganizationSettings() {
                       </SelectContent>
                     </Select>
                   </div>
+                  
+                  <div className="mt-6">
+                    <h3 className="text-lg font-medium mb-3">Active Emission Categories</h3>
+                    <p className="text-sm text-muted-foreground mb-4">Enable or disable emission categories for your organization</p>
+                    
+                    <div className="space-y-6">
+                      <div>
+                        <h4 className="font-medium mb-2">Scope 1 (Direct Emissions)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {Object.entries(scope1Categories).map(([key, value]) => (
+                            <div key={key} className="flex items-center justify-between space-x-2 border p-3 rounded-md">
+                              <Label htmlFor={`scope1-${key}`} className="flex-1 cursor-pointer">{value.name}</Label>
+                              <Switch 
+                                id={`scope1-${key}`} 
+                                checked={value.enabled}
+                                onCheckedChange={(checked) => updateScope1Category(key, checked)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium mb-2">Scope 2 (Indirect Energy Emissions)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {Object.entries(scope2Categories).map(([key, value]) => (
+                            <div key={key} className="flex items-center justify-between space-x-2 border p-3 rounded-md">
+                              <Label htmlFor={`scope2-${key}`} className="flex-1 cursor-pointer">{value.name}</Label>
+                              <Switch 
+                                id={`scope2-${key}`} 
+                                checked={value.enabled}
+                                onCheckedChange={(checked) => updateScope2Category(key, checked)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h4 className="font-medium mb-2">Scope 3 (Value Chain Emissions)</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {Object.entries(scope3Categories).map(([key, value]) => (
+                            <div key={key} className="flex items-center justify-between space-x-2 border p-3 rounded-md">
+                              <Label htmlFor={`scope3-${key}`} className="flex-1 cursor-pointer">{value.name}</Label>
+                              <Switch 
+                                id={`scope3-${key}`} 
+                                checked={value.enabled}
+                                onCheckedChange={(checked) => updateScope3Category(key, checked)}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="space-y-2">
                     <Label>Default Scope</Label>
@@ -807,6 +926,9 @@ export default function OrganizationSettings() {
                       protocolVersion,
                       defaultScope,
                       emissionFactors,
+                      scope1Categories,
+                      scope2Categories,
+                      scope3Categories,
                     })}
                     disabled={updateProtocolSettingsMutation.isPending}
                   >
