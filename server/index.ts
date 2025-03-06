@@ -78,8 +78,8 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    // First try port 5001, then fall back to 5000 if 5001 is in use
-    const ports = [5001, 5000];
+    // Use port 3000 to match deployment configuration
+    const ports = [3000];
     const host = "0.0.0.0"; // Listen on all interfaces
 
     for (const port of ports) {
