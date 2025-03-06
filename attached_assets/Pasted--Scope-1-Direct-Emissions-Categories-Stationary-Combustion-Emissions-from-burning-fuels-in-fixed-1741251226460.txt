@@ -1,0 +1,34 @@
+ Scope 1 (Direct Emissions Categories)
+Stationary Combustion – Emissions from burning fuels in fixed equipment (boilers, furnaces, etc.).
+Mobile Combustion – Fuel emissions from company-owned vehicles, ships, or aircraft.
+Process Emissions – Emissions from industrial processes (chemical reactions, cement production).
+Fugitive Emissions – Leaks from refrigeration, air conditioning, or industrial gases.
+Onsite Fuel Combustion – Diesel, natural gas, propane used in generators or heating.
+Flare Gas Emissions – From oil & gas operations.
+Wastewater Treatment – Onsite methane or nitrous oxide from treatment plants.
+Landfill Emissions – Methane from company-owned landfills.
+Agricultural Activities – Enteric fermentation, manure management, fertilizer application.
+🔹 Scope 2 (Indirect Energy Emissions Categories)
+Purchased Electricity (Grid Energy) – Emissions from externally sourced power.
+Purchased Heat or Steam – Emissions from district heating or industrial steam.
+Purchased Cooling (Chilled Water) – Used in large-scale HVAC systems.
+Transmission & Distribution (T&D) Losses – Losses from transporting purchased electricity.
+Renewable Energy Credits (RECs) Adjustment – Emissions reductions from green power purchases.
+🔹 Scope 3 (Value Chain Emissions Categories)
+🔸 Upstream Emissions (Supply Chain)
+Purchased Goods & Services – Emissions from raw materials, office supplies, manufacturing inputs.
+Capital Goods – Construction, machinery, equipment manufacturing emissions.
+Fuel- and Energy-Related Activities (Not in Scope 1 or 2) – Extraction, refining, transport of purchased fuels.
+Upstream Transportation & Distribution – Shipping emissions before products reach the company.
+Waste Generated in Operations – Landfilling, composting, recycling emissions from waste disposal.
+Business Travel – Air travel, hotel stays, rental cars for business purposes.
+Employee Commuting – Daily transportation emissions for workers (cars, buses, trains).
+Upstream Leased Assets – Emissions from leased office spaces, machinery, or facilities.
+🔸 Downstream Emissions (Product Use & Disposal)
+Downstream Transportation & Distribution – Emissions from product shipping to customers.
+Processing of Sold Products – Emissions generated when customers process raw materials.
+Use of Sold Products – Lifetime emissions from customer product use (e.g., gasoline in cars).
+End-of-Life Treatment of Sold Products – Recycling, landfill, incineration emissions.
+Downstream Leased Assets – Emissions from rented buildings, equipment, or vehicles post-sale.
+Franchises – Emissions from franchise operations (restaurants, hotels, etc.).
+Investments – Portfolio emissions from owned investments & subsidiaries.
