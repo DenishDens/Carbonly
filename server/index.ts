@@ -78,12 +78,37 @@ app.use((req, res, next) => {
       log("Static serving setup completed");
     }
 
-    const port = 5000;  // Always use port 5000
+    // First try port 5001, then fall back to 5000 if 5001 is in use
+    const ports = [5001, 5000];
     const host = "0.0.0.0"; // Listen on all interfaces
 
-    server.listen(port, host, () => {
-      log(`Server started successfully on http://${host}:${port}`);
-    });
+    for (const port of ports) {
+      try {
+        // Attempt to listen on the current port
+        await new Promise((resolve, reject) => {
+          server.listen(port, host)
+            .once('listening', () => {
+              log(`Server started successfully on http://${host}:${port}`);
+              resolve(true);
+            })
+            .once('error', (err) => {
+              if (err.code === 'EADDRINUSE') {
+                log(`Port ${port} is in use, trying next port...`);
+                resolve(false);
+              } else {
+                reject(err);
+              }
+            });
+        });
+        break; // If we get here, we successfully bound to a port
+      } catch (error) {
+        log(`Error binding to port ${port}: ${error instanceof Error ? error.message : String(error)}`);
+        if (port === ports[ports.length - 1]) {
+          // If this was the last port to try, throw the error
+          throw error;
+        }
+      }
+    }
 
   } catch (error) {
     log(`Fatal error during server startup: ${error instanceof Error ? error.message : String(error)}`);

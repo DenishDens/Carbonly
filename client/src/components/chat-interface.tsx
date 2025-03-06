@@ -47,51 +47,24 @@ ChartJS.register(
   Legend
 );
 
-// Define chart-related keywords
-const CHART_KEYWORDS = [
-  'chart', 'graph', 'trend', 'compare', 'distribution',
-  'show me', 'visualize', 'plot', 'statistics'
-];
-
-function shouldShowChart(question: string, response: any): boolean {
-  // Convert question to lowercase for case-insensitive matching
-  const lowercaseQuestion = question.toLowerCase();
-
-  // Check if the question contains any chart-related keywords
-  const containsChartKeyword = CHART_KEYWORDS.some(keyword => 
-    lowercaseQuestion.includes(keyword)
-  );
-
-  // Only show chart if both conditions are met:
-  // 1. Question suggests a visual representation
-  // 2. Response contains valid chart data
-  return containsChartKeyword && response.chart && 
-         response.chart.data && response.chart.type;
-}
-
 // Update the SMART_PROMPTS to focus on incident-related queries
 const SMART_PROMPTS = [
-  "Show me critical incidents from the last 30 days",
   "What's our current incident resolution rate?",
-  "Show me incidents by severity",
-  "Which business unit has the most critical incidents?",
-  "What's our average resolution time?",
-  "Show open vs resolved incidents",
-  "Show me incident trends",
-  // Natural language queries
-  "How are we handling incidents this month?",
-  "Which areas need immediate attention?",
-  "Are there any concerning patterns in our incidents?",
-  "Give me a summary of recent incidents"
+  "How many critical incidents are open?",
+  "List incidents by business unit",
+  "Summarize recent incidents",
+  "What's our most common incident type?",
+  "Show incident trends over time",
+  "Compare incident severity distribution"
 ];
 
-// Added Material Library prompts
+// Material Library prompts
 const MATERIAL_PROMPTS = [
-  "What is the tensile strength of steel?",
-  "What are the properties of aluminum alloy 6061?",
-  "Find materials suitable for high-temperature applications.",
-  "Compare the density of copper and gold.",
-  "What are the common uses of titanium?"
+  "Compare common material emission factors",
+  "List all materials in our library",
+  "Find materials suitable for recycling",
+  "Show most used materials",
+  "List materials with high emissions"
 ];
 
 interface Message {
@@ -111,12 +84,6 @@ export function ChatInterface() {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Get user's accessible business units
-  const { data: businessUnits } = useQuery({
-    queryKey: ["/api/business-units"],
-    enabled: !!user,
-  });
 
   // Get chat messages from React Query cache
   const { data: messages = [] } = useQuery<Message[]>({
@@ -152,11 +119,10 @@ export function ChatInterface() {
       }
     },
     onSuccess: (response) => {
-      // Only include chart if the question warrants it
-      const newMessage = { 
-        role: "assistant", 
+      const newMessage = {
+        role: "assistant",
         content: response.message,
-        ...(shouldShowChart(input, response) ? { chart: response.chart } : {})
+        ...(response.chart ? { chart: response.chart } : {})
       };
 
       const newMessages = [
@@ -169,9 +135,9 @@ export function ChatInterface() {
     },
     onError: (error: Error) => {
       setError(error.message || "Failed to process your request. Please try again.");
-      const errorMessage = { 
-        role: "assistant", 
-        content: "I'm sorry, I encountered an error processing your request. Please try again." 
+      const errorMessage = {
+        role: "assistant",
+        content: "I'm sorry, I encountered an error processing your request. Please try again."
       };
       const newMessages = [...messages, { role: "user", content: input }, errorMessage];
       queryClient.setQueryData(["/api/chat/messages"], newMessages);
@@ -196,7 +162,7 @@ export function ChatInterface() {
     if (!isOpen && messages.length === 0) {
       const greeting: Message = {
         role: "assistant",
-        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze incident data from the last 30 days and query the Material Library. Try asking about incident trends or material properties, or use one of the suggested prompts below.`
+        content: `Hi ${user?.firstName || 'there'}! 👋 I can help you analyze incident data and query the Material Library. Try asking about incidents or materials.`
       };
       queryClient.setQueryData(["/api/chat/messages"], [greeting]);
     }
@@ -229,7 +195,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[99999]"> {/* Increased z-index */}
+    <div className="fixed bottom-6 right-6 z-50">
       {!isOpen ? (
         <Button
           onClick={handleOpen}
@@ -242,7 +208,7 @@ export function ChatInterface() {
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <div>
               <CardTitle>AI Assistant</CardTitle>
-              <CardDescription>Ask about incident data or Material Library</CardDescription>
+              <CardDescription>Ask about incident data or materials</CardDescription>
             </div>
             <Button
               variant="ghost"
@@ -280,7 +246,7 @@ export function ChatInterface() {
                 </div>
               )}
             </ScrollArea>
-            <form onSubmit={handleSubmit} className="mt-4">
+            <form onSubmit={handleSubmit} className="mt-4 relative">
               <div className="flex gap-2">
                 <Input
                   value={input}
@@ -290,17 +256,18 @@ export function ChatInterface() {
                 />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
+                    <Button
+                      variant="outline"
                       size="icon"
                       disabled={chatMutation.isPending || isProcessing}
                     >
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent 
-                    align="end" 
-                    className="w-[300px] z-[99999]" // Increased z-index for dropdown
+                  <DropdownMenuContent
+                    align="end"
+                    className="w-[300px] bg-background border shadow-md"
+                    style={{ position: 'fixed' }}
                   >
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
@@ -311,9 +278,9 @@ export function ChatInterface() {
                       </DropdownMenuItem>
                     ))}
                     <DropdownMenuItem className="border-t border-border" />
-                    {MATERIAL_PROMPTS.map((prompt, index) => (
+                    {MATERIAL_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
-                        key={prompt + index}
+                        key={prompt}
                         onClick={() => handlePromptSelect(prompt)}
                       >
                         {prompt}
@@ -321,8 +288,8 @@ export function ChatInterface() {
                     ))}
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   disabled={chatMutation.isPending || isProcessing}
                 >
                   {chatMutation.isPending || isProcessing ? (

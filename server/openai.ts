@@ -13,7 +13,7 @@ function calculateBasicIncidentMetrics(incidents: Incident[]) {
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const recentIncidents = incidents.filter(i => 
+  const recentIncidents = incidents.filter(i =>
     new Date(i.createdAt) >= thirtyDaysAgo
   );
 
@@ -69,8 +69,8 @@ export async function getChatResponse(message: string, context: {
       businessUnits: businessUnits.slice(0, 10).map(unit => ({
         name: unit.name,
         incidents: incidents.filter(i => i.businessUnitId === unit.id).length,
-        critical_incidents: incidents.filter(i => 
-          i.businessUnitId === unit.id && 
+        critical_incidents: incidents.filter(i =>
+          i.businessUnitId === unit.id &&
           i.severity === 'critical'
         ).length
       }))
@@ -80,49 +80,33 @@ export async function getChatResponse(message: string, context: {
     console.time('openaiCall');
 
     // Detect the type of query
-    const isMaterialRequest = message.toLowerCase().includes('material') || 
-                             message.toLowerCase().includes('emission factor') ||
-                             message.toLowerCase().includes('carbon') ||
-                             message.toLowerCase().includes('co2') ||
-                             message.toLowerCase().includes('emission');
+    const isMaterialRequest = message.toLowerCase().includes('material') ||
+      message.toLowerCase().includes('emission factor') ||
+      message.toLowerCase().includes('carbon') ||
+      message.toLowerCase().includes('co2') ||
+      message.toLowerCase().includes('emission');
 
     // Use the appropriate system message based on request type
-    const systemMessage = isMaterialRequest ? 
+    const systemMessage = isMaterialRequest ?
       `You are an ESG data assistant specializing in material categorization, units of measure, and emission factors for the Material Library.
 
 The organization's Material Library contains the following materials:
 ${JSON.stringify(materials.map(m => ({
-  code: m.materialCode,
-  name: m.name,
-  category: m.category,
-  uom: m.uom,
-  emissionFactor: m.emissionFactor + " kgCO2e per " + m.uom,
-  source: m.source
-})), null, 2)}
+        code: m.materialCode,
+        name: m.name,
+        category: m.category,
+        uom: m.uom,
+        emissionFactor: m.emissionFactor + " kgCO2e per " + m.uom,
+        source: m.source
+      })), null, 2)}
 
 For natural language queries about materials, respond with information from the Material Library.
-If asked about materials not in the library, provide general emission factor guidelines like:
-- Diesel: ~2.68 kgCO₂e per liter
-- Biodiesel B10 (10% bio): ~2.41 kgCO₂e per liter
-- Biodiesel B20 (20% bio): ~2.14 kgCO₂e per liter
-- Biodiesel B100 (100% bio): ~0.17 kgCO₂e per liter
-- Electricity: varies by region, but typically ~0.42 kgCO₂e per kWh
-- Natural Gas: ~2.03 kgCO₂e per cubic meter
-
-For UOM suggestions:
-- Liquid fuels: liters
-- Energy: kWh
-- Solid waste: metric_tons
-- Raw materials: kg or metric_tons
+If asked about materials not in the library, provide general emission factor guidelines.
 
 Response Format (must be valid JSON):
 {
   "message": "Clear answer to the user's question about materials or emissions",
-  "chart": {
-    "type": "line|bar|pie", 
-    "data": {...},
-    "options": {...}
-  }
+  "chart": null  // Only include chart data if the question specifically asks for visualization
 }` :
       `You are an incident management assistant. Analyze and respond to queries about incident data.
 
@@ -130,21 +114,14 @@ Current Data Context (Last 30 Days):
 ${JSON.stringify(metrics, null, 2)}
 
 Focus on:
-1. Resolution rates and trends
-2. Severity distributions
-3. Business unit performance
-4. Critical incident tracking
-
-Provide specific numbers and suggest improvements.
+1. Clear, concise text responses for simple queries
+2. Only include visualizations when explicitly requested (e.g., "show chart", "visualize", "graph")
+3. Prefer text explanations for status updates and simple metrics
 
 Response Format (must be valid JSON):
 {
   "message": "Clear analysis with specific metrics",
-  "chart": {
-    "type": "line|bar|pie",
-    "data": {...},
-    "options": {...}
-  }
+  "chart": null  // Only include chart data if visualization is specifically requested
 }`;
 
     const response = await openai.chat.completions.create({
@@ -197,16 +174,16 @@ export async function getUomSuggestion(materialName: string) {
   try {
     // Fast-path for common fuels to avoid OpenAI calls
     const lowerName = materialName.toLowerCase();
-    if (lowerName.includes('diesel') || lowerName.includes('fuel') || 
-        lowerName.includes('gasoline') || lowerName.includes('petrol') || 
-        lowerName.includes('oil') || lowerName.includes('b10') || 
-        lowerName.includes('b20')) {
+    if (lowerName.includes('diesel') || lowerName.includes('fuel') ||
+      lowerName.includes('gasoline') || lowerName.includes('petrol') ||
+      lowerName.includes('oil') || lowerName.includes('b10') ||
+      lowerName.includes('b20')) {
       console.log(`Fast-tracked UOM for ${materialName}: liters`);
       return "liters";
     } else if (lowerName.includes('electricity') || lowerName.includes('energy')) {
       return "kilowatt_hours";
     } else if (lowerName.includes('waste') && (
-               lowerName.includes('solid') || lowerName.includes('mixed'))) {
+      lowerName.includes('solid') || lowerName.includes('mixed'))) {
       return "tons_metric";
     }
 
@@ -231,9 +208,9 @@ export async function getUomSuggestion(materialName: string) {
 
       const content = response.choices[0].message.content?.trim() || "";
       // Clean the response to ensure it's just the UOM
-      const validUOMs = ["liters", "gallons", "cubic_meters", "cubic_feet", "kilograms", 
-                        "tons_metric", "tons_us", "pounds", "kilowatt_hours", 
-                        "megawatt_hours", "therms", "btus"];
+      const validUOMs = ["liters", "gallons", "cubic_meters", "cubic_feet", "kilograms",
+        "tons_metric", "tons_us", "pounds", "kilowatt_hours",
+        "megawatt_hours", "therms", "btus"];
 
       // Extract just the UOM if it's in the valid list
       for (const uom of validUOMs) {
