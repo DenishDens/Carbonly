@@ -47,6 +47,28 @@ ChartJS.register(
   Legend
 );
 
+// Define chart-related keywords
+const CHART_KEYWORDS = [
+  'chart', 'graph', 'trend', 'compare', 'distribution',
+  'show me', 'visualize', 'plot', 'statistics'
+];
+
+function shouldShowChart(question: string, response: any): boolean {
+  // Convert question to lowercase for case-insensitive matching
+  const lowercaseQuestion = question.toLowerCase();
+
+  // Check if the question contains any chart-related keywords
+  const containsChartKeyword = CHART_KEYWORDS.some(keyword => 
+    lowercaseQuestion.includes(keyword)
+  );
+
+  // Only show chart if both conditions are met:
+  // 1. Question suggests a visual representation
+  // 2. Response contains valid chart data
+  return containsChartKeyword && response.chart && 
+         response.chart.data && response.chart.type;
+}
+
 // Update the SMART_PROMPTS to focus on incident-related queries
 const SMART_PROMPTS = [
   "Show me critical incidents from the last 30 days",
@@ -130,14 +152,17 @@ export function ChatInterface() {
       }
     },
     onSuccess: (response) => {
+      // Only include chart if the question warrants it
+      const newMessage = { 
+        role: "assistant", 
+        content: response.message,
+        ...(shouldShowChart(input, response) ? { chart: response.chart } : {})
+      };
+
       const newMessages = [
         ...messages,
         { role: "user", content: input },
-        { 
-          role: "assistant", 
-          content: response.message,
-          chart: response.chart
-        }
+        newMessage
       ];
       queryClient.setQueryData(["/api/chat/messages"], newMessages);
       setInput("");
@@ -204,7 +229,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-[999]">
+    <div className="fixed bottom-6 right-6 z-[99999]"> {/* Increased z-index */}
       {!isOpen ? (
         <Button
           onClick={handleOpen}
@@ -273,7 +298,10 @@ export function ChatInterface() {
                       <ChevronDown className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-[300px]">
+                  <DropdownMenuContent 
+                    align="end" 
+                    className="w-[300px] z-[99999]" // Increased z-index for dropdown
+                  >
                     {SMART_PROMPTS.map((prompt) => (
                       <DropdownMenuItem
                         key={prompt}
@@ -282,7 +310,7 @@ export function ChatInterface() {
                         {prompt}
                       </DropdownMenuItem>
                     ))}
-                    <DropdownMenuItem className="divider" /> {/*Added a divider*/}
+                    <DropdownMenuItem className="border-t border-border" />
                     {MATERIAL_PROMPTS.map((prompt, index) => (
                       <DropdownMenuItem
                         key={prompt + index}
