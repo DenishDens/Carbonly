@@ -23,7 +23,7 @@ localPort = 5000
 externalPort = 5000
 
 [workflows]
-runButton = "Project"
+runButton = "Run App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -48,3 +48,11 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "npm run dev"
 waitForPort = 3000
+
+[[workflows.workflow]]
+name = "Run App"
+author = 2622411
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash -c 'pg_ctl -D ~/.pg status || pg_ctl -D ~/.pg start && npx prisma db push && npm run dev'"
