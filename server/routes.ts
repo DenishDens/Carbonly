@@ -384,8 +384,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!req.isAuthenticated()) return res.sendStatus(401);
 
     try {
+      // Get accessible business units based on user's role
+      const units = await storage.getBusinessUnits(req.user.organizationId);
+      
+      // Pass user role and ID for proper access control
       const response = await getChatResponse(req.body.message, {
         organizationId: req.user.organizationId,
+        userRole: req.user.role,
+        userId: req.user.id,
+        businessUnitId: req.user.businessUnitId
       });
 
       // Create audit log for the chat interaction

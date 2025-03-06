@@ -45,13 +45,15 @@ function calculateBasicIncidentMetrics(incidents: Incident[]) {
 export async function getChatResponse(message: string, context: {
   organizationId: string;
   userRole?: string;
+  userId?: string;
+  businessUnitId?: string;
 }): Promise<ChatResponse> {
   try {
     console.time('totalProcessing');
     console.time('getData');
 
     // Fetch data concurrently - now including materials
-    const [incidents, businessUnits, materials] = await Promise.all([
+    const [allIncidents, allBusinessUnits, materials] = await Promise.all([
       storage.getIncidents(context.organizationId),
       storage.getBusinessUnits(context.organizationId),
       storage.getMaterials(context.organizationId)
@@ -59,6 +61,36 @@ export async function getChatResponse(message: string, context: {
       console.error('Error fetching data:', error);
       throw new Error('Failed to fetch required data');
     });
+    
+    // Filter business units based on user role and permissions
+    let businessUnits = allBusinessUnits;
+    let incidents = allIncidents;
+    
+    // Apply role-based filtering
+    if (context.userRole && context.userRole !== 'admin') {
+      // Business Unit Managers can access their assigned business units
+      if (context.userRole === 'business_unit_manager') {
+        businessUnits = allBusinessUnits.filter(bu => 
+          bu.managerId === context.userId || bu.id === context.businessUnitId
+        );
+      }
+      // Team members can only access their specific business unit
+      else if (context.userRole === 'team_member' || context.userRole === 'auditor') {
+        if (context.businessUnitId) {
+          businessUnits = allBusinessUnits.filter(bu => bu.id === context.businessUnitId);
+        } else {
+          businessUnits = [];
+        }
+      }
+      
+      // Filter incidents to only include those from accessible business units
+      const accessibleBusinessUnitIds = businessUnits.map(bu => bu.id);
+      incidents = allIncidents.filter(incident => 
+        accessibleBusinessUnitIds.includes(incident.businessUnitId)
+      );
+    }
+    
+    console.log(`User has access to ${businessUnits.length} business units and ${incidents.length} incidents`);
 
     console.timeEnd('getData');
     console.time('calculateMetrics');
@@ -85,6 +117,26 @@ export async function getChatResponse(message: string, context: {
       message.toLowerCase().includes('carbon') ||
       message.toLowerCase().includes('co2') ||
       message.toLowerCase().includes('emission');
+      
+    // Detect analytical queries that would benefit from visualizations
+    const isAnalyticalQuery = 
+      message.toLowerCase().includes('by month') ||
+      message.toLowerCase().includes('over time') ||
+      message.toLowerCase().includes('trends') ||
+      message.toLowerCase().includes('distribution') ||
+      message.toLowerCase().includes('compare') ||
+      message.toLowerCase().includes('summary') ||
+      message.toLowerCase().includes('breakdown') ||
+      message.toLowerCase().includes('business unit') ||
+      message.toLowerCase().includes('unit comparison') ||
+      message.toLowerCase().match(/how many|count|number of|list/i) !== null;
+      
+    // Detect if this is a business unit related query
+    const isBusinessUnitQuery = 
+      message.toLowerCase().includes('business unit') ||
+      message.toLowerCase().includes('division') ||
+      message.toLowerCase().includes('department') ||
+      message.toLowerCase().includes('facility');
 
     // Use the appropriate system message based on request type
     const systemMessage = isMaterialRequest ?
@@ -115,13 +167,37 @@ ${JSON.stringify(metrics, null, 2)}
 
 Focus on:
 1. Clear, concise text responses for simple queries
-2. Only include visualizations when explicitly requested (e.g., "show chart", "visualize", "graph")
-3. Prefer text explanations for status updates and simple metrics
+2. Include visualizations automatically for data analysis questions (trends, counts, distributions, comparisons)
+3. For questions about specific metrics, totals, or statuses, prioritize text explanations
+4. Analyze the intent of the question to determine if a visualization would be helpful
+5. When handling business unit queries, consider the user's role and access level
+
+For business unit data, respect the following access rules:
+- Admin users can access all business unit data
+- Business Unit Managers can only access their assigned business units
+- Team Members can only access their specific business unit
+- Auditors can view but not modify business unit data
+
+For example, questions like "number of incidents by month", "severity distribution", "trend analysis by business unit", 
+or "compare emissions across business units" should automatically include appropriate visualizations.
 
 Response Format (must be valid JSON):
 {
   "message": "Clear analysis with specific metrics",
-  "chart": null  // Only include chart data if visualization is specifically requested
+  "chart": {  // Include appropriate chart data based on query content
+    "type": "bar|line|pie",
+    "data": {
+      "labels": ["Label1", "Label2"],
+      "datasets": [{
+        "label": "Dataset Label",
+        "data": [value1, value2],
+        "backgroundColor": ["#color1", "#color2"],
+        "borderColor": ["#color1", "#color2"],
+        "borderWidth": 1
+      }]
+    },
+    "options": { /* Chart.js options */ }
+  }
 }`;
 
     const response = await openai.chat.completions.create({
