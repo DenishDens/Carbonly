@@ -47,24 +47,24 @@ ChartJS.register(
   Legend
 );
 
-// Update the SMART_PROMPTS to focus on incident-related queries
+// Update the SMART_PROMPTS to focus on incident-related queries with better data matching
 const SMART_PROMPTS = [
   "What's our current incident resolution rate?",
-  "How many critical incidents are open?",
-  "List incidents by business unit",
-  "Summarize recent incidents",
-  "What's our most common incident type?",
-  "Show incident trends over time",
-  "Compare incident severity distribution"
+  "How many incidents do we have in total?",
+  "Show me incidents by severity",
+  "Give me a breakdown of incidents by status",
+  "Compare business units by incident count",
+  "What are our incident metrics for the last 30 days?",
+  "Show incident severity distribution"
 ];
 
 // Material Library prompts
 const MATERIAL_PROMPTS = [
-  "Compare common material emission factors",
-  "List all materials in our library",
-  "Find materials suitable for recycling",
-  "Show most used materials",
-  "List materials with high emissions"
+  "What materials are in our library?",
+  "Show me emission factors for fuels",
+  "What's the emission factor for diesel?",
+  "Compare emission factors for different materials",
+  "List materials by category"
 ];
 
 interface Message {

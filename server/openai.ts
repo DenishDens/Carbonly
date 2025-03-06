@@ -118,7 +118,7 @@ export async function getChatResponse(message: string, context: {
       message.toLowerCase().includes('co2') ||
       message.toLowerCase().includes('emission');
       
-    // Detect analytical queries that would benefit from visualizations
+    // Enhanced detection for analytical queries that would benefit from visualizations
     const isAnalyticalQuery = 
       message.toLowerCase().includes('by month') ||
       message.toLowerCase().includes('over time') ||
@@ -129,7 +129,13 @@ export async function getChatResponse(message: string, context: {
       message.toLowerCase().includes('breakdown') ||
       message.toLowerCase().includes('business unit') ||
       message.toLowerCase().includes('unit comparison') ||
-      message.toLowerCase().match(/how many|count|number of|list/i) !== null;
+      message.toLowerCase().includes('metrics') ||
+      message.toLowerCase().includes('show me') ||
+      message.toLowerCase().includes('give me') ||
+      message.toLowerCase().includes('severity') ||
+      message.toLowerCase().includes('status') ||
+      message.toLowerCase().includes('emission factor') ||
+      message.toLowerCase().match(/how many|count|number of|list|show|display/i) !== null;
       
     // Detect if this is a business unit related query
     const isBusinessUnitQuery = 
@@ -171,6 +177,8 @@ Focus on:
 3. For questions about specific metrics, totals, or statuses, prioritize text explanations
 4. Analyze the intent of the question to determine if a visualization would be helpful
 5. When handling business unit queries, consider the user's role and access level
+6. When data is limited or missing, provide helpful information about available data instead of error messages
+7. For new deployments with minimal data, focus on explaining capabilities and sample insights
 
 For business unit data, respect the following access rules:
 - Admin users can access all business unit data
@@ -178,8 +186,8 @@ For business unit data, respect the following access rules:
 - Team Members can only access their specific business unit
 - Auditors can view but not modify business unit data
 
-For example, questions like "number of incidents by month", "severity distribution", "trend analysis by business unit", 
-or "compare emissions across business units" should automatically include appropriate visualizations.
+Generate appropriate visualizations for questions about counts, distributions, or comparisons, even with limited sample data.
+If insufficient data is available, explain what data would be needed to provide a complete answer.
 
 Response Format (must be valid JSON):
 {
